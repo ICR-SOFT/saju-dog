@@ -185,7 +185,7 @@ export const useSajuStore = create<SajuState>((set, get) => ({
     const { data, error } = await supabase
       .from('readings')
       .select('*')
-      .eq('processing_status', 'completed')
+      .in('processing_status', ['completed', 'pending', 'processing', 'failed'])
       .order('created_at', { ascending: false });
 
     if (error) return;

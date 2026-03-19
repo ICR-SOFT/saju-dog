@@ -51,5 +51,10 @@ export interface Reading {
   error: string | null;
   target_year: number | null;
   prompt_config_id: string | null;
+  processing_status: 'pending' | 'processing' | 'completed' | 'failed';
+  processing_duration_ms: number | null;
+  api_cost: Record<string, unknown> | null;
+  failure_reason: string | null;
+  share_id: string | null;
   created_at: string;
 }

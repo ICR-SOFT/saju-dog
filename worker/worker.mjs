@@ -176,8 +176,112 @@ ${data.daeun?.map(d => `- ${d.startAge}~${d.endAge}세: ${d.stem}${d.branch} [${
 신살, 귀인, 기둥별 관계, 띠, 별자리를 적극 활용하세요.`;
 }
 
-// ===== JSON 파싱 =====
-function parseResponse(text) {
+// ===== tool_use 스키마 (서비스별) =====
+const READING_SCHEMA = {
+  name: 'saju_reading_result',
+  description: '사주 풀이 결과를 구조화된 JSON으로 반환',
+  input_schema: {
+    type: 'object',
+    required: ['summary', 'chapters', 'advice', 'luckyItems'],
+    properties: {
+      summary: { type: 'string', description: '임팩트 있는 한줄 요약 (30자 이내)' },
+      chapters: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['id', 'title', 'emoji', 'content'],
+          properties: {
+            id: { type: 'string' },
+            title: { type: 'string', description: '문학적/비유적 제목' },
+            emoji: { type: 'string' },
+            content: { type: 'string', description: 'HTML 본문 (300~800자)' },
+          },
+        },
+      },
+      advice: { type: 'array', items: { type: 'string' } },
+      luckyItems: {
+        type: 'object',
+        properties: {
+          color: { type: 'string' },
+          number: { type: 'string' },
+          direction: { type: 'string' },
+          food: { type: 'string' },
+        },
+      },
+    },
+  },
+};
+
+const COMPATIBILITY_SCHEMA = {
+  name: 'compatibility_result',
+  description: '궁합 결과를 구조화된 JSON으로 반환',
+  input_schema: {
+    type: 'object',
+    required: ['summary', 'overallScore', 'chapters', 'advice'],
+    properties: {
+      summary: { type: 'string' },
+      overallScore: { type: 'number', description: '0~100 궁합 점수' },
+      chapters: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['id', 'title', 'emoji', 'content'],
+          properties: {
+            id: { type: 'string' },
+            title: { type: 'string' },
+            emoji: { type: 'string' },
+            content: { type: 'string' },
+          },
+        },
+      },
+      advice: { type: 'array', items: { type: 'string' } },
+    },
+  },
+};
+
+const DAILY_SCHEMA = {
+  name: 'daily_fortune_result',
+  description: '오늘의 운세 결과',
+  input_schema: {
+    type: 'object',
+    required: ['summary', 'overallLuck', 'categories', 'advice', 'luckyItems'],
+    properties: {
+      summary: { type: 'string' },
+      overallLuck: { type: 'number', description: '1~5' },
+      categories: {
+        type: 'object',
+        properties: {
+          love: { type: 'object', properties: { score: { type: 'number' }, message: { type: 'string' } } },
+          money: { type: 'object', properties: { score: { type: 'number' }, message: { type: 'string' } } },
+          work: { type: 'object', properties: { score: { type: 'number' }, message: { type: 'string' } } },
+          health: { type: 'object', properties: { score: { type: 'number' }, message: { type: 'string' } } },
+        },
+      },
+      advice: { type: 'string' },
+      luckyItems: {
+        type: 'object',
+        properties: { color: { type: 'string' }, number: { type: 'string' }, food: { type: 'string' } },
+      },
+    },
+  },
+};
+
+function getToolSchema(serviceType) {
+  if (serviceType === 'compatibility') return COMPATIBILITY_SCHEMA;
+  if (serviceType === 'daily') return DAILY_SCHEMA;
+  return READING_SCHEMA; // comprehensive + 기타
+}
+
+// ===== 응답에서 tool_use 결과 추출 =====
+function extractToolResult(apiResponse) {
+  // tool_use 블록 찾기
+  const toolBlock = apiResponse.content.find(b => b.type === 'tool_use');
+  if (toolBlock?.input) return toolBlock.input;
+
+  // fallback: text에서 JSON 추출
+  const text = apiResponse.content.filter(b => b.type === 'text').map(b => b.text).join('');
+  if (!text) throw new Error('빈 응답');
+
   const jsonMatch = text.match(/```json\s*([\s\S]*?)```/);
   const jsonStr = jsonMatch ? jsonMatch[1].trim() : text.trim();
   try { return JSON.parse(jsonStr); } catch {}
@@ -238,13 +342,18 @@ async function processReading(reading) {
     const config = await getPromptConfig(reading.service_type);
     const userMessage = buildUserMessage(reading, profile, secondaryProfile);
 
+    // tool_use로 JSON 스키마 강제
+    const toolSchema = getToolSchema(reading.service_type);
+
     const params = {
       model: config.model,
       max_tokens: config.max_tokens,
       messages: [{ role: 'user', content: userMessage }],
+      tools: [toolSchema],
+      tool_choice: { type: 'tool', name: toolSchema.name },
     };
-    if (config.use_thinking && config.thinking_type) params.thinking = { type: config.thinking_type };
-    if (config.temperature !== null) params.temperature = config.temperature;
+    if (config.use_thinking && config.thinking_type) params.thinking = { type: config.thinking_type, budget_tokens: 10000 };
+    if (config.temperature !== null && !config.use_thinking) params.temperature = config.temperature;
     if (config.use_prompt_caching) {
       params.system = [{ type: 'text', text: config.system_prompt, cache_control: { type: 'ephemeral' } }];
     } else {
@@ -254,8 +363,7 @@ async function processReading(reading) {
     const apiResponse = await callClaude(params);
     const durationMs = Date.now() - startTime;
 
-    const text = apiResponse.content.filter(b => b.type === 'text').map(b => b.text).join('');
-    const parsed = parseResponse(text);
+    const parsed = extractToolResult(apiResponse);
     const apiCost = calculateCost(config.model, apiResponse.usage || {});
 
     await supabase.from('readings').update({

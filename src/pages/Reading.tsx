@@ -43,9 +43,15 @@ export function Reading() {
   // 캐시된 결과 확인 (store readingCache 우선, 그 다음 readings DB 캐시)
   const cachedResult = profileId ? readingCache[profileId] : undefined;
 
-  // 기존 풀이 캐시 확인 (DB에서 가져온 readings)
+  // DB readings에서 이 프로필의 상태 확인
   const cachedReading = readings.find(
-    r => r.profile_id === profileId && r.service_type === 'comprehensive' && r.status === 'completed'
+    r => r.profile_id === profileId && r.service_type === serviceType && r.processing_status === 'completed'
+  );
+
+  // 풀이 중인 reading이 있는지 (중복 방지)
+  const processingReading = readings.find(
+    r => r.profile_id === profileId && r.service_type === serviceType &&
+      (r.processing_status === 'pending' || r.processing_status === 'processing')
   );
 
   // 현재 표시할 결과: store cache > currentReading > DB cache
@@ -53,7 +59,12 @@ export function Reading() {
 
   // Phase를 store 상태에서 파생
   const phase: ReadingPhase = useMemo(() => {
+    // 스토어에서 이 프로필을 처리 중
     if (pendingProfileId === profileId && (processingStatus === 'requesting' || processingStatus === 'processing')) {
+      return 'loading';
+    }
+    // DB에서 풀이 중인 reading 발견
+    if (processingReading) {
       return 'loading';
     }
     if (processingStatus === 'failed' && error && !displayResult) {
@@ -63,7 +74,7 @@ export function Reading() {
       return 'result';
     }
     return 'view';
-  }, [pendingProfileId, profileId, processingStatus, error, displayResult]);
+  }, [pendingProfileId, profileId, processingStatus, error, displayResult, processingReading]);
 
   const [localPhase, setLocalPhase] = useState<ReadingPhase | null>(null);
 
@@ -99,9 +110,17 @@ export function Reading() {
       setSajuData(data);
     }
 
-    // localPhase 초기화 — store 상태에 의존
     setLocalPhase(null);
   }, [profileId, profile, clearCurrentReading, fetchReadings, cachedResult]);
+
+  // DB에 풀이 중인 reading이 있으면 자동 폴링
+  useEffect(() => {
+    if (!processingReading) return;
+    const interval = setInterval(() => {
+      fetchReadings();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [processingReading, fetchReadings]);
 
   const handleRequestReading = () => {
     if (!profileId) return;
