@@ -355,9 +355,17 @@ async function processReading(reading) {
       max_tokens: config.max_tokens,
       messages: [{ role: 'user', content: userMessage }],
       tools: [toolSchema],
-      tool_choice: { type: 'tool', name: toolSchema.name },
     };
-    if (config.use_thinking && config.thinking_type) params.thinking = { type: config.thinking_type, budget_tokens: 10000 };
+
+    // thinking + tool_choice forced는 호환 불가
+    // thinking 활성화 시 → tool_choice auto (thinking이 더 나은 결과)
+    // thinking 비활성화 시 → tool_choice forced (JSON 보장)
+    if (config.use_thinking && config.thinking_type) {
+      params.thinking = { type: config.thinking_type, budget_tokens: 10000 };
+      params.tool_choice = { type: 'auto' };
+    } else {
+      params.tool_choice = { type: 'tool', name: toolSchema.name };
+    }
     if (config.temperature !== null && !config.use_thinking) params.temperature = config.temperature;
     if (config.use_prompt_caching) {
       params.system = [{ type: 'text', text: config.system_prompt, cache_control: { type: 'ephemeral' } }];
