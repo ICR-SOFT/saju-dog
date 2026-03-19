@@ -494,6 +494,7 @@ export function calculateSaju(input: SajuInput): SajuPillars {
     specialFormations,
     sinsal: {
       pillarSinsal: sinsalResult.pillarSinsal,
+      pillarRelations: sinsalResult.pillarRelations,
       allSinsal: sinsalResult.allSinsal,
       gongmang: sinsalResult.gongmang,
       guiin: sinsalResult.guiin,

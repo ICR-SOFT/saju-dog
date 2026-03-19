@@ -100,6 +100,12 @@ export interface SinsalInfo {
     day: string[];
     hour: string[];
   };
+  pillarRelations: {
+    year: string[];
+    month: string[];
+    day: string[];
+    hour: string[];
+  };
   allSinsal: string[];
   gongmang: Branch[];
   guiin: string[];

@@ -31,9 +31,14 @@ export function PillarCard({ pillar, label, isDay = false }: PillarCardProps) {
         <span className="text-[10px] opacity-70">{pillar.branchHanja}</span>
       </div>
 
-      {/* 십신 */}
+      {/* 천간십신 */}
       <span className="text-[10px] text-warm-gray">
         {pillar.stemSipsin === '일주' ? '일간' : pillar.stemSipsin}
+      </span>
+
+      {/* 지지십신 */}
+      <span className="text-[10px] text-warm-gray-light">
+        {pillar.branchSipsin}
       </span>
 
       {/* 12운성 */}
