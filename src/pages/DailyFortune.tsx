@@ -143,6 +143,20 @@ export function DailyFortune() {
             </Card>
           )}
 
+          {/* 공유 버튼 */}
+          <div className="text-center">
+            <button
+              onClick={() => {
+                const text = `🐕 오늘의 운세\n\n${result.summary}\n\n연애 ${result.categories.love.score}/5 | 재물 ${result.categories.money.score}/5 | 직장 ${result.categories.work.score}/5 | 건강 ${result.categories.health.score}/5\n\n${result.advice}\n\n👉 나도 보러가기: ${window.location.origin}`;
+                navigator.clipboard.writeText(text);
+                alert('운세가 복사되었어요! 친구에게 보내보세요 🐾');
+              }}
+              className="text-sm text-brown font-medium hover:text-brown-dark transition-colors"
+            >
+              📋 친구에게 공유하기
+            </button>
+          </div>
+
           <Recommendations exclude={['daily']} />
         </div>
       ) : null}
