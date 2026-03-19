@@ -109,20 +109,14 @@ const MAIN_SERVICES: {
   },
 ];
 
-const MORE_SERVICES: {
-  type: ServiceType;
-  title: string;
-  subtitle: string;
-  emoji: string;
-  cost: number;
-}[] = [
-  { type: 'business', title: '동업 궁합', subtitle: 'N명이 사업하면 몇 점?', emoji: '🤝', cost: 3 },
-  { type: 'love', title: '연애 시기 분석', subtitle: '올해 연애운 타이밍은?', emoji: '💘', cost: 2 },
-  { type: 'wealth', title: '재물운 특화', subtitle: '돈이 들어오는 시기와 방향', emoji: '💎', cost: 2 },
-  { type: 'health', title: '건강운 분석', subtitle: '올해 조심할 건강 포인트', emoji: '🏥', cost: 2 },
-  { type: 'career', title: '직업 적성 분석', subtitle: '타고난 직업 DNA는?', emoji: '🎯', cost: 2 },
-  { type: 'pastlife', title: '전생 이야기', subtitle: '전생에 당신은 누구였을까?', emoji: '🔮', cost: 2 },
-  { type: 'moving', title: '이사/부동산 운', subtitle: '언제 어디로 이동하면 좋을까?', emoji: '🏠', cost: 2 },
+const MORE_SERVICES: typeof MAIN_SERVICES = [
+  { type: 'business', title: '동업 궁합', subtitle: 'N명이 사업하면 몇 점?', cost: 3, image: '/images/business.png', gradient: 'bg-gradient-to-br from-slate-500 to-blue-600' },
+  { type: 'love', title: '연애 시기 분석', subtitle: '올해 연애운 타이밍은?', cost: 2, image: '/images/love.png', gradient: 'bg-gradient-to-br from-rose-400 to-pink-500' },
+  { type: 'wealth', title: '재물운 특화', subtitle: '돈이 들어오는 시기와 방향', cost: 2, image: '/images/wealth.png', gradient: 'bg-gradient-to-br from-yellow-500 to-amber-600' },
+  { type: 'health', title: '건강운 분석', subtitle: '올해 조심할 건강 포인트', cost: 2, image: '/images/health.png', gradient: 'bg-gradient-to-br from-emerald-400 to-green-500' },
+  { type: 'career', title: '직업 적성 분석', subtitle: '타고난 직업 DNA는?', cost: 2, image: '/images/career.png', gradient: 'bg-gradient-to-br from-blue-400 to-indigo-500' },
+  { type: 'pastlife', title: '전생 이야기', subtitle: '전생에 당신은 누구였을까?', cost: 2, image: '/images/pastlife.png', gradient: 'bg-gradient-to-br from-purple-400 to-violet-600' },
+  { type: 'moving', title: '이사/부동산 운', subtitle: '언제 어디로 이동하면 좋을까?', cost: 2, image: '/images/moving.png', gradient: 'bg-gradient-to-br from-stone-400 to-amber-600' },
 ];
 
 const IMPLEMENTED_SERVICES = new Set<ServiceType>(['comprehensive', 'compatibility', 'daily', 'chat']);
@@ -302,28 +296,22 @@ export function Home() {
         </div>
       </div>
 
-      {/* 더 많은 운세 */}
+      {/* 더 많은 운세 — 동일한 이미지 카드 그리드 */}
       <div className="mb-6">
         <h3 className="text-base font-bold text-dark mb-3 flex items-center gap-2">
-          <span>🐾</span> 더 많은 운세
+          <span>✨</span> 이런 운세는 어때요?
         </h3>
-        <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-3">
           {MORE_SERVICES.map(service => (
-            <div
+            <ServiceCard
               key={service.type}
+              title={service.title}
+              subtitle={service.subtitle}
+              cost={service.cost}
+              image={service.image}
+              gradient={service.gradient}
               onClick={() => handleMoreServiceClick(service.type)}
-              className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 border border-cream-dark/50 cursor-pointer hover:shadow-sm active:scale-[0.99] transition-all"
-            >
-              <span className="text-2xl flex-shrink-0">{service.emoji}</span>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-dark text-sm">{service.title}</p>
-                <p className="text-xs text-warm-gray mt-0.5">{service.subtitle}</p>
-              </div>
-              <span className="inline-block text-[11px] font-medium rounded-full px-2 py-0.5 bg-brown/5 text-brown border border-brown/10 flex-shrink-0 whitespace-nowrap">
-                🦴 {service.cost}
-              </span>
-              <span className="text-warm-gray-light text-sm flex-shrink-0">&rsaquo;</span>
-            </div>
+            />
           ))}
         </div>
       </div>
