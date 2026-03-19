@@ -1,0 +1,36 @@
+/* Gowun Batang (Google Fonts) — @import는 최상단에 */
+@import url('https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&display=swap');
+
+@import "tailwindcss";
+
+/* ===== saju-dog 브랜드 토큰 ===== */
+@theme {
+  --color-cream: #F5F0E8;
+  --color-brown: #C67A3C;
+  --color-brown-light: #D4945E;
+  --color-brown-dark: #A65E28;
+  --color-dark: #2C2420;
+  --color-dark-light: #4A3F39;
+  --color-warm-gray: #8B7E75;
+  --color-warm-gray-light: #B5AAA2;
+  --color-cream-dark: #E8DFD3;
+
+  --font-sans: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+  --font-serif: 'Gowun Batang', Georgia, serif;
+}
+
+/* ===== 기본 스타일 ===== */
+body {
+  margin: 0;
+  background-color: var(--color-cream);
+  color: var(--color-dark);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
