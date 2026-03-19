@@ -55,8 +55,9 @@ export function Reading() {
       (r.processing_status === 'pending' || r.processing_status === 'processing')
   );
 
-  // 현재 표시할 결과: store cache > currentReading > DB cache
-  const displayResult = cachedResult ?? currentReading ?? null;
+  // 현재 표시할 결과: store cache > currentReading > DB cache result
+  const dbCachedResult = cachedReading?.result as unknown as import('@/types/saju.ts').SajuApiResponse | undefined;
+  const displayResult = cachedResult ?? currentReading ?? dbCachedResult ?? null;
 
   // 예상 대기시간 계산 (최근 완료된 readings의 평균 duration)
   const estimatedWaitSec = useMemo(() => {
@@ -277,29 +278,94 @@ export function Reading() {
           </h3>
         </Card>
 
-        {/* 이미 풀이된 결과가 있는 경우 (DB 캐시) */}
-        {cachedReading?.result && activePhase === 'view' ? (
+        {/* 결과가 있으면 (store cache / currentReading / DB cache) 전체 표시 */}
+        {displayResult && (activePhase === 'view' || activePhase === 'result') ? (
           <div className="space-y-4">
-            <Card className="text-center bg-gradient-to-br from-green-50/60 to-emerald-50/40 border-green-200/50">
-              <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-green-100 flex items-center justify-center">
-                <span className="text-lg">✅</span>
-              </div>
-              <p className="text-xs text-green-600 mb-1 font-medium">이전 풀이 결과</p>
+            {/* 요약 */}
+            <Card className="text-center bg-gradient-to-br from-brown/5 to-amber-50/30">
               <p className="text-lg font-medium text-dark font-serif">
-                "{(cachedReading.result as any).summary}"
+                "{displayResult.summary}"
               </p>
-              <p className="text-xs text-warm-gray mt-1">
-                {new Date(cachedReading.created_at).toLocaleDateString('ko-KR')} 풀이
-              </p>
+              {cachedReading && (
+                <p className="text-xs text-warm-gray mt-1">
+                  {new Date(cachedReading.created_at).toLocaleDateString('ko-KR')} 풀이
+                  {cachedReading.processing_duration_ms && ` · ${(cachedReading.processing_duration_ms / 1000).toFixed(0)}초 소요`}
+                </p>
+              )}
+              {processingInfo?.duration_ms && (
+                <p className="text-[10px] text-warm-gray-light mt-1">
+                  {(processingInfo.duration_ms / 1000).toFixed(1)}초 소요
+                  {processingInfo.api_cost && ` · $${(processingInfo.api_cost as any).cost_usd?.toFixed(4) || '?'}`}
+                </p>
+              )}
             </Card>
 
-            {(cachedReading.result as any).chapters && (
-              <ChapterAccordion chapters={(cachedReading.result as any).chapters} />
+            {/* 챕터 */}
+            {displayResult.chapters && (
+              <ChapterAccordion chapters={displayResult.chapters} />
             )}
 
-            <Button variant="secondary" size="lg" onClick={() => setLocalPhase('confirm')}>
-              새로 풀이받기 (🦴 3개)
+            {/* 조언 */}
+            {displayResult.advice && displayResult.advice.length > 0 && (
+              <Card>
+                <h3 className="font-bold text-dark mb-2 flex items-center gap-2">
+                  <span className="w-7 h-7 rounded-full bg-brown/10 flex items-center justify-center text-sm">🐾</span>
+                  복돌이의 조언
+                </h3>
+                <ul className="space-y-2">
+                  {displayResult.advice.map((a, i) => (
+                    <li key={i} className="flex gap-2 text-sm text-dark-light">
+                      <span className="text-brown">•</span><span>{a}</span>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            )}
+
+            {/* 행운 아이템 */}
+            {displayResult.luckyItems && (
+              <Card className="bg-gradient-to-br from-emerald-50/50 to-green-50/30">
+                <h3 className="text-sm font-bold text-dark mb-2 text-center">🍀 행운 아이템</h3>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  {Object.entries(displayResult.luckyItems).map(([key, val]) => (
+                    <div key={key} className="bg-white/70 rounded-xl p-2.5 text-center shadow-sm">
+                      <p className="text-warm-gray text-xs">
+                        {key === 'color' ? '🎨 행운 색' : key === 'number' ? '🔢 행운 숫자' : key === 'direction' ? '🧭 행운 방향' : '🍽️ 행운 음식'}
+                      </p>
+                      <p className="font-bold text-dark mt-0.5">{val}</p>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
+
+            {/* 공유 */}
+            {cachedReading?.id && (
+              <Card className="text-center bg-gradient-to-br from-sky-50/50 to-blue-50/30">
+                <p className="text-sm text-dark mb-2">이 풀이를 친구에게 공유해보세요!</p>
+                <Button
+                  variant="secondary"
+                  size="md"
+                  onClick={async () => {
+                    try {
+                      const url = await createShareLink(cachedReading.id);
+                      await navigator.clipboard.writeText(url);
+                      setShareToast('링크가 복사되었어요!');
+                      setTimeout(() => setShareToast(''), 2000);
+                    } catch { setShareToast('공유 링크 생성에 실패했어요'); setTimeout(() => setShareToast(''), 2000); }
+                  }}
+                >
+                  📋 공유 링크 복사
+                </Button>
+              </Card>
+            )}
+
+            {/* 새로 풀이받기 */}
+            <Button variant="ghost" size="lg" onClick={() => setLocalPhase('confirm')} className="text-warm-gray">
+              다시 풀이받기
             </Button>
+
+            <Recommendations exclude={[serviceType]} />
           </div>
         ) : activePhase === 'view' || activePhase === 'confirm' ? (
           <Card className="text-center">
@@ -366,74 +432,6 @@ export function Reading() {
               다시 시도
             </Button>
           </Card>
-        ) : displayResult ? (
-          <div className="space-y-4">
-            <Card className="text-center bg-brown/5">
-              <p className="text-lg font-medium text-dark font-serif">
-                "{displayResult.summary}"
-              </p>
-              {processingInfo?.duration_ms && (
-                <p className="text-[10px] text-warm-gray-light mt-2">
-                  {(processingInfo.duration_ms / 1000).toFixed(1)}초 소요
-                  {processingInfo.api_cost && ` · $${(processingInfo.api_cost as any).cost_usd?.toFixed(4) || '?'}`}
-                </p>
-              )}
-            </Card>
-
-            <ChapterAccordion chapters={displayResult.chapters} />
-
-            {displayResult.advice?.length > 0 && (
-              <Card>
-                <h3 className="font-medium text-dark mb-2">복돌이의 조언</h3>
-                <ul className="space-y-2">
-                  {displayResult.advice.map((a, i) => (
-                    <li key={i} className="flex gap-2 text-sm text-dark-light">
-                      <span className="text-brown">🐾</span><span>{a}</span>
-                    </li>
-                  ))}
-                </ul>
-              </Card>
-            )}
-
-            {displayResult.luckyItems && (
-              <Card>
-                <h3 className="font-medium text-dark mb-2">행운 아이템</h3>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  {Object.entries(displayResult.luckyItems).map(([key, val]) => (
-                    <div key={key} className="bg-cream-dark rounded-lg p-2 text-center">
-                      <p className="text-warm-gray text-xs">
-                        {key === 'color' ? '행운 색' : key === 'number' ? '행운 숫자' : key === 'direction' ? '행운 방향' : '행운 음식'}
-                      </p>
-                      <p className="font-medium text-dark">{val}</p>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            )}
-
-            {/* 공유 버튼 */}
-            {cachedReading?.id && (
-              <Button
-                variant="secondary"
-                size="md"
-                onClick={async () => {
-                  try {
-                    const url = await createShareLink(cachedReading.id);
-                    await navigator.clipboard.writeText(url);
-                    setShareToast('링크가 복사되었어요!');
-                    setTimeout(() => setShareToast(''), 2000);
-                  } catch {
-                    setShareToast('공유 링크 생성에 실패했어요');
-                    setTimeout(() => setShareToast(''), 2000);
-                  }
-                }}
-              >
-                🔗 공유하기
-              </Button>
-            )}
-
-            <Recommendations exclude={[serviceType]} />
-          </div>
         ) : null}
 
         {/* 공유 토스트 */}
