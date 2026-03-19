@@ -1,12 +1,12 @@
 /**
  * saju-dog 워커 — EC2 상시 실행
  *
- * pending 상태의 reading을 감시하고 Claude API로 처리.
- * 레이트리밋 시 지수 백오프 재시도.
- * 실패 시 자동 환불.
+ * - pending reading을 감시하고 Claude API로 동시 처리
+ * - 레이트리밋/서버 장애 시 무한 재시도 (지수 백오프)
+ * - 실패 시 자동 환불
+ * - 동시 처리 수 제한 (MAX_CONCURRENT)
  *
- * 실행: node --env-file=.env worker.mjs
- * PM2: pm2 start worker.mjs --name saju-worker --env-file .env
+ * PM2: pm2 start ecosystem.config.cjs
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -16,8 +16,9 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 const POLL_INTERVAL = parseInt(process.env.POLL_INTERVAL_MS || '3000');
-const MAX_RETRIES = parseInt(process.env.MAX_RETRIES || '3');
+const MAX_CONCURRENT = parseInt(process.env.MAX_CONCURRENT || '5');
 const RETRY_BASE_DELAY = parseInt(process.env.RETRY_BASE_DELAY_MS || '5000');
+const RETRY_MAX_DELAY = 60_000; // 최대 60초 대기
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -27,7 +28,8 @@ const CREDIT_COSTS = {
   love: 2, wealth: 2, health: 2, career: 2, pastlife: 2, moving: 2,
 };
 
-let isProcessing = false;
+// 현재 처리 중인 reading ID 추적
+const activeJobs = new Set();
 let totalProcessed = 0;
 let totalFailed = 0;
 let totalCostUsd = 0;
@@ -39,68 +41,75 @@ function log(level, msg, data) {
   console.log(`[${ts}] ${prefix} ${msg}`, data ? JSON.stringify(data) : '');
 }
 
-// ===== Claude API 호출 (레이트리밋 재시도) =====
-async function callClaude(params, attempt = 1) {
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': ANTHROPIC_KEY,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify(params),
-  });
+// ===== Claude API 호출 (무한 재시도) =====
+async function callClaude(params) {
+  let attempt = 0;
 
-  // 레이트리밋 (429) 또는 서버 에러 (5xx)
-  if (response.status === 429 || response.status >= 500) {
-    if (attempt > MAX_RETRIES) {
+  while (true) {
+    attempt++;
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': ANTHROPIC_KEY,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify(params),
+      });
+
+      // 성공
+      if (response.ok) {
+        return response.json();
+      }
+
+      // 레이트리밋 (429) 또는 서버 에러 (5xx) → 무한 재시도
+      if (response.status === 429 || response.status >= 500) {
+        const retryAfter = response.headers.get('retry-after');
+        const delay = retryAfter
+          ? parseInt(retryAfter) * 1000
+          : Math.min(RETRY_BASE_DELAY * Math.pow(2, attempt - 1), RETRY_MAX_DELAY);
+
+        log('warn', `API ${response.status}, attempt ${attempt}, retry in ${(delay / 1000).toFixed(0)}s`);
+        await sleep(delay);
+        continue;
+      }
+
+      // 4xx (429 제외) → 재시도 불가한 에러
       const errBody = await response.text();
-      throw new Error(`Claude API ${response.status} after ${MAX_RETRIES} retries: ${errBody}`);
+      throw new Error(`Claude API ${response.status}: ${errBody}`);
+
+    } catch (err) {
+      // 네트워크 에러 → 재시도
+      if (err.message?.includes('Claude API')) throw err; // 4xx는 그대로 throw
+
+      const delay = Math.min(RETRY_BASE_DELAY * Math.pow(2, attempt - 1), RETRY_MAX_DELAY);
+      log('warn', `Network error (attempt ${attempt}): ${err.message}, retry in ${(delay / 1000).toFixed(0)}s`);
+      await sleep(delay);
     }
-
-    const retryAfter = response.headers.get('retry-after');
-    const delay = retryAfter
-      ? parseInt(retryAfter) * 1000
-      : RETRY_BASE_DELAY * Math.pow(2, attempt - 1); // 지수 백오프
-
-    log('warn', `Rate limited (${response.status}), retry ${attempt}/${MAX_RETRIES} in ${delay}ms`);
-    await sleep(delay);
-    return callClaude(params, attempt + 1);
   }
-
-  if (!response.ok) {
-    const errBody = await response.text();
-    throw new Error(`Claude API ${response.status}: ${errBody}`);
-  }
-
-  return response.json();
 }
 
 // ===== 프롬프트 설정 로드 =====
 async function getPromptConfig(serviceType) {
   const mappedType = ['comprehensive', 'compatibility', 'daily', 'chat'].includes(serviceType)
-    ? serviceType
-    : 'comprehensive';
+    ? serviceType : 'comprehensive';
 
   const { data, error } = await supabase
-    .from('prompt_configs')
-    .select('*')
-    .eq('service_type', mappedType)
-    .eq('is_active', true)
-    .single();
+    .from('prompt_configs').select('*')
+    .eq('service_type', mappedType).eq('is_active', true).single();
 
-  if (error || !data) throw new Error(`No active prompt config for: ${mappedType}`);
+  if (error || !data) throw new Error(`No prompt config: ${mappedType}`);
   return data;
 }
 
 // ===== 유저 메시지 빌드 =====
 function buildUserMessage(reading, profile, secondaryProfile) {
   const data = profile.calculated_saju;
-  if (!data) throw new Error('calculated_saju가 없습니다');
+  if (!data) throw new Error('calculated_saju 없음');
 
   const p = data.pillars;
   const s = data.sinsal || {};
-
   const fmtArr = (arr) => arr?.length > 0 ? arr.join(', ') : '없음';
   const fmtJJ = (jj) => jj?.map(j => `${j.stem}(${j.sipsin}·${j.type})`).join(', ') || '';
 
@@ -123,7 +132,6 @@ function buildUserMessage(reading, profile, secondaryProfile) {
 궁합을 JSON으로 작성해주세요.`;
   }
 
-  // 종합 풀이 (+ 기타 서비스)
   return `아래는 서버에서 정밀 계산된 사주 데이터입니다. 이 데이터만 기반으로 해설하세요.
 
 ## 기본 정보
@@ -172,135 +180,84 @@ ${data.daeun?.map(d => `- ${d.startAge}~${d.endAge}세: ${d.stem}${d.branch} [${
 function parseResponse(text) {
   const jsonMatch = text.match(/```json\s*([\s\S]*?)```/);
   const jsonStr = jsonMatch ? jsonMatch[1].trim() : text.trim();
-  try {
-    return JSON.parse(jsonStr);
-  } catch {
-    const start = jsonStr.indexOf('{');
-    const end = jsonStr.lastIndexOf('}');
-    if (start !== -1 && end !== -1) return JSON.parse(jsonStr.slice(start, end + 1));
-    throw new Error('JSON 파싱 실패');
-  }
+  try { return JSON.parse(jsonStr); } catch {}
+  const start = jsonStr.indexOf('{');
+  const end = jsonStr.lastIndexOf('}');
+  if (start !== -1 && end !== -1) return JSON.parse(jsonStr.slice(start, end + 1));
+  throw new Error('JSON 파싱 실패');
 }
 
 // ===== 비용 계산 =====
 function calculateCost(model, usage) {
-  const inputTokens = usage.input_tokens || 0;
-  const outputTokens = usage.output_tokens || 0;
-  const cacheRead = usage.cache_read_input_tokens || 0;
-  const cacheCreation = usage.cache_creation_input_tokens || 0;
+  const inp = usage.input_tokens || 0;
+  const out = usage.output_tokens || 0;
+  const cacheR = usage.cache_read_input_tokens || 0;
+  const cacheC = usage.cache_creation_input_tokens || 0;
 
-  let inputRate = 3.0, outputRate = 15.0; // Sonnet
-  if (model.includes('opus')) { inputRate = 15.0; outputRate = 75.0; }
-  else if (model.includes('haiku')) { inputRate = 0.25; outputRate = 1.25; }
+  let iRate = 3.0, oRate = 15.0;
+  if (model.includes('opus')) { iRate = 15.0; oRate = 75.0; }
+  else if (model.includes('haiku')) { iRate = 0.25; oRate = 1.25; }
 
-  const costUsd = (
-    (inputTokens - cacheRead) * inputRate +
-    cacheRead * inputRate * 0.1 +
-    cacheCreation * inputRate * 1.25 +
-    outputTokens * outputRate
-  ) / 1_000_000;
-
-  return {
-    model,
-    input_tokens: inputTokens,
-    output_tokens: outputTokens,
-    cache_read_tokens: cacheRead,
-    cache_creation_tokens: cacheCreation,
-    cost_usd: Math.round(costUsd * 10000) / 10000,
-  };
+  const cost = ((inp - cacheR) * iRate + cacheR * iRate * 0.1 + cacheC * iRate * 1.25 + out * oRate) / 1e6;
+  return { model, input_tokens: inp, output_tokens: out, cache_read_tokens: cacheR, cache_creation_tokens: cacheC, cost_usd: Math.round(cost * 10000) / 10000 };
 }
 
 // ===== 크레딧 환불 =====
 async function refundCredits(userId, serviceType, readingId) {
   const cost = CREDIT_COSTS[serviceType] ?? 2;
   if (cost <= 0) return;
-
-  const { data: credits } = await supabase
-    .from('credits').select('bones').eq('user_id', userId).single();
-
+  const { data: credits } = await supabase.from('credits').select('bones').eq('user_id', userId).single();
   if (credits) {
-    await supabase.from('credits')
-      .update({ bones: credits.bones + cost, updated_at: new Date().toISOString() })
-      .eq('user_id', userId);
-
-    await supabase.from('credit_transactions').insert({
-      user_id: userId, type: 'refund', bones_delta: cost,
-      description: `${serviceType} 풀이 실패 자동환불`,
-      related_reading_id: readingId,
-    });
-
-    log('info', `Refunded ${cost} bones to user ${userId.slice(0, 8)}...`);
+    await supabase.from('credits').update({ bones: credits.bones + cost, updated_at: new Date().toISOString() }).eq('user_id', userId);
+    await supabase.from('credit_transactions').insert({ user_id: userId, type: 'refund', bones_delta: cost, description: `${serviceType} 실패 자동환불`, related_reading_id: readingId });
+    log('info', `Refunded ${cost} bones to ${userId.slice(0, 8)}...`);
   }
 }
 
 // ===== 단일 reading 처리 =====
 async function processReading(reading) {
   const startTime = Date.now();
-  log('info', `Processing reading ${reading.id.slice(0, 8)}... (${reading.service_type})`);
+  const rid = reading.id.slice(0, 8);
+  log('info', `[${rid}] Start (${reading.service_type}) [${activeJobs.size}/${MAX_CONCURRENT} slots]`);
 
-  // processing 상태로 전환
   await supabase.from('readings').update({
     processing_status: 'processing',
     processing_started_at: new Date().toISOString(),
   }).eq('id', reading.id);
 
   try {
-    // 프로필 로드
-    const { data: profile } = await supabase
-      .from('saju_profiles').select('*').eq('id', reading.profile_id).single();
+    const { data: profile } = await supabase.from('saju_profiles').select('*').eq('id', reading.profile_id).single();
     if (!profile?.calculated_saju) throw new Error('calculated_saju 없음');
 
     let secondaryProfile = null;
     if (reading.secondary_profile_id) {
-      const { data } = await supabase
-        .from('saju_profiles').select('*').eq('id', reading.secondary_profile_id).single();
+      const { data } = await supabase.from('saju_profiles').select('*').eq('id', reading.secondary_profile_id).single();
       secondaryProfile = data;
     }
 
-    // 프롬프트 설정 로드
     const config = await getPromptConfig(reading.service_type);
-
-    // 유저 메시지 빌드
     const userMessage = buildUserMessage(reading, profile, secondaryProfile);
 
-    // Claude API 파라미터
     const params = {
       model: config.model,
       max_tokens: config.max_tokens,
       messages: [{ role: 'user', content: userMessage }],
     };
-
-    if (config.use_thinking && config.thinking_type) {
-      params.thinking = { type: config.thinking_type };
-    }
-    if (config.temperature !== null) {
-      params.temperature = config.temperature;
-    }
+    if (config.use_thinking && config.thinking_type) params.thinking = { type: config.thinking_type };
+    if (config.temperature !== null) params.temperature = config.temperature;
     if (config.use_prompt_caching) {
-      params.system = [{
-        type: 'text',
-        text: config.system_prompt,
-        cache_control: { type: 'ephemeral' },
-      }];
+      params.system = [{ type: 'text', text: config.system_prompt, cache_control: { type: 'ephemeral' } }];
     } else {
       params.system = config.system_prompt;
     }
 
-    // Claude API 호출 (레이트리밋 자동 재시도)
     const apiResponse = await callClaude(params);
-    const endTime = Date.now();
-    const durationMs = endTime - startTime;
+    const durationMs = Date.now() - startTime;
 
-    // 텍스트 추출 + 파싱
-    const text = apiResponse.content
-      .filter(b => b.type === 'text')
-      .map(b => b.text)
-      .join('');
-
+    const text = apiResponse.content.filter(b => b.type === 'text').map(b => b.text).join('');
     const parsed = parseResponse(text);
     const apiCost = calculateCost(config.model, apiResponse.usage || {});
 
-    // 완료 저장
     await supabase.from('readings').update({
       result: parsed,
       processing_status: 'completed',
@@ -312,29 +269,24 @@ async function processReading(reading) {
 
     totalProcessed++;
     totalCostUsd += apiCost.cost_usd;
-
-    log('info', `Completed ${reading.id.slice(0, 8)} in ${(durationMs / 1000).toFixed(1)}s`, {
-      model: apiCost.model,
-      tokens: `${apiCost.input_tokens}→${apiCost.output_tokens}`,
-      cost: `$${apiCost.cost_usd}`,
-    });
+    log('info', `[${rid}] Done ${(durationMs / 1000).toFixed(1)}s | ${apiCost.input_tokens}→${apiCost.output_tokens} tok | $${apiCost.cost_usd}`);
 
   } catch (err) {
-    const endTime = Date.now();
-    const failureReason = err.message || String(err);
+    const durationMs = Date.now() - startTime;
+    const reason = err.message || String(err);
 
     await supabase.from('readings').update({
       processing_status: 'failed',
       processing_completed_at: new Date().toISOString(),
-      processing_duration_ms: endTime - startTime,
-      failure_reason: failureReason,
+      processing_duration_ms: durationMs,
+      failure_reason: reason,
     }).eq('id', reading.id);
 
-    // 자동 환불
     await refundCredits(reading.user_id, reading.service_type, reading.id);
-
     totalFailed++;
-    log('error', `Failed ${reading.id.slice(0, 8)}: ${failureReason}`);
+    log('error', `[${rid}] Failed: ${reason}`);
+  } finally {
+    activeJobs.delete(reading.id);
   }
 }
 
@@ -342,33 +294,42 @@ async function processReading(reading) {
 async function pollLoop() {
   while (true) {
     try {
-      if (!isProcessing) {
-        // pending 상태인 reading 조회 (오래된 것부터)
+      const available = MAX_CONCURRENT - activeJobs.size;
+
+      if (available > 0) {
+        // pending reading 가져오기 (동시 처리 가능한 만큼)
         const { data: pendings } = await supabase
           .from('readings')
           .select('*')
           .eq('processing_status', 'pending')
           .order('created_at', { ascending: true })
-          .limit(1);
+          .limit(available);
 
         if (pendings?.length > 0) {
-          isProcessing = true;
-          await processReading(pendings[0]);
-          isProcessing = false;
+          log('info', `Found ${pendings.length} pending (slots: ${available}/${MAX_CONCURRENT})`);
+          for (const reading of pendings) {
+            if (!activeJobs.has(reading.id)) {
+              activeJobs.add(reading.id);
+              // 비동기로 동시 실행 (await 안 함)
+              processReading(reading);
+            }
+          }
         }
+      }
 
-        // stuck된 processing 복구 (5분 이상 processing인 것)
-        const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-        const { data: stuck } = await supabase
-          .from('readings')
-          .select('id')
-          .eq('processing_status', 'processing')
-          .lt('processing_started_at', fiveMinAgo)
-          .limit(5);
+      // stuck 복구 (5분 초과 processing)
+      const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      const { data: stuck } = await supabase
+        .from('readings')
+        .select('id')
+        .eq('processing_status', 'processing')
+        .lt('processing_started_at', fiveMinAgo)
+        .limit(10);
 
-        if (stuck?.length > 0) {
-          log('warn', `Found ${stuck.length} stuck readings, resetting to pending`);
-          for (const s of stuck) {
+      if (stuck?.length > 0) {
+        log('warn', `Resetting ${stuck.length} stuck readings`);
+        for (const s of stuck) {
+          if (!activeJobs.has(s.id)) {
             await supabase.from('readings')
               .update({ processing_status: 'pending', processing_started_at: null })
               .eq('id', s.id);
@@ -383,29 +344,24 @@ async function pollLoop() {
   }
 }
 
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 // ===== 시작 =====
 console.log(`
-╔══════════════════════════════════════╗
-║     🐕 사주독 워커 시작              ║
-║     Poll: ${POLL_INTERVAL}ms                    ║
-║     Retries: ${MAX_RETRIES}                       ║
-║     ${new Date().toISOString()}     ║
-╚══════════════════════════════════════╝
+╔═══════════════════════════════════════════╗
+║  🐕 사주독 워커                            ║
+║  Poll: ${POLL_INTERVAL}ms | Concurrent: ${MAX_CONCURRENT}            ║
+║  Retry: 무한 (지수 백오프, max 60s)        ║
+║  ${new Date().toISOString()}          ║
+╚═══════════════════════════════════════════╝
 `);
 
-// 상태 리포트 (1분마다)
 setInterval(() => {
-  log('info', `📊 Status: processed=${totalProcessed} failed=${totalFailed} cost=$${totalCostUsd.toFixed(4)} processing=${isProcessing}`);
+  log('info', `📊 active=${activeJobs.size}/${MAX_CONCURRENT} processed=${totalProcessed} failed=${totalFailed} cost=$${totalCostUsd.toFixed(4)}`);
 }, 60_000);
 
-// 우아한 종료
 process.on('SIGINT', () => {
-  log('info', '🛑 Shutting down...');
-  log('info', `📊 Final: processed=${totalProcessed} failed=${totalFailed} cost=$${totalCostUsd.toFixed(4)}`);
+  log('info', `🛑 Shutdown | processed=${totalProcessed} failed=${totalFailed} cost=$${totalCostUsd.toFixed(4)}`);
   process.exit(0);
 });
 
