@@ -8,10 +8,10 @@ import { useCreditStore } from '@/stores/credit.ts';
 import { useAuthStore } from '@/stores/auth.ts';
 
 const SERVICES = [
-  { type: 'comprehensive', title: '종합 사주풀이', desc: '나의 타고난 운명 알아보기', emoji: '🔮', cost: 3 },
-  { type: 'compatibility', title: '궁합', desc: '두 사람의 인연 확인하기', emoji: '💕', cost: 3 },
-  { type: 'daily', title: '오늘의 운세', desc: '오늘 하루 운세 확인', emoji: '🌅', cost: 0 },
-  { type: 'chat', title: 'AI 상담', desc: '사주독에게 물어보기', emoji: '💬', cost: 1 },
+  { type: 'comprehensive', title: '종합 사주풀이', desc: '나의 타고난 운명 알아보기', emoji: '🔮', cost: 3, accent: 'border-l-4 border-l-amber-400' },
+  { type: 'compatibility', title: '궁합', desc: '두 사람의 인연 확인하기', emoji: '💕', cost: 3, accent: 'border-l-4 border-l-pink-400' },
+  { type: 'daily', title: '오늘의 운세', desc: '오늘 하루 운세 확인', emoji: '🌅', cost: 0, accent: 'border-l-4 border-l-orange-400' },
+  { type: 'chat', title: '복돌이 상담', desc: '사주독에게 물어보기', emoji: '💬', cost: 1, accent: 'border-l-4 border-l-sky-400' },
 ] as const;
 
 export function Home() {
@@ -56,16 +56,18 @@ export function Home() {
 
   return (
     <Layout>
-      {/* 환영 메시지 */}
-      <div className="text-center mb-6">
-        <div className="text-5xl mb-2">🐕</div>
+      {/* 환영 메시지 (히어로 섹션) */}
+      <div className="text-center mb-6 -mx-4 -mt-4 px-4 pt-6 pb-5 gradient-hero rounded-b-3xl">
+        <div className="w-20 h-20 mx-auto mb-3 rounded-full bg-brown/10 flex items-center justify-center">
+          <span className="text-5xl">🐕</span>
+        </div>
         <h2 className="text-xl font-bold text-dark font-serif">
           {isAuthenticated ? '안녕하세요, 보호자님!' : '사주독에 오신 걸 환영해요!'}
         </h2>
         <p className="text-warm-gray text-sm mt-1">
           {isAuthenticated
             ? '오늘도 복돌이가 운세를 알려드릴게요'
-            : 'AI 사주 상담사 복돌이가 기다리고 있어요'}
+            : '사주 상담사 복돌이가 기다리고 있어요'}
         </p>
       </div>
 
@@ -114,7 +116,7 @@ export function Home() {
           <Card
             key={service.type}
             padding="md"
-            className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.98]"
+            className={`cursor-pointer hover:shadow-md transition-all active:scale-[0.98] ${service.accent}`}
             onClick={() => handleServiceClick(service.type)}
           >
             <div className="text-3xl mb-2">{service.emoji}</div>

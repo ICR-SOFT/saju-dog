@@ -34,3 +34,31 @@ body {
   display: flex;
   flex-direction: column;
 }
+
+/* ===== 장식 배경 & 애니메이션 ===== */
+
+.gradient-warm {
+  background: linear-gradient(135deg, #F5F0E8 0%, #E8DFD3 50%, #D4945E10 100%);
+}
+
+.gradient-hero {
+  background: linear-gradient(180deg, #C67A3C15 0%, #F5F0E8 100%);
+}
+
+.card-glow {
+  box-shadow: 0 4px 20px rgba(198, 122, 60, 0.08), 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.card-glow:hover {
+  box-shadow: 0 8px 30px rgba(198, 122, 60, 0.15), 0 2px 6px rgba(0,0,0,0.06);
+}
+
+/* Pulse animation for loading */
+@keyframes pulse-warm {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.animate-pulse-warm {
+  animation: pulse-warm 2s ease-in-out infinite;
+}

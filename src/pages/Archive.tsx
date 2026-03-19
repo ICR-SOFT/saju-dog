@@ -9,7 +9,7 @@ const SERVICE_LABELS: Record<string, { label: string; emoji: string }> = {
   daily: { label: '오늘의 운세', emoji: '🌅' },
   daeun: { label: '대운 분석', emoji: '🌊' },
   yearly: { label: '연간 운세', emoji: '📅' },
-  chat: { label: 'AI 상담', emoji: '💬' },
+  chat: { label: '복돌이 상담', emoji: '💬' },
 };
 
 export function Archive() {

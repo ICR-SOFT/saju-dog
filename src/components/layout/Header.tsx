@@ -8,7 +8,7 @@ export function Header() {
   const { credits } = useCreditStore();
 
   return (
-    <header className="sticky top-0 z-50 bg-cream/80 backdrop-blur-md border-b border-cream-dark">
+    <header className="sticky top-0 z-50 gradient-warm backdrop-blur-md border-b border-cream-dark">
       <div className="mx-auto max-w-lg flex items-center justify-between px-4 py-3">
         <button onClick={() => navigate('/')} className="flex items-center gap-2">
           <span className="text-2xl">🐕</span>

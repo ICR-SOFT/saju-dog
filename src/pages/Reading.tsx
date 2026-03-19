@@ -76,7 +76,7 @@ export function Reading() {
   return (
     <Layout>
       {/* 프로필 헤더 */}
-      <div className="text-center mb-4">
+      <div className="text-center mb-4 -mx-4 -mt-4 px-4 pt-5 pb-4 gradient-hero rounded-b-3xl">
         <h2 className="text-xl font-bold text-dark font-serif">
           {profile.name}님의 사주풀이
         </h2>
@@ -170,10 +170,10 @@ export function Reading() {
         </div>
       )}
 
-      {/* AI 풀이 섹션 */}
-      <div className="border-t border-cream-dark pt-4 mt-2">
+      {/* 복돌이 풀이 섹션 */}
+      <div className="border-t-2 border-brown/20 pt-4 mt-2">
         <h3 className="text-lg font-bold text-dark font-serif mb-3">
-          🐕 복돌이의 AI 풀이
+          🐕 복돌이 풀이
         </h3>
 
         {/* 이미 풀이된 결과가 있는 경우 */}
@@ -235,16 +235,16 @@ export function Reading() {
             </Button>
           </Card>
         ) : phase === 'loading' || isLoading ? (
-          <Card className="text-center py-8">
+          <Card className="text-center py-8 gradient-hero">
             <Loading message="복돌이가 사주를 분석하고 있어요..." size="lg" />
             <div className="mt-4 space-y-1">
-              <p className="text-xs text-warm-gray">AI가 12~15개 챕터를 작성 중입니다</p>
+              <p className="text-xs text-warm-gray animate-pulse-warm">복돌이가 12~15개 챕터를 작성 중이에요</p>
               <p className="text-xs text-warm-gray-light">약 30~60초 소요됩니다</p>
             </div>
           </Card>
         ) : phase === 'error' || error ? (
           <Card className="text-center">
-            <p className="text-red-500 mb-3 text-sm">{error || 'AI 풀이를 불러올 수 없습니다'}</p>
+            <p className="text-red-500 mb-3 text-sm">{error || '풀이를 불러올 수 없습니다'}</p>
             <p className="text-xs text-warm-gray mb-3">Edge Functions 배포 상태를 확인하세요</p>
             <Button variant="secondary" onClick={() => setPhase('confirm')}>
               다시 시도

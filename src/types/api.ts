@@ -8,8 +8,7 @@ export interface ReadingRequest {
 }
 
 export interface CompatibilityRequest {
-  primaryProfileId: string;
-  secondaryProfileId: string;
+  profileIds: string[];
 }
 
 export interface DailyFortuneRequest {
