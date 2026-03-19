@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase.ts';
 import type { SajuProfile, Reading } from '@/types/user.ts';
 import type { SajuApiResponse } from '@/types/saju.ts';
 import { getReading } from '@/lib/api.ts';
+import { useCreditStore } from './credit.ts';
 
 interface SajuState {
   profiles: SajuProfile[];
@@ -63,6 +64,9 @@ export const useSajuStore = create<SajuState>((set, get) => ({
     try {
       const result = await getReading({ profileId, serviceType: serviceType as SajuApiResponse['serviceType'] });
       set({ currentReading: result, isLoading: false });
+      // 크레딧 & 보관함 즉시 갱신
+      useCreditStore.getState().fetchCredits();
+      get().fetchReadings();
       return result;
     } catch (err) {
       const message = err instanceof Error ? err.message : '풀이 요청에 실패했습니다';
