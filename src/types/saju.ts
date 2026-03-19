@@ -152,7 +152,8 @@ export interface SajuPillars {
 
 // ===== 서비스 타입 =====
 
-export type ServiceType = 'comprehensive' | 'compatibility' | 'daeun' | 'yearly' | 'daily' | 'chat';
+export type ServiceType = 'comprehensive' | 'compatibility' | 'daeun' | 'yearly' | 'daily' | 'chat'
+  | 'business' | 'luckyday' | 'love' | 'wealth' | 'health' | 'career' | 'pastlife' | 'moving';
 
 // ===== API 응답 =====
 

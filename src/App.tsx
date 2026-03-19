@@ -12,6 +12,7 @@ import { DailyFortune } from '@/pages/DailyFortune.tsx';
 import { Compatibility } from '@/pages/Compatibility.tsx';
 import { SajuChat } from '@/pages/SajuChat.tsx';
 import { MyPage } from '@/pages/MyPage.tsx';
+import { SharedReading } from '@/pages/SharedReading.tsx';
 import './App.css';
 
 /** 로그인 필요한 기능 접근 시 리다이렉트 */
@@ -46,6 +47,7 @@ export default function App() {
         {/* 비로그인도 접근 가능 */}
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/share/:shareId" element={<SharedReading />} />
 
         {/* 로그인 필요 */}
         <Route path="/add-profile" element={<AuthRequired><AddProfile /></AuthRequired>} />

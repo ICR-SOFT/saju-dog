@@ -3,6 +3,7 @@ import { Layout } from '@/components/layout/Layout.tsx';
 import { Card } from '@/components/ui/Card.tsx';
 import { Button } from '@/components/ui/Button.tsx';
 import { Loading } from '@/components/ui/Loading.tsx';
+import { Recommendations } from '@/components/saju/Recommendations.tsx';
 import { useSajuStore } from '@/stores/saju.ts';
 import { getDailyFortune } from '@/lib/api.ts';
 
@@ -141,6 +142,8 @@ export function DailyFortune() {
               </div>
             </Card>
           )}
+
+          <Recommendations exclude={['daily']} />
         </div>
       ) : null}
     </Layout>

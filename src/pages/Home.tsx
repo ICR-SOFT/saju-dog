@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Layout } from '@/components/layout/Layout.tsx';
 import { Card } from '@/components/ui/Card.tsx';
@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/Button.tsx';
 import { useSajuStore } from '@/stores/saju.ts';
 import { useCreditStore } from '@/stores/credit.ts';
 import { useAuthStore } from '@/stores/auth.ts';
+import type { ServiceType } from '@/types/saju.ts';
 
-const SERVICES = [
+const MAIN_SERVICES = [
   {
-    type: 'comprehensive',
+    type: 'comprehensive' as ServiceType,
     title: '종합 사주풀이',
     desc: '나의 타고난 운명과 삶의 흐름을 깊이 있게 알아보세요',
     emoji: '🔮',
@@ -18,7 +19,7 @@ const SERVICES = [
     iconBg: 'bg-amber-100',
   },
   {
-    type: 'compatibility',
+    type: 'compatibility' as ServiceType,
     title: '궁합',
     desc: '두 사람 사이의 인연과 케미를 확인해보세요',
     emoji: '💕',
@@ -27,7 +28,7 @@ const SERVICES = [
     iconBg: 'bg-pink-100',
   },
   {
-    type: 'daily',
+    type: 'daily' as ServiceType,
     title: '오늘의 운세',
     desc: '오늘 하루의 운세와 행운의 키워드를 알려드려요',
     emoji: '🌅',
@@ -36,7 +37,7 @@ const SERVICES = [
     iconBg: 'bg-orange-100',
   },
   {
-    type: 'chat',
+    type: 'chat' as ServiceType,
     title: '복돌이 상담',
     desc: '사주에 대해 궁금한 것을 자유롭게 물어보세요',
     emoji: '💬',
@@ -44,7 +45,102 @@ const SERVICES = [
     gradient: 'from-sky-50 to-blue-50',
     iconBg: 'bg-sky-100',
   },
-] as const;
+];
+
+const MORE_SERVICES = [
+  {
+    type: 'daeun' as ServiceType,
+    title: '대운 분석',
+    subtitle: '언제 물 들어오는지 확인해보세요',
+    emoji: '🌊',
+    cost: 2,
+    accent: 'border-l-teal-400',
+    implemented: false,
+  },
+  {
+    type: 'yearly' as ServiceType,
+    title: '올해/특정연도 운세',
+    subtitle: '내후년 운세는 어떨까?',
+    emoji: '📅',
+    cost: 2,
+    accent: 'border-l-violet-400',
+    implemented: false,
+  },
+  {
+    type: 'business' as ServiceType,
+    title: '동업 궁합',
+    subtitle: 'N명이 사업하면 몇 점?',
+    emoji: '🤝',
+    cost: 3,
+    accent: 'border-l-emerald-400',
+    implemented: false,
+  },
+  {
+    type: 'luckyday' as ServiceType,
+    title: '길일 추천',
+    subtitle: 'Top 3 길일을 골라드려요',
+    emoji: '🗓️',
+    cost: 2,
+    accent: 'border-l-amber-400',
+    implemented: false,
+  },
+  {
+    type: 'love' as ServiceType,
+    title: '연애 시기 분석',
+    subtitle: '올해 연애운 타이밍은?',
+    emoji: '💘',
+    cost: 2,
+    accent: 'border-l-rose-400',
+    implemented: false,
+  },
+  {
+    type: 'wealth' as ServiceType,
+    title: '재물운 특화',
+    subtitle: '돈이 들어오는 시기와 방향',
+    emoji: '💎',
+    cost: 2,
+    accent: 'border-l-yellow-400',
+    implemented: false,
+  },
+  {
+    type: 'health' as ServiceType,
+    title: '건강운 분석',
+    subtitle: '올해 조심할 건강 포인트',
+    emoji: '🏥',
+    cost: 2,
+    accent: 'border-l-green-400',
+    implemented: false,
+  },
+  {
+    type: 'career' as ServiceType,
+    title: '직업 적성 분석',
+    subtitle: '타고난 직업 DNA는?',
+    emoji: '🎯',
+    cost: 2,
+    accent: 'border-l-blue-400',
+    implemented: false,
+  },
+  {
+    type: 'pastlife' as ServiceType,
+    title: '전생 이야기',
+    subtitle: '전생에 당신은 누구였을까?',
+    emoji: '🔮',
+    cost: 2,
+    accent: 'border-l-purple-400',
+    implemented: false,
+  },
+  {
+    type: 'moving' as ServiceType,
+    title: '이사/부동산 운',
+    subtitle: '언제 어디로 이동하면 좋을까?',
+    emoji: '🏠',
+    cost: 2,
+    accent: 'border-l-orange-400',
+    implemented: false,
+  },
+];
+
+const IMPLEMENTED_SERVICES = new Set<ServiceType>(['comprehensive', 'compatibility', 'daily', 'chat']);
 
 const DAILY_TIPS = [
   '오늘 하루도 좋은 에너지로 가득 채워보세요!',
@@ -60,6 +156,7 @@ export function Home() {
   const { isAuthenticated } = useAuthStore();
   const { profiles, fetchProfiles } = useSajuStore();
   const { fetchCredits } = useCreditStore();
+  const [toast, setToast] = useState('');
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -68,7 +165,12 @@ export function Home() {
     }
   }, [isAuthenticated, fetchProfiles, fetchCredits]);
 
-  const handleServiceClick = (type: string) => {
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(''), 2000);
+  };
+
+  const handleServiceClick = (type: ServiceType) => {
     if (!isAuthenticated) {
       navigate('/login');
       return;
@@ -76,6 +178,13 @@ export function Home() {
 
     if (profiles.length === 0 && type !== 'chat') {
       navigate('/add-profile');
+      return;
+    }
+
+    // Check if service is implemented
+    if (!IMPLEMENTED_SERVICES.has(type)) {
+      // Navigate to reading page with service type for future services
+      navigate(`/reading/${profiles[0].id}?service=${type}`);
       return;
     }
 
@@ -95,10 +204,31 @@ export function Home() {
     }
   };
 
+  const handleMoreServiceClick = (_type: ServiceType) => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+
+    if (profiles.length === 0) {
+      navigate('/add-profile');
+      return;
+    }
+
+    showToast('준비 중이에요 🐾');
+  };
+
   const dailyTip = DAILY_TIPS[new Date().getDate() % DAILY_TIPS.length];
 
   return (
     <Layout>
+      {/* 토스트 */}
+      {toast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-dark text-white text-sm px-5 py-2.5 rounded-full shadow-lg animate-fade-in">
+          {toast}
+        </div>
+      )}
+
       {/* 히어로 섹션 */}
       <div className="text-center mb-6 -mx-4 -mt-4 px-4 pt-6 pb-6 gradient-hero rounded-b-3xl relative overflow-hidden">
         {/* 장식 배경 */}
@@ -163,9 +293,9 @@ export function Home() {
         </Card>
       )}
 
-      {/* 서비스 메뉴 — 풀 너비 카드 */}
+      {/* 서비스 메뉴 — 메인 4개 */}
       <div className="space-y-3 mb-6">
-        {SERVICES.map(service => (
+        {MAIN_SERVICES.map(service => (
           <Card
             key={service.type}
             padding="md"
@@ -189,6 +319,32 @@ export function Home() {
             </div>
           </Card>
         ))}
+      </div>
+
+      {/* 더 많은 운세 */}
+      <div className="mb-6">
+        <h3 className="text-base font-bold text-dark mb-3 flex items-center gap-2">
+          <span>🐾</span> 이런 운세는 어때요?
+        </h3>
+        <div className="space-y-2">
+          {MORE_SERVICES.map(service => (
+            <div
+              key={service.type}
+              onClick={() => handleMoreServiceClick(service.type)}
+              className={`flex items-center gap-3 bg-white rounded-xl px-4 py-3 border border-cream-dark/50 border-l-4 ${service.accent} cursor-pointer hover:shadow-sm active:scale-[0.99] transition-all`}
+            >
+              <span className="text-2xl flex-shrink-0">{service.emoji}</span>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-dark text-sm">{service.title}</p>
+                <p className="text-xs text-warm-gray mt-0.5">{service.subtitle}</p>
+              </div>
+              <span className="inline-block text-[11px] font-medium rounded-full px-2 py-0.5 bg-brown/5 text-brown border border-brown/10 flex-shrink-0 whitespace-nowrap">
+                🦴 {service.cost}
+              </span>
+              <span className="text-warm-gray-light text-sm flex-shrink-0">›</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* 복돌이의 한마디 */}

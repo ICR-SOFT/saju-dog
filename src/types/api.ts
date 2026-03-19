@@ -47,4 +47,12 @@ export const CREDIT_COSTS: Record<ServiceType, { bones: number }> = {
   yearly: { bones: 2 },
   daily: { bones: 0 },
   chat: { bones: 1 },
+  business: { bones: 3 },
+  luckyday: { bones: 2 },
+  love: { bones: 2 },
+  wealth: { bones: 2 },
+  health: { bones: 2 },
+  career: { bones: 2 },
+  pastlife: { bones: 2 },
+  moving: { bones: 2 },
 };

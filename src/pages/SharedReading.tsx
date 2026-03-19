@@ -2,15 +2,12 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { Layout } from '@/components/layout/Layout.tsx';
 import { ChapterAccordion } from '@/components/saju/ChapterAccordion.tsx';
-import { Recommendations } from '@/components/saju/Recommendations.tsx';
 import { Loading } from '@/components/ui/Loading.tsx';
 import { Card } from '@/components/ui/Card.tsx';
 import { Button } from '@/components/ui/Button.tsx';
-import { supabase } from '@/lib/supabase.ts';
-import { useSajuStore } from '@/stores/saju.ts';
-import { createShareLink } from '@/lib/share.ts';
+import { getSharedReading } from '@/lib/share.ts';
 import type { Reading } from '@/types/user.ts';
-import type { SajuApiResponse, ServiceType } from '@/types/saju.ts';
+import type { SajuApiResponse } from '@/types/saju.ts';
 
 const SERVICE_LABELS: Record<string, { label: string; emoji: string }> = {
   comprehensive: { label: '종합 사주풀이', emoji: '🔮' },
@@ -29,43 +26,31 @@ const SERVICE_LABELS: Record<string, { label: string; emoji: string }> = {
   moving: { label: '이사/부동산 운', emoji: '🏠' },
 };
 
-export function ReadingDetail() {
-  const { readingId } = useParams<{ readingId: string }>();
+export function SharedReading() {
+  const { shareId } = useParams<{ shareId: string }>();
   const navigate = useNavigate();
-  const { profiles } = useSajuStore();
   const [reading, setReading] = useState<Reading | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [shareToast, setShareToast] = useState('');
 
   useEffect(() => {
-    if (!readingId) return;
+    if (!shareId) return;
 
-    const fetchReading = async () => {
+    const fetchShared = async () => {
       setIsLoading(true);
       setError('');
       try {
-        const { data, error: fetchError } = await supabase
-          .from('readings')
-          .select('*')
-          .eq('id', readingId)
-          .single();
-
-        if (fetchError) throw new Error(fetchError.message);
-        setReading(data);
+        const data = await getSharedReading(shareId);
+        setReading(data as Reading);
       } catch (err) {
-        setError(err instanceof Error ? err.message : '풀이를 불러올 수 없습니다');
+        setError(err instanceof Error ? err.message : '풀이를 찾을 수 없습니다');
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchReading();
-  }, [readingId]);
-
-  const profileName = reading
-    ? profiles.find(p => p.id === reading.profile_id)?.name ?? '알 수 없음'
-    : '';
+    fetchShared();
+  }, [shareId]);
 
   const serviceInfo = reading
     ? SERVICE_LABELS[reading.service_type] ?? { label: reading.service_type, emoji: '📄' }
@@ -86,8 +71,8 @@ export function ReadingDetail() {
       <Layout>
         <Card className="text-center py-12">
           <p className="text-4xl mb-3">🐕</p>
-          <p className="text-warm-gray mb-3">{error || '풀이를 찾을 수 없습니다'}</p>
-          <Button onClick={() => navigate('/archive')}>보관함으로</Button>
+          <p className="text-warm-gray mb-3">{error || '공유된 풀이를 찾을 수 없습니다'}</p>
+          <Button onClick={() => navigate('/')}>홈으로 가기</Button>
         </Card>
       </Layout>
     );
@@ -95,23 +80,18 @@ export function ReadingDetail() {
 
   return (
     <Layout>
-      {/* 뒤로가기 */}
-      <button
-        onClick={() => navigate('/archive')}
-        className="flex items-center gap-1 text-warm-gray text-sm mb-4 hover:text-dark transition-colors"
-      >
-        <span>←</span>
-        <span>보관함으로 돌아가기</span>
-      </button>
-
-      {/* 헤더 */}
-      <div className="text-center mb-6 -mx-4 px-4 pt-4 pb-5 gradient-hero rounded-b-3xl">
+      {/* 브랜딩 헤더 */}
+      <div className="text-center mb-6 -mx-4 -mt-4 px-4 pt-6 pb-5 gradient-hero rounded-b-3xl">
+        <div className="flex justify-center items-center gap-2 mb-2">
+          <span className="text-3xl">🐕</span>
+        </div>
+        <p className="text-xs text-warm-gray mb-1">사주독 — 사주로 보는 나의 이야기</p>
         <span className="text-4xl">{serviceInfo.emoji}</span>
         <h2 className="text-xl font-bold text-dark font-serif mt-2">
           {serviceInfo.label}
         </h2>
         <p className="text-sm text-warm-gray mt-1">
-          {profileName} · {new Date(reading.created_at).toLocaleDateString('ko-KR')}
+          {new Date(reading.created_at).toLocaleDateString('ko-KR')}
         </p>
       </div>
 
@@ -123,6 +103,14 @@ export function ReadingDetail() {
               <p className="text-lg font-medium text-dark font-serif">
                 "{result.summary}"
               </p>
+            </Card>
+          )}
+
+          {/* 점수 (궁합) */}
+          {result.overallScore !== undefined && (
+            <Card className="text-center">
+              <p className="text-5xl font-bold text-brown font-serif">{result.overallScore}</p>
+              <p className="text-sm text-warm-gray mt-1">점수</p>
             </Card>
           )}
 
@@ -161,28 +149,6 @@ export function ReadingDetail() {
               </div>
             </Card>
           )}
-
-          {/* 공유 버튼 */}
-          <Button
-            variant="secondary"
-            size="md"
-            onClick={async () => {
-              if (!reading) return;
-              try {
-                const url = await createShareLink(reading.id);
-                await navigator.clipboard.writeText(url);
-                setShareToast('링크가 복사되었어요!');
-                setTimeout(() => setShareToast(''), 2000);
-              } catch {
-                setShareToast('공유 링크 생성에 실패했어요');
-                setTimeout(() => setShareToast(''), 2000);
-              }
-            }}
-          >
-            🔗 공유하기
-          </Button>
-
-          <Recommendations exclude={[reading.service_type as ServiceType]} />
         </div>
       ) : (
         <Card className="text-center py-8">
@@ -190,12 +156,17 @@ export function ReadingDetail() {
         </Card>
       )}
 
-      {/* 공유 토스트 */}
-      {shareToast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-dark text-white text-sm px-5 py-2.5 rounded-full shadow-lg">
-          {shareToast}
-        </div>
-      )}
+      {/* CTA */}
+      <div className="mt-8 text-center">
+        <Card className="bg-gradient-to-r from-amber-50 to-orange-50">
+          <p className="text-lg mb-1">🐕</p>
+          <p className="font-bold text-dark mb-1">나도 사주 보러 가기</p>
+          <p className="text-xs text-warm-gray mb-3">사주독에서 나만의 운세를 확인해보세요</p>
+          <Button onClick={() => navigate('/')} size="lg">
+            사주독 시작하기
+          </Button>
+        </Card>
+      </div>
     </Layout>
   );
 }

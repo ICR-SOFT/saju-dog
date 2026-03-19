@@ -1,22 +1,25 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router';
+import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { Layout } from '@/components/layout/Layout.tsx';
 import { FourPillars } from '@/components/saju/FourPillars.tsx';
 import { OhaengBar } from '@/components/saju/OhaengBar.tsx';
 import { DaeunTimeline } from '@/components/saju/DaeunTimeline.tsx';
 import { ChapterAccordion } from '@/components/saju/ChapterAccordion.tsx';
+import { Recommendations } from '@/components/saju/Recommendations.tsx';
 import { Loading } from '@/components/ui/Loading.tsx';
 import { Card } from '@/components/ui/Card.tsx';
 import { Button } from '@/components/ui/Button.tsx';
 import { useSajuStore } from '@/stores/saju.ts';
 import { useCreditStore } from '@/stores/credit.ts';
 import { calculateSaju } from '@/core/calculator.ts';
-import type { SajuPillars } from '@/types/saju.ts';
+import { createShareLink } from '@/lib/share.ts';
+import type { SajuPillars, ServiceType } from '@/types/saju.ts';
 
 type ReadingPhase = 'view' | 'confirm' | 'loading' | 'result' | 'error';
 
 export function Reading() {
   const { profileId } = useParams<{ profileId: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const {
     profiles, requestReading, currentReading, isLoading, error,
@@ -25,6 +28,9 @@ export function Reading() {
   } = useSajuStore();
   const { credits } = useCreditStore();
   const [sajuData, setSajuData] = useState<SajuPillars | null>(null);
+  const [shareToast, setShareToast] = useState('');
+
+  const serviceType = (searchParams.get('service') as ServiceType) || 'comprehensive';
 
   const profile = profiles.find(p => p.id === profileId);
 
@@ -324,8 +330,38 @@ export function Reading() {
                 </div>
               </Card>
             )}
+
+            {/* 공유 버튼 */}
+            {cachedReading?.id && (
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={async () => {
+                  try {
+                    const url = await createShareLink(cachedReading.id);
+                    await navigator.clipboard.writeText(url);
+                    setShareToast('링크가 복사되었어요!');
+                    setTimeout(() => setShareToast(''), 2000);
+                  } catch {
+                    setShareToast('공유 링크 생성에 실패했어요');
+                    setTimeout(() => setShareToast(''), 2000);
+                  }
+                }}
+              >
+                🔗 공유하기
+              </Button>
+            )}
+
+            <Recommendations exclude={[serviceType]} />
           </div>
         ) : null}
+
+        {/* 공유 토스트 */}
+        {shareToast && (
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-dark text-white text-sm px-5 py-2.5 rounded-full shadow-lg">
+            {shareToast}
+          </div>
+        )}
       </div>
     </Layout>
   );

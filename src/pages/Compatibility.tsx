@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/Card.tsx';
 import { Button } from '@/components/ui/Button.tsx';
 import { Loading } from '@/components/ui/Loading.tsx';
 import { ChapterAccordion } from '@/components/saju/ChapterAccordion.tsx';
+import { Recommendations } from '@/components/saju/Recommendations.tsx';
 import { useSajuStore } from '@/stores/saju.ts';
 import { getCompatibility } from '@/lib/api.ts';
 import type { SajuApiResponse } from '@/types/saju.ts';
@@ -167,6 +168,8 @@ export function Compatibility() {
           <Button variant="secondary" size="lg" onClick={() => setResult(null)}>
             다른 궁합 보기
           </Button>
+
+          <Recommendations exclude={['compatibility']} />
         </div>
       )}
     </Layout>
