@@ -1,0 +1,12 @@
+{
+  "name": "saju-dog-worker",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file=.env worker.mjs",
+    "dev": "node --watch --env-file=.env worker.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.99.3"
+  }
+}

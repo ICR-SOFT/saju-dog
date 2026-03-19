@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router';
 import { useAuthStore } from '@/stores/auth.ts';
+import { useSajuStore } from '@/stores/saju.ts';
+import { useCreditStore } from '@/stores/credit.ts';
 import { Loading } from '@/components/ui/Loading.tsx';
 import { Login } from '@/pages/Login.tsx';
 import { Home } from '@/pages/Home.tsx';
@@ -14,6 +16,23 @@ import { SajuChat } from '@/pages/SajuChat.tsx';
 import { MyPage } from '@/pages/MyPage.tsx';
 import { SharedReading } from '@/pages/SharedReading.tsx';
 import './App.css';
+
+/** 인증 시 프로필/크레딧/보관함 자동 로드 */
+function AppDataLoader() {
+  const { isAuthenticated } = useAuthStore();
+  const { fetchProfiles, fetchReadings } = useSajuStore();
+  const { fetchCredits } = useCreditStore();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchProfiles();
+      fetchCredits();
+      fetchReadings();
+    }
+  }, [isAuthenticated, fetchProfiles, fetchCredits, fetchReadings]);
+
+  return null;
+}
 
 /** 로그인 필요한 기능 접근 시 리다이렉트 */
 function AuthRequired({ children }: { children: React.ReactNode }) {
@@ -43,6 +62,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <AppDataLoader />
       <Routes>
         {/* 비로그인도 접근 가능 */}
         <Route path="/" element={<Home />} />

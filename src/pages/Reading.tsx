@@ -14,6 +14,8 @@ import { useCreditStore } from '@/stores/credit.ts';
 import { calculateSaju } from '@/core/calculator.ts';
 import { createShareLink } from '@/lib/share.ts';
 import type { SajuPillars, ServiceType } from '@/types/saju.ts';
+import type { SajuProfile } from '@/types/user.ts';
+import { supabase } from '@/lib/supabase.ts';
 
 type ReadingPhase = 'view' | 'confirm' | 'loading' | 'result' | 'error';
 
@@ -23,17 +25,20 @@ export function Reading() {
   const navigate = useNavigate();
   const {
     profiles, startReading, currentReading, error,
-    clearCurrentReading, readings, fetchReadings,
+    clearCurrentReading, readings, fetchReadings, fetchProfiles,
     pendingProfileId, readingCache,
     processingStatus, processingInfo,
   } = useSajuStore();
-  const { credits } = useCreditStore();
+  const { credits, fetchCredits } = useCreditStore();
   const [sajuData, setSajuData] = useState<SajuPillars | null>(null);
   const [shareToast, setShareToast] = useState('');
+  const [directProfile, setDirectProfile] = useState<SajuProfile | null>(null);
 
   const serviceType = (searchParams.get('service') as ServiceType) || 'comprehensive';
 
-  const profile = profiles.find(p => p.id === profileId);
+  // 스토어에 프로필이 없으면 DB에서 직접 조회 (새로고침 대응)
+  const storeProfile = profiles.find(p => p.id === profileId);
+  const profile = storeProfile || directProfile;
 
   // 캐시된 결과 확인 (store readingCache 우선, 그 다음 readings DB 캐시)
   const cachedResult = profileId ? readingCache[profileId] : undefined;
@@ -65,8 +70,18 @@ export function Reading() {
   // 실제 사용 phase: localPhase가 있으면 그것 사용, 없으면 store 파생 phase
   const activePhase = localPhase ?? phase;
 
+  // 프로필이 스토어에 없으면 DB에서 직접 로드
   useEffect(() => {
-    // 이미 캐시된 결과가 있으면 clearCurrentReading 하지 않음
+    if (!storeProfile && profileId) {
+      fetchProfiles(); // 스토어 전체 로드 시도
+      fetchCredits();
+      // 동시에 직접 조회
+      supabase.from('saju_profiles').select('*').eq('id', profileId).single()
+        .then(({ data }) => { if (data) setDirectProfile(data as SajuProfile); });
+    }
+  }, [storeProfile, profileId, fetchProfiles, fetchCredits]);
+
+  useEffect(() => {
     if (!cachedResult) {
       clearCurrentReading();
     }

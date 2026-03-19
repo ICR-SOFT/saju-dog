@@ -12,7 +12,7 @@ export function Header() {
       <div className="mx-auto max-w-lg flex items-center justify-between px-4 h-12">
         {/* Left: logo + title */}
         <button onClick={() => navigate('/')} className="flex items-center gap-2 group">
-          <span className="text-xl group-hover:scale-110 transition-transform inline-block">🐕</span>
+          <img src="/images/logo.png" alt="사주독" className="w-7 h-7 rounded-full group-hover:scale-110 transition-transform object-cover" />
           <h1 className="text-base font-bold text-dark font-serif leading-tight">사주독</h1>
         </button>
 

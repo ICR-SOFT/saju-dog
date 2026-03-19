@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { supabase } from '@/lib/supabase.ts';
 import type { SajuProfile, Reading } from '@/types/user.ts';
 import type { SajuApiResponse } from '@/types/saju.ts';
-import { requestReading as apiRequestReading, processReading, pollReadingStatus } from '@/lib/api.ts';
+import { requestReading as apiRequestReading, pollReadingStatus } from '@/lib/api.ts';
 import { useCreditStore } from './credit.ts';
 
 interface SajuState {
@@ -114,12 +114,7 @@ export const useSajuStore = create<SajuState>((set, get) => ({
       // 크레딧 즉시 갱신
       useCreditStore.getState().fetchCredits();
 
-      // Step 2: 워커에 처리 요청 (비동기, 타임아웃 가능)
-      processReading(readingId).catch(() => {
-        // 타임아웃이어도 폴링이 처리
-      });
-
-      // Step 3: 폴링으로 완료 확인
+      // Step 2: EC2 워커가 자동으로 처리 — 프론트는 폴링만
       const poll = async () => {
         const maxAttempts = 60; // 최대 3분
         for (let i = 0; i < maxAttempts; i++) {
