@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { Layout } from '@/components/layout/Layout.tsx';
 import { FourPillars } from '@/components/saju/FourPillars.tsx';
@@ -18,20 +18,54 @@ type ReadingPhase = 'view' | 'confirm' | 'loading' | 'result' | 'error';
 export function Reading() {
   const { profileId } = useParams<{ profileId: string }>();
   const navigate = useNavigate();
-  const { profiles, requestReading, currentReading, isLoading, error, clearCurrentReading, readings, fetchReadings } = useSajuStore();
+  const {
+    profiles, requestReading, currentReading, isLoading, error,
+    clearCurrentReading, readings, fetchReadings,
+    pendingReadingProfileId, readingCache,
+  } = useSajuStore();
   const { credits } = useCreditStore();
   const [sajuData, setSajuData] = useState<SajuPillars | null>(null);
-  const [phase, setPhase] = useState<ReadingPhase>('view');
 
   const profile = profiles.find(p => p.id === profileId);
 
-  // 기존 풀이 캐시 확인
+  // 캐시된 결과 확인 (store readingCache 우선, 그 다음 readings DB 캐시)
+  const cachedResult = profileId ? readingCache[profileId] : undefined;
+
+  // 기존 풀이 캐시 확인 (DB에서 가져온 readings)
   const cachedReading = readings.find(
     r => r.profile_id === profileId && r.service_type === 'comprehensive' && r.status === 'completed'
   );
 
+  // 현재 표시할 결과: store cache > currentReading > DB cache
+  const displayResult = cachedResult ?? currentReading ?? null;
+
+  // Phase를 store 상태에서 파생
+  const phase: ReadingPhase = useMemo(() => {
+    // 현재 이 프로필에 대해 요청 중인 경우
+    if (pendingReadingProfileId === profileId || (isLoading && pendingReadingProfileId === profileId)) {
+      return 'loading';
+    }
+    // 에러 발생
+    if (error && !displayResult) {
+      return 'error';
+    }
+    // store cache나 currentReading에 결과가 있는 경우
+    if (displayResult) {
+      return 'result';
+    }
+    return 'view';
+  }, [pendingReadingProfileId, profileId, isLoading, error, displayResult]);
+
+  const [localPhase, setLocalPhase] = useState<ReadingPhase | null>(null);
+
+  // 실제 사용 phase: localPhase가 있으면 그것 사용, 없으면 store 파생 phase
+  const activePhase = localPhase ?? phase;
+
   useEffect(() => {
-    clearCurrentReading();
+    // 이미 캐시된 결과가 있으면 clearCurrentReading 하지 않음
+    if (!cachedResult) {
+      clearCurrentReading();
+    }
     fetchReadings();
 
     if (profile) {
@@ -45,16 +79,18 @@ export function Reading() {
       });
       setSajuData(data);
     }
-  }, [profileId, profile, clearCurrentReading, fetchReadings]);
+
+    // localPhase 초기화 — store 상태에 의존
+    setLocalPhase(null);
+  }, [profileId, profile, clearCurrentReading, fetchReadings, cachedResult]);
 
   const handleRequestReading = async () => {
     if (!profileId) return;
-    setPhase('loading');
+    setLocalPhase(null); // store 상태 따라가기
     try {
       await requestReading(profileId, 'comprehensive');
-      setPhase('result');
     } catch {
-      setPhase('error');
+      // error는 store에서 관리
     }
   };
 
@@ -176,8 +212,8 @@ export function Reading() {
           🐕 복돌이 풀이
         </h3>
 
-        {/* 이미 풀이된 결과가 있는 경우 */}
-        {cachedReading?.result && phase === 'view' ? (
+        {/* 이미 풀이된 결과가 있는 경우 (DB 캐시) */}
+        {cachedReading?.result && activePhase === 'view' ? (
           <div className="space-y-4">
             <Card className="text-center bg-green-50/50 border-green-200">
               <p className="text-xs text-green-600 mb-1">이전 풀이 결과</p>
@@ -193,11 +229,11 @@ export function Reading() {
               <ChapterAccordion chapters={(cachedReading.result as any).chapters} />
             )}
 
-            <Button variant="secondary" size="lg" onClick={() => setPhase('confirm')}>
+            <Button variant="secondary" size="lg" onClick={() => setLocalPhase('confirm')}>
               새로 풀이받기 (🦴 3개)
             </Button>
           </div>
-        ) : phase === 'view' || phase === 'confirm' ? (
+        ) : activePhase === 'view' || activePhase === 'confirm' ? (
           <Card className="text-center">
             <div className="text-4xl mb-3">🔮</div>
             <p className="text-dark font-medium mb-1">종합 사주풀이</p>
@@ -234,7 +270,7 @@ export function Reading() {
               🦴 3개로 풀이받기
             </Button>
           </Card>
-        ) : phase === 'loading' || isLoading ? (
+        ) : activePhase === 'loading' ? (
           <Card className="text-center py-8 gradient-hero">
             <Loading message="복돌이가 사주를 분석하고 있어요..." size="lg" />
             <div className="mt-4 space-y-1">
@@ -242,29 +278,29 @@ export function Reading() {
               <p className="text-xs text-warm-gray-light">약 30~60초 소요됩니다</p>
             </div>
           </Card>
-        ) : phase === 'error' || error ? (
+        ) : activePhase === 'error' ? (
           <Card className="text-center">
             <p className="text-red-500 mb-3 text-sm">{error || '풀이를 불러올 수 없습니다'}</p>
             <p className="text-xs text-warm-gray mb-3">Edge Functions 배포 상태를 확인하세요</p>
-            <Button variant="secondary" onClick={() => setPhase('confirm')}>
+            <Button variant="secondary" onClick={() => setLocalPhase('confirm')}>
               다시 시도
             </Button>
           </Card>
-        ) : currentReading ? (
+        ) : displayResult ? (
           <div className="space-y-4">
             <Card className="text-center bg-brown/5">
               <p className="text-lg font-medium text-dark font-serif">
-                "{currentReading.summary}"
+                "{displayResult.summary}"
               </p>
             </Card>
 
-            <ChapterAccordion chapters={currentReading.chapters} />
+            <ChapterAccordion chapters={displayResult.chapters} />
 
-            {currentReading.advice?.length > 0 && (
+            {displayResult.advice?.length > 0 && (
               <Card>
                 <h3 className="font-medium text-dark mb-2">복돌이의 조언</h3>
                 <ul className="space-y-2">
-                  {currentReading.advice.map((a, i) => (
+                  {displayResult.advice.map((a, i) => (
                     <li key={i} className="flex gap-2 text-sm text-dark-light">
                       <span className="text-brown">🐾</span><span>{a}</span>
                     </li>
@@ -273,11 +309,11 @@ export function Reading() {
               </Card>
             )}
 
-            {currentReading.luckyItems && (
+            {displayResult.luckyItems && (
               <Card>
                 <h3 className="font-medium text-dark mb-2">행운 아이템</h3>
                 <div className="grid grid-cols-2 gap-2 text-sm">
-                  {Object.entries(currentReading.luckyItems).map(([key, val]) => (
+                  {Object.entries(displayResult.luckyItems).map(([key, val]) => (
                     <div key={key} className="bg-cream-dark rounded-lg p-2 text-center">
                       <p className="text-warm-gray text-xs">
                         {key === 'color' ? '행운 색' : key === 'number' ? '행운 숫자' : key === 'direction' ? '행운 방향' : '행운 음식'}

@@ -11,6 +11,8 @@ interface SajuState {
   readings: Reading[];
   isLoading: boolean;
   error: string | null;
+  pendingReadingProfileId: string | null;
+  readingCache: Record<string, SajuApiResponse>;
 
   fetchProfiles: () => Promise<void>;
   addProfile: (profile: Omit<SajuProfile, 'id' | 'user_id' | 'calculated_saju' | 'created_at' | 'updated_at'>) => Promise<SajuProfile>;
@@ -26,6 +28,8 @@ export const useSajuStore = create<SajuState>((set, get) => ({
   readings: [],
   isLoading: false,
   error: null,
+  pendingReadingProfileId: null,
+  readingCache: {},
 
   fetchProfiles: async () => {
     const { data, error } = await supabase
@@ -60,17 +64,22 @@ export const useSajuStore = create<SajuState>((set, get) => ({
   },
 
   requestReading: async (profileId, serviceType) => {
-    set({ isLoading: true, error: null });
+    set({ isLoading: true, error: null, pendingReadingProfileId: profileId });
     try {
       const result = await getReading({ profileId, serviceType: serviceType as SajuApiResponse['serviceType'] });
-      set({ currentReading: result, isLoading: false });
+      set((state) => ({
+        currentReading: result,
+        isLoading: false,
+        pendingReadingProfileId: null,
+        readingCache: { ...state.readingCache, [profileId]: result },
+      }));
       // 크레딧 & 보관함 즉시 갱신
       useCreditStore.getState().fetchCredits();
       get().fetchReadings();
       return result;
     } catch (err) {
       const message = err instanceof Error ? err.message : '풀이 요청에 실패했습니다';
-      set({ error: message, isLoading: false });
+      set({ error: message, isLoading: false, pendingReadingProfileId: null });
       throw err;
     }
   },

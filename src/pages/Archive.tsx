@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useNavigate } from 'react-router';
 import { Layout } from '@/components/layout/Layout.tsx';
 import { Card } from '@/components/ui/Card.tsx';
 import { useSajuStore } from '@/stores/saju.ts';
@@ -13,6 +14,7 @@ const SERVICE_LABELS: Record<string, { label: string; emoji: string }> = {
 };
 
 export function Archive() {
+  const navigate = useNavigate();
   const { readings, fetchReadings, profiles } = useSajuStore();
 
   useEffect(() => {
@@ -45,9 +47,7 @@ export function Archive() {
                 key={reading.id}
                 padding="sm"
                 className="cursor-pointer hover:shadow-md transition-shadow"
-                onClick={() => {
-                  // TODO: 상세 보기 페이지로 이동
-                }}
+                onClick={() => navigate(`/archive/${reading.id}`)}
               >
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">{info.emoji}</span>

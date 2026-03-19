@@ -7,6 +7,7 @@ import { Home } from '@/pages/Home.tsx';
 import { AddProfile } from '@/pages/AddProfile.tsx';
 import { Reading } from '@/pages/Reading.tsx';
 import { Archive } from '@/pages/Archive.tsx';
+import { ReadingDetail } from '@/pages/ReadingDetail.tsx';
 import { DailyFortune } from '@/pages/DailyFortune.tsx';
 import { Compatibility } from '@/pages/Compatibility.tsx';
 import { SajuChat } from '@/pages/SajuChat.tsx';
@@ -50,6 +51,7 @@ export default function App() {
         <Route path="/add-profile" element={<AuthRequired><AddProfile /></AuthRequired>} />
         <Route path="/reading/:profileId" element={<AuthRequired><Reading /></AuthRequired>} />
         <Route path="/archive" element={<AuthRequired><Archive /></AuthRequired>} />
+        <Route path="/archive/:readingId" element={<AuthRequired><ReadingDetail /></AuthRequired>} />
         <Route path="/daily" element={<AuthRequired><DailyFortune /></AuthRequired>} />
         <Route path="/compatibility" element={<AuthRequired><Compatibility /></AuthRequired>} />
         <Route path="/chat" element={<AuthRequired><SajuChat /></AuthRequired>} />

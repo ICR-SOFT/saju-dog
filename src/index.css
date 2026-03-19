@@ -62,3 +62,47 @@ body {
 .animate-pulse-warm {
   animation: pulse-warm 2s ease-in-out infinite;
 }
+
+/* ===== 장식 유틸리티 ===== */
+
+.paw-bg {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Ctext x='30' y='35' text-anchor='middle' font-size='20' opacity='0.03'%3E🐾%3C/text%3E%3C/svg%3E");
+}
+
+.speech-bubble {
+  position: relative;
+  background: white;
+  border-radius: 1rem;
+  padding: 1rem;
+}
+.speech-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 24px;
+  width: 16px;
+  height: 16px;
+  background: white;
+  transform: rotate(45deg);
+  border-radius: 2px;
+}
+
+/* Float animation for hero mascot */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Sparkle animation */
+@keyframes sparkle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+.animate-sparkle {
+  animation: sparkle 2s ease-in-out infinite;
+}

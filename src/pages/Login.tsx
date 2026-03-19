@@ -29,14 +29,15 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-dvh gradient-warm flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
+    <div className="min-h-dvh gradient-warm flex items-center justify-center px-4 paw-bg relative overflow-hidden">
+      <div className="w-full max-w-sm relative z-10">
         <div className="text-center mb-8">
-          <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-brown/10 flex items-center justify-center shadow-sm">
-            <span className="text-6xl">🐕</span>
+          <div className="w-28 h-28 mx-auto mb-4 rounded-full bg-brown/10 flex items-center justify-center shadow-md border-2 border-brown/10">
+            <span className="text-7xl animate-float">🐕</span>
           </div>
           <h1 className="text-3xl font-bold text-dark font-serif">사주독</h1>
-          <p className="text-warm-gray mt-2">사주 상담사 복돌이가 기다리고 있어요</p>
+          <p className="text-brown font-medium mt-1 text-sm">사주로 보는 나의 이야기</p>
+          <p className="text-warm-gray mt-1 text-sm">사주 상담사 복돌이가 기다리고 있어요</p>
         </div>
 
         <Card>

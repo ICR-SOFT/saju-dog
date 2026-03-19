@@ -20,12 +20,19 @@ export function BottomNav() {
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
-              className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-xs transition-colors ${
+              className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-xs transition-all ${
                 isActive ? 'text-brown font-medium' : 'text-warm-gray'
               }`}
             >
-              <span className="text-xl">{item.icon}</span>
+              <div className={`flex items-center justify-center w-10 h-7 rounded-full transition-all ${
+                isActive ? 'bg-brown/10 scale-110' : ''
+              }`}>
+                <span className="text-xl">{item.icon}</span>
+              </div>
               <span>{item.label}</span>
+              {isActive && (
+                <span className="w-1 h-1 rounded-full bg-brown -mt-0.5" />
+              )}
             </button>
           );
         })}

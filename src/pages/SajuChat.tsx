@@ -6,6 +6,14 @@ import { useSajuStore } from '@/stores/saju.ts';
 import { sendChat } from '@/lib/api.ts';
 import type { ChatMessage } from '@/types/api.ts';
 
+const SUGGESTED_QUESTIONS = [
+  { text: '올해 운이 어때요?', icon: '🐾' },
+  { text: '연애운이 궁금해요', icon: '🐾' },
+  { text: '직장 고민이 있어요', icon: '🐾' },
+  { text: '재물운은 어떤가요?', icon: '🐾' },
+  { text: '건강 조심할 게 있나요?', icon: '🐾' },
+];
+
 export function SajuChat() {
   const { profiles } = useSajuStore();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -34,7 +42,7 @@ export function SajuChat() {
         history: messages,
       });
       setMessages(prev => [...prev, { role: 'assistant', content: message }]);
-    } catch (err) {
+    } catch {
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: '죄송해요, 잠시 문제가 생겼어요. 다시 시도해주세요 🐾',
@@ -51,33 +59,46 @@ export function SajuChat() {
     }
   };
 
+  const handleSuggestedQuestion = (question: string) => {
+    setInput(question);
+  };
+
   return (
     <Layout>
-      <h2 className="text-xl font-bold text-dark mb-4 font-serif">사주독에게 물어보기</h2>
+      {/* 헤더 */}
+      <div className="text-center mb-4 -mx-4 -mt-4 px-4 pt-5 pb-4 gradient-hero rounded-b-3xl">
+        <h2 className="text-xl font-bold text-dark font-serif">
+          복돌이에게 물어보세요 🐾
+        </h2>
+        <p className="text-xs text-warm-gray mt-1">사주에 대한 모든 궁금증을 해결해드려요</p>
+      </div>
 
       {!profile ? (
         <Card className="text-center py-8">
           <p className="text-warm-gray">프로필을 먼저 등록해주세요</p>
         </Card>
       ) : (
-        <div className="flex flex-col" style={{ minHeight: 'calc(100dvh - 220px)' }}>
+        <div className="flex flex-col" style={{ minHeight: 'calc(100dvh - 250px)' }}>
           {/* 메시지 영역 */}
           <div className="flex-1 space-y-3 mb-4">
             {messages.length === 0 && (
               <Card className="text-center">
-                <div className="text-4xl mb-2">🐕</div>
-                <p className="text-dark font-medium">안녕하세요, 보호자님!</p>
-                <p className="text-sm text-warm-gray mt-1">
+                <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-brown/10 flex items-center justify-center">
+                  <span className="text-3xl animate-float">🐕</span>
+                </div>
+                <p className="text-dark font-bold font-serif">안녕하세요, 보호자님!</p>
+                <p className="text-sm text-warm-gray mt-1 mb-4">
                   사주에 대해 궁금한 것을 물어보세요
                 </p>
-                <div className="flex flex-wrap gap-2 justify-center mt-3">
-                  {['올해 운이 어때요?', '연애운이 궁금해요', '직장 고민이 있어요'].map(q => (
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {SUGGESTED_QUESTIONS.map(q => (
                     <button
-                      key={q}
-                      onClick={() => { setInput(q); }}
-                      className="text-xs px-3 py-1.5 rounded-full bg-cream-dark text-dark-light hover:bg-brown/10 transition-colors"
+                      key={q.text}
+                      onClick={() => handleSuggestedQuestion(q.text)}
+                      className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-full bg-gradient-to-r from-cream-dark to-brown/5 text-dark-light hover:from-brown/10 hover:to-brown/15 transition-all shadow-sm border border-brown/10"
                     >
-                      {q}
+                      <span className="text-[10px]">{q.icon}</span>
+                      <span>{q.text}</span>
                     </button>
                   ))}
                 </div>
@@ -86,8 +107,12 @@ export function SajuChat() {
 
             {messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                {msg.role === 'assistant' && <span className="text-xl mr-2 mt-1">🐕</span>}
-                <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                {msg.role === 'assistant' && (
+                  <div className="w-8 h-8 rounded-full bg-brown/10 flex items-center justify-center mr-2 mt-1 flex-shrink-0 border border-brown/10">
+                    <span className="text-lg">🐕</span>
+                  </div>
+                )}
+                <div className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm ${
                   msg.role === 'user'
                     ? 'bg-brown text-cream rounded-br-sm'
                     : 'bg-white text-dark border border-cream-dark rounded-bl-sm'
@@ -99,12 +124,14 @@ export function SajuChat() {
 
             {isLoading && (
               <div className="flex justify-start">
-                <span className="text-xl mr-2">🐕</span>
-                <div className="bg-white rounded-2xl rounded-bl-sm px-4 py-3 border border-cream-dark">
-                  <div className="flex gap-1">
-                    <span className="w-2 h-2 bg-warm-gray-light rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-2 h-2 bg-warm-gray-light rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-2 h-2 bg-warm-gray-light rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                <div className="w-8 h-8 rounded-full bg-brown/10 flex items-center justify-center mr-2 flex-shrink-0 border border-brown/10">
+                  <span className="text-lg">🐕</span>
+                </div>
+                <div className="bg-white rounded-2xl rounded-bl-sm px-4 py-3 border border-cream-dark shadow-sm">
+                  <div className="flex gap-1.5">
+                    <span className="w-2 h-2 bg-brown/30 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-2 h-2 bg-brown/30 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-2 h-2 bg-brown/30 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                   </div>
                 </div>
               </div>
@@ -121,8 +148,8 @@ export function SajuChat() {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="사주독에게 물어보세요..."
-                className="flex-1 rounded-xl border border-warm-gray-light/50 bg-white px-4 py-2.5 text-dark placeholder:text-warm-gray-light outline-none focus:border-brown text-sm"
+                placeholder="복돌이에게 물어보세요..."
+                className="flex-1 rounded-xl border border-warm-gray-light/50 bg-white px-4 py-2.5 text-dark placeholder:text-warm-gray-light outline-none focus:border-brown focus:ring-1 focus:ring-brown/20 text-sm transition-all"
               />
               <Button onClick={handleSend} disabled={!input.trim() || isLoading} size="md">
                 전송

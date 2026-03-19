@@ -20,13 +20,13 @@ export function PillarCard({ pillar, label, isDay = false }: PillarCardProps) {
       <span className="text-xs text-warm-gray font-medium">{label}</span>
 
       {/* 천간 */}
-      <div className={`w-14 h-14 rounded-lg border flex flex-col items-center justify-center ${OHAENG_COLORS[pillar.stemOhaeng]}`}>
+      <div className={`w-16 h-16 rounded-xl border flex flex-col items-center justify-center shadow-sm ${OHAENG_COLORS[pillar.stemOhaeng]}`}>
         <span className="text-xl font-bold font-serif">{pillar.stem}</span>
         <span className="text-[10px] opacity-70">{pillar.stemHanja}</span>
       </div>
 
       {/* 지지 */}
-      <div className={`w-14 h-14 rounded-lg border flex flex-col items-center justify-center ${OHAENG_COLORS[pillar.branchOhaeng]}`}>
+      <div className={`w-16 h-16 rounded-xl border flex flex-col items-center justify-center shadow-sm ${OHAENG_COLORS[pillar.branchOhaeng]}`}>
         <span className="text-xl font-bold font-serif">{pillar.branch}</span>
         <span className="text-[10px] opacity-70">{pillar.branchHanja}</span>
       </div>
