@@ -487,4 +487,16 @@ process.on('SIGINT', () => {
   process.exit(0);
 });
 
-pollLoop();
+// 시작 시 모든 processing → pending 리셋 (이전 실행에서 중단된 작업)
+async function resetStuckOnStartup() {
+  const { data } = await supabase
+    .from('readings')
+    .update({ processing_status: 'pending', processing_started_at: null })
+    .eq('processing_status', 'processing')
+    .select('id');
+  if (data?.length > 0) {
+    log('info', `🔄 Startup: reset ${data.length} stuck processing → pending`);
+  }
+}
+
+resetStuckOnStartup().then(() => pollLoop());
