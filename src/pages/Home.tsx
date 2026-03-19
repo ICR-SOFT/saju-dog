@@ -119,7 +119,7 @@ const MORE_SERVICES: typeof MAIN_SERVICES = [
   { type: 'moving', title: '이사/부동산 운', subtitle: '언제 어디로 이동하면 좋을까?', cost: 2, image: '/images/moving.png', gradient: 'bg-gradient-to-br from-stone-400 to-amber-600' },
 ];
 
-const IMPLEMENTED_SERVICES = new Set<ServiceType>(['comprehensive', 'compatibility', 'daily', 'chat']);
+// 모든 서비스 구현됨
 
 export function Home() {
   const navigate = useNavigate();
@@ -151,16 +151,9 @@ export function Home() {
       return;
     }
 
-    if (!IMPLEMENTED_SERVICES.has(type)) {
-      showToast('준비 중이에요 🐾');
-      return;
-    }
-
     switch (type) {
-      case 'comprehensive':
-        navigate(`/reading/${profiles[0].id}`);
-        break;
       case 'compatibility':
+      case 'business':
         navigate('/compatibility');
         break;
       case 'daily':
@@ -169,21 +162,15 @@ export function Home() {
       case 'chat':
         navigate('/chat');
         break;
+      default:
+        // 모든 서비스 → Reading 페이지 (service 쿼리 파라미터)
+        navigate(`/reading/${profiles[0].id}?service=${type}`);
+        break;
     }
   };
 
-  const handleMoreServiceClick = (_type: ServiceType) => {
-    if (!isAuthenticated) {
-      navigate('/login');
-      return;
-    }
-
-    if (profiles.length === 0) {
-      navigate('/add-profile');
-      return;
-    }
-
-    showToast('준비 중이에요 🐾');
+  const handleMoreServiceClick = (type: ServiceType) => {
+    handleServiceClick(type);
   };
 
   return (

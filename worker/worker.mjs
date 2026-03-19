@@ -92,14 +92,19 @@ async function callClaude(params) {
 
 // ===== 프롬프트 설정 로드 =====
 async function getPromptConfig(serviceType) {
-  const mappedType = ['comprehensive', 'compatibility', 'daily', 'chat'].includes(serviceType)
-    ? serviceType : 'comprehensive';
-
-  const { data, error } = await supabase
+  // 먼저 해당 서비스 타입으로 조회
+  let { data, error } = await supabase
     .from('prompt_configs').select('*')
-    .eq('service_type', mappedType).eq('is_active', true).single();
+    .eq('service_type', serviceType).eq('is_active', true).single();
 
-  if (error || !data) throw new Error(`No prompt config: ${mappedType}`);
+  // 없으면 comprehensive fallback
+  if (error || !data) {
+    ({ data, error } = await supabase
+      .from('prompt_configs').select('*')
+      .eq('service_type', 'comprehensive').eq('is_active', true).single());
+  }
+
+  if (error || !data) throw new Error(`No prompt config: ${serviceType}`);
   return data;
 }
 
