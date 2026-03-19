@@ -6,7 +6,7 @@ import { OhaengBar } from '@/components/saju/OhaengBar.tsx';
 import { DaeunTimeline } from '@/components/saju/DaeunTimeline.tsx';
 import { ChapterAccordion } from '@/components/saju/ChapterAccordion.tsx';
 import { Recommendations } from '@/components/saju/Recommendations.tsx';
-import { Loading } from '@/components/ui/Loading.tsx';
+import { PhotoLoading } from '@/components/ui/PhotoLoading.tsx';
 import { Card } from '@/components/ui/Card.tsx';
 import { Button } from '@/components/ui/Button.tsx';
 import { useSajuStore } from '@/stores/saju.ts';
@@ -277,9 +277,9 @@ export function Reading() {
             </Button>
           </Card>
         ) : activePhase === 'loading' ? (
-          <Card className="text-center py-8 gradient-hero">
-            <Loading message="복돌이가 사주를 분석하고 있어요..." size="lg" />
-            <div className="mt-4 space-y-1">
+          <Card className="text-center py-4 gradient-hero">
+            <PhotoLoading />
+            <div className="mt-2 space-y-1">
               <p className="text-xs text-warm-gray animate-pulse-warm">복돌이가 12~15개 챕터를 작성 중이에요</p>
               <p className="text-xs text-warm-gray-light">약 30~60초 소요됩니다</p>
             </div>
