@@ -22,9 +22,10 @@ export function Reading() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const {
-    profiles, requestReading, currentReading, isLoading, error,
+    profiles, startReading, currentReading, error,
     clearCurrentReading, readings, fetchReadings,
-    pendingReadingProfileId, readingCache,
+    pendingProfileId, readingCache,
+    processingStatus, processingInfo,
   } = useSajuStore();
   const { credits } = useCreditStore();
   const [sajuData, setSajuData] = useState<SajuPillars | null>(null);
@@ -47,20 +48,17 @@ export function Reading() {
 
   // Phase를 store 상태에서 파생
   const phase: ReadingPhase = useMemo(() => {
-    // 현재 이 프로필에 대해 요청 중인 경우
-    if (pendingReadingProfileId === profileId || (isLoading && pendingReadingProfileId === profileId)) {
+    if (pendingProfileId === profileId && (processingStatus === 'requesting' || processingStatus === 'processing')) {
       return 'loading';
     }
-    // 에러 발생
-    if (error && !displayResult) {
+    if (processingStatus === 'failed' && error && !displayResult) {
       return 'error';
     }
-    // store cache나 currentReading에 결과가 있는 경우
     if (displayResult) {
       return 'result';
     }
     return 'view';
-  }, [pendingReadingProfileId, profileId, isLoading, error, displayResult]);
+  }, [pendingProfileId, profileId, processingStatus, error, displayResult]);
 
   const [localPhase, setLocalPhase] = useState<ReadingPhase | null>(null);
 
@@ -90,14 +88,10 @@ export function Reading() {
     setLocalPhase(null);
   }, [profileId, profile, clearCurrentReading, fetchReadings, cachedResult]);
 
-  const handleRequestReading = async () => {
+  const handleRequestReading = () => {
     if (!profileId) return;
-    setLocalPhase(null); // store 상태 따라가기
-    try {
-      await requestReading(profileId, 'comprehensive');
-    } catch {
-      // error는 store에서 관리
-    }
+    setLocalPhase(null);
+    startReading(profileId, serviceType);
   };
 
   if (!profile) {
@@ -280,15 +274,24 @@ export function Reading() {
           <Card className="text-center py-4 gradient-hero">
             <PhotoLoading />
             <div className="mt-2 space-y-1">
-              <p className="text-xs text-warm-gray animate-pulse-warm">복돌이가 12~15개 챕터를 작성 중이에요</p>
-              <p className="text-xs text-warm-gray-light">약 30~60초 소요됩니다</p>
+              <p className="text-xs text-warm-gray animate-pulse-warm">
+                {processingStatus === 'requesting' ? '요청을 접수하고 있어요...' : '복돌이가 12~15개 챕터를 작성 중이에요'}
+              </p>
+              <p className="text-xs text-warm-gray-light">
+                {processingStatus === 'requesting' ? '잠시만 기다려주세요' : '페이지를 나가도 괜찮아요. 완료되면 보관함에서 확인할 수 있어요!'}
+              </p>
             </div>
           </Card>
         ) : activePhase === 'error' ? (
           <Card className="text-center">
             <p className="text-red-500 mb-3 text-sm">{error || '풀이를 불러올 수 없습니다'}</p>
-            <p className="text-xs text-warm-gray mb-3">Edge Functions 배포 상태를 확인하세요</p>
-            <Button variant="secondary" onClick={() => setLocalPhase('confirm')}>
+            {processingInfo?.refunded && (
+              <p className="text-xs text-green-600 mb-3">크레딧이 자동 환불되었습니다</p>
+            )}
+            {processingInfo?.failure_reason && (
+              <p className="text-xs text-warm-gray mb-3">{processingInfo.failure_reason}</p>
+            )}
+            <Button variant="secondary" onClick={() => { setLocalPhase(null); handleRequestReading(); }}>
               다시 시도
             </Button>
           </Card>
@@ -298,6 +301,12 @@ export function Reading() {
               <p className="text-lg font-medium text-dark font-serif">
                 "{displayResult.summary}"
               </p>
+              {processingInfo?.duration_ms && (
+                <p className="text-[10px] text-warm-gray-light mt-2">
+                  {(processingInfo.duration_ms / 1000).toFixed(1)}초 소요
+                  {processingInfo.api_cost && ` · $${(processingInfo.api_cost as any).cost_usd?.toFixed(4) || '?'}`}
+                </p>
+              )}
             </Card>
 
             <ChapterAccordion chapters={displayResult.chapters} />

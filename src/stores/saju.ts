@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { supabase } from '@/lib/supabase.ts';
 import type { SajuProfile, Reading } from '@/types/user.ts';
 import type { SajuApiResponse } from '@/types/saju.ts';
-import { getReading } from '@/lib/api.ts';
+import { requestReading as apiRequestReading, processReading, pollReadingStatus } from '@/lib/api.ts';
 import { useCreditStore } from './credit.ts';
 
 interface SajuState {
@@ -11,16 +11,28 @@ interface SajuState {
   readings: Reading[];
   isLoading: boolean;
   error: string | null;
-  pendingReadingProfileId: string | null;
+
+  // 큐 시스템
+  pendingReadingId: string | null;
+  pendingProfileId: string | null;
+  processingStatus: 'idle' | 'requesting' | 'processing' | 'completed' | 'failed';
+  processingInfo: {
+    duration_ms?: number;
+    api_cost?: Record<string, unknown>;
+    failure_reason?: string;
+    refunded?: boolean;
+  } | null;
   readingCache: Record<string, SajuApiResponse>;
 
   fetchProfiles: () => Promise<void>;
   addProfile: (profile: Omit<SajuProfile, 'id' | 'user_id' | 'calculated_saju' | 'created_at' | 'updated_at'>) => Promise<SajuProfile>;
   deleteProfile: (id: string) => Promise<void>;
-  requestReading: (profileId: string, serviceType: string) => Promise<SajuApiResponse>;
+  startReading: (profileId: string, serviceType: string) => Promise<void>;
   fetchReadings: () => Promise<void>;
   clearCurrentReading: () => void;
 }
+
+const POLL_INTERVAL = 3000; // 3초마다 폴링
 
 export const useSajuStore = create<SajuState>((set, get) => ({
   profiles: [],
@@ -28,7 +40,10 @@ export const useSajuStore = create<SajuState>((set, get) => ({
   readings: [],
   isLoading: false,
   error: null,
-  pendingReadingProfileId: null,
+  pendingReadingId: null,
+  pendingProfileId: null,
+  processingStatus: 'idle',
+  processingInfo: null,
   readingCache: {},
 
   fetchProfiles: async () => {
@@ -63,24 +78,111 @@ export const useSajuStore = create<SajuState>((set, get) => ({
     set({ profiles: get().profiles.filter(p => p.id !== id) });
   },
 
-  requestReading: async (profileId, serviceType) => {
-    set({ isLoading: true, error: null, pendingReadingProfileId: profileId });
+  /**
+   * 큐 기반 풀이 시작
+   * 1. saju-request → 즉시 reading ID 반환
+   * 2. saju-worker → 처리 시작
+   * 3. 폴링으로 완료 확인
+   */
+  startReading: async (profileId, serviceType) => {
+    set({
+      isLoading: true,
+      error: null,
+      processingStatus: 'requesting',
+      pendingProfileId: profileId,
+      processingInfo: null,
+    });
+
     try {
-      const result = await getReading({ profileId, serviceType: serviceType as SajuApiResponse['serviceType'] });
-      set((state) => ({
-        currentReading: result,
-        isLoading: false,
-        pendingReadingProfileId: null,
-        readingCache: { ...state.readingCache, [profileId]: result },
-      }));
-      // 크레딧 & 보관함 즉시 갱신
+      // Step 1: 요청 접수
+      const requestResult = await apiRequestReading(profileId, serviceType);
+
+      // 캐시 히트
+      if (requestResult.cached && requestResult.result) {
+        set((state) => ({
+          currentReading: requestResult.result!,
+          isLoading: false,
+          processingStatus: 'completed',
+          readingCache: { ...state.readingCache, [profileId]: requestResult.result! },
+        }));
+        return;
+      }
+
+      const readingId = requestResult.readingId;
+      set({ pendingReadingId: readingId, processingStatus: 'processing' });
+
+      // 크레딧 즉시 갱신
       useCreditStore.getState().fetchCredits();
-      get().fetchReadings();
-      return result;
+
+      // Step 2: 워커에 처리 요청 (비동기, 타임아웃 가능)
+      processReading(readingId).catch(() => {
+        // 타임아웃이어도 폴링이 처리
+      });
+
+      // Step 3: 폴링으로 완료 확인
+      const poll = async () => {
+        const maxAttempts = 60; // 최대 3분
+        for (let i = 0; i < maxAttempts; i++) {
+          await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
+
+          try {
+            const status = await pollReadingStatus(readingId);
+
+            if (status.status === 'completed' && status.result) {
+              set((state) => ({
+                currentReading: status.result!,
+                isLoading: false,
+                processingStatus: 'completed',
+                pendingReadingId: null,
+                processingInfo: {
+                  duration_ms: status.duration_ms,
+                  api_cost: status.api_cost,
+                },
+                readingCache: { ...state.readingCache, [profileId]: status.result! },
+              }));
+              get().fetchReadings();
+              return;
+            }
+
+            if (status.status === 'failed') {
+              set({
+                isLoading: false,
+                processingStatus: 'failed',
+                pendingReadingId: null,
+                error: status.failure_reason || '풀이에 실패했습니다',
+                processingInfo: {
+                  failure_reason: status.failure_reason,
+                  refunded: true,
+                },
+              });
+              useCreditStore.getState().fetchCredits(); // 환불 반영
+              return;
+            }
+
+            // 아직 processing 중 — 계속 폴링
+          } catch {
+            // 폴링 실패 시 재시도
+          }
+        }
+
+        // 타임아웃
+        set({
+          isLoading: false,
+          processingStatus: 'failed',
+          error: '처리 시간이 초과되었습니다. 잠시 후 보관함을 확인해주세요.',
+        });
+      };
+
+      poll();
+
     } catch (err) {
       const message = err instanceof Error ? err.message : '풀이 요청에 실패했습니다';
-      set({ error: message, isLoading: false, pendingReadingProfileId: null });
-      throw err;
+      set({
+        error: message,
+        isLoading: false,
+        processingStatus: 'failed',
+        pendingReadingId: null,
+      });
     }
   },
 
@@ -88,12 +190,17 @@ export const useSajuStore = create<SajuState>((set, get) => ({
     const { data, error } = await supabase
       .from('readings')
       .select('*')
-      .eq('status', 'completed')
+      .eq('processing_status', 'completed')
       .order('created_at', { ascending: false });
 
-    if (error) throw new Error(error.message);
+    if (error) return;
     set({ readings: data || [] });
   },
 
-  clearCurrentReading: () => set({ currentReading: null }),
+  clearCurrentReading: () => set({
+    currentReading: null,
+    processingStatus: 'idle',
+    error: null,
+    processingInfo: null,
+  }),
 }));
