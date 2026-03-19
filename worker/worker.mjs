@@ -361,7 +361,8 @@ async function processReading(reading) {
     // thinking 활성화 시 → tool_choice auto (thinking이 더 나은 결과)
     // thinking 비활성화 시 → tool_choice forced (JSON 보장)
     if (config.use_thinking && config.thinking_type) {
-      params.thinking = { type: config.thinking_type, budget_tokens: 10000 };
+      const budgetTokens = Math.min(10000, Math.floor(config.max_tokens * 0.4));
+      params.thinking = { type: config.thinking_type, budget_tokens: budgetTokens };
       params.tool_choice = { type: 'auto' };
     } else {
       params.tool_choice = { type: 'tool', name: toolSchema.name };
