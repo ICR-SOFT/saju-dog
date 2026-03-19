@@ -112,10 +112,10 @@ export function SajuChat() {
                     <span className="text-lg">🐕</span>
                   </div>
                 )}
-                <div className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm ${
+                <div className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
                   msg.role === 'user'
-                    ? 'bg-brown text-cream rounded-br-sm'
-                    : 'bg-white text-dark border border-cream-dark rounded-bl-sm'
+                    ? 'bg-gradient-to-br from-brown to-brown-dark text-cream rounded-br-sm shadow-md'
+                    : 'bg-white text-dark border border-cream-dark rounded-bl-sm card-glow'
                 }`}>
                   {msg.content}
                 </div>

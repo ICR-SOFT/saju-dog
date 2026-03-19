@@ -95,19 +95,19 @@ export function ReadingDetail() {
 
   return (
     <Layout>
-      {/* 뒤로가기 */}
-      <button
-        onClick={() => navigate('/archive')}
-        className="flex items-center gap-1 text-warm-gray text-sm mb-4 hover:text-dark transition-colors"
-      >
-        <span>←</span>
-        <span>보관함으로 돌아가기</span>
-      </button>
-
       {/* 헤더 */}
-      <div className="text-center mb-6 -mx-4 px-4 pt-4 pb-5 gradient-hero rounded-b-3xl">
-        <span className="text-4xl">{serviceInfo.emoji}</span>
-        <h2 className="text-xl font-bold text-dark font-serif mt-2">
+      <div className="text-center mb-6 -mx-4 -mt-4 px-4 pt-6 pb-5 gradient-hero rounded-b-3xl">
+        <button
+          onClick={() => navigate('/archive')}
+          className="absolute left-4 top-5 flex items-center gap-1 text-warm-gray text-sm hover:text-dark transition-colors"
+        >
+          <span>←</span>
+          <span>보관함</span>
+        </button>
+        <div className="w-14 h-14 mx-auto mb-2 rounded-full bg-brown/10 flex items-center justify-center border border-brown/10">
+          <span className="text-3xl">{serviceInfo.emoji}</span>
+        </div>
+        <h2 className="text-xl font-bold text-dark font-serif">
           {serviceInfo.label}
         </h2>
         <p className="text-sm text-warm-gray mt-1">
@@ -163,24 +163,26 @@ export function ReadingDetail() {
           )}
 
           {/* 공유 버튼 */}
-          <Button
-            variant="secondary"
-            size="md"
-            onClick={async () => {
-              if (!reading) return;
-              try {
-                const url = await createShareLink(reading.id);
-                await navigator.clipboard.writeText(url);
-                setShareToast('링크가 복사되었어요!');
-                setTimeout(() => setShareToast(''), 2000);
-              } catch {
-                setShareToast('공유 링크 생성에 실패했어요');
-                setTimeout(() => setShareToast(''), 2000);
-              }
-            }}
-          >
-            🔗 공유하기
-          </Button>
+          <Card className="text-center bg-gradient-to-r from-amber-50 to-orange-50 border-brown/10">
+            <p className="text-sm text-warm-gray mb-2">친구에게 사주풀이를 공유해보세요</p>
+            <Button
+              size="lg"
+              onClick={async () => {
+                if (!reading) return;
+                try {
+                  const url = await createShareLink(reading.id);
+                  await navigator.clipboard.writeText(url);
+                  setShareToast('링크가 복사되었어요!');
+                  setTimeout(() => setShareToast(''), 2000);
+                } catch {
+                  setShareToast('공유 링크 생성에 실패했어요');
+                  setTimeout(() => setShareToast(''), 2000);
+                }
+              }}
+            >
+              🔗 공유하기
+            </Button>
+          </Card>
 
           <Recommendations exclude={[reading.service_type as ServiceType]} />
         </div>

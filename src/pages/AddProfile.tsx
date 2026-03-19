@@ -81,7 +81,12 @@ export function AddProfile() {
 
   return (
     <Layout>
-      <h2 className="text-xl font-bold text-dark mb-4 font-serif">프로필 등록</h2>
+      {/* 헤더 */}
+      <div className="text-center mb-5 -mx-4 -mt-4 px-4 pt-6 pb-5 gradient-hero rounded-b-3xl">
+        <span className="text-3xl">🐾</span>
+        <h2 className="text-xl font-bold text-dark font-serif mt-1">새 프로필 등록</h2>
+        <p className="text-sm text-warm-gray mt-1">사주 분석을 위한 정보를 입력해주세요</p>
+      </div>
 
       <Card>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -96,7 +101,7 @@ export function AddProfile() {
           <div>
             <label className="text-sm font-medium text-dark-light block mb-1.5">관계</label>
             <select
-              className="w-full rounded-xl border border-warm-gray-light/50 bg-white px-4 py-2.5 text-dark outline-none focus:border-brown"
+              className="w-full rounded-xl border border-warm-gray-light/50 bg-white px-4 py-2.5 text-dark outline-none focus:border-brown focus:ring-1 focus:ring-brown/20 text-sm transition-all"
               value={form.relation}
               onChange={e => updateField('relation', e.target.value)}
             >
@@ -117,10 +122,10 @@ export function AddProfile() {
                   key={g}
                   type="button"
                   onClick={() => updateField('gender', g)}
-                  className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all border-2 ${
                     form.gender === g
-                      ? 'bg-brown text-cream'
-                      : 'bg-cream-dark text-warm-gray'
+                      ? 'bg-brown text-cream border-brown shadow-md'
+                      : 'bg-white text-warm-gray border-cream-dark hover:border-brown/30'
                   }`}
                 >
                   {g === 'male' ? '👦 남성' : '👧 여성'}
@@ -189,17 +194,17 @@ export function AddProfile() {
             <label className="text-sm font-medium text-dark-light block mb-1.5">달력</label>
             <div className="flex gap-2">
               {([
-                { value: 'solar', label: '양력' },
-                { value: 'lunar', label: '음력' },
+                { value: 'solar', label: '☀️ 양력' },
+                { value: 'lunar', label: '🌙 음력' },
               ] as const).map(cal => (
                 <button
                   key={cal.value}
                   type="button"
                   onClick={() => updateField('calendarType', cal.value)}
-                  className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all border-2 ${
                     form.calendarType === cal.value
-                      ? 'bg-brown text-cream'
-                      : 'bg-cream-dark text-warm-gray'
+                      ? 'bg-brown text-cream border-brown shadow-md'
+                      : 'bg-white text-warm-gray border-cream-dark hover:border-brown/30'
                   }`}
                 >
                   {cal.label}
@@ -212,6 +217,20 @@ export function AddProfile() {
             등록하기
           </Button>
         </form>
+      </Card>
+
+      {/* 도움말 카드 */}
+      <Card className="mt-4 bg-gradient-to-br from-amber-50/50 to-yellow-50/30 border-amber-100/50" padding="sm">
+        <div className="flex items-start gap-2">
+          <span className="text-lg">💡</span>
+          <div>
+            <p className="text-xs font-medium text-dark mb-1">정확한 사주를 위한 팁</p>
+            <p className="text-xs text-warm-gray leading-relaxed">
+              태어난 시간을 정확히 입력하면 시주까지 반영된 더 정확한 사주풀이를 받을 수 있어요.
+              시간을 모르시면 비워두셔도 괜찮아요!
+            </p>
+          </div>
+        </div>
       </Card>
     </Layout>
   );

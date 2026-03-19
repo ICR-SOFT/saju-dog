@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
 const NAV_ITEMS = [
@@ -11,6 +12,7 @@ const NAV_ITEMS = [
 export function BottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [logoError, setLogoError] = useState(false);
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-cream-dark safe-area-bottom">
@@ -28,11 +30,20 @@ export function BottomNav() {
                 className="flex-1 flex flex-col items-center -mt-5 relative z-10"
               >
                 <div
-                  className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg ring-4 ring-white transition-transform active:scale-95 ${
+                  className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg ring-4 ring-white transition-transform active:scale-95 overflow-hidden ${
                     isActive ? 'bg-brown' : 'bg-brown-light'
                   }`}
                 >
-                  <span className="text-2xl">{item.icon}</span>
+                  {!logoError ? (
+                    <img
+                      src="/images/logo.png"
+                      alt="무료운세"
+                      className="w-10 h-10 rounded-full object-cover"
+                      onError={() => setLogoError(true)}
+                    />
+                  ) : (
+                    <span className="text-2xl">{item.icon}</span>
+                  )}
                 </div>
                 <span className={`text-[10px] mt-0.5 ${isActive ? 'text-brown font-medium' : 'text-warm-gray'}`}>
                   {item.label}

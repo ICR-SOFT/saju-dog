@@ -18,19 +18,30 @@ export function OhaengBar({ count }: OhaengBarProps) {
 
   return (
     <Card>
-      <h3 className="text-sm font-medium text-warm-gray mb-3">오행 분포</h3>
-      <div className="space-y-2">
+      <h3 className="text-sm font-bold text-dark mb-3 flex items-center gap-1.5">
+        <span className="w-6 h-6 rounded-full bg-brown/10 flex items-center justify-center text-xs">☯️</span>
+        오행 분포
+      </h3>
+      <div className="space-y-2.5">
         {OHAENG_INFO.map(({ key, label, color, emoji }) => (
           <div key={key} className="flex items-center gap-2">
-            <span className="text-sm w-6 text-center">{emoji}</span>
-            <span className="text-xs w-4 text-warm-gray">{label}</span>
-            <div className="flex-1 h-5 bg-cream-dark rounded-full overflow-hidden">
-              <div
-                className={`h-full ${color} rounded-full transition-all duration-500`}
-                style={{ width: `${(count[key] / total) * 100}%` }}
-              />
+            <div className="flex items-center gap-1 w-14">
+              <span className="text-sm">{emoji}</span>
+              <span className="text-xs font-medium text-dark">{label}</span>
             </div>
-            <span className="text-xs font-medium w-4 text-right text-dark">{count[key]}</span>
+            <div className="flex-1 h-6 bg-cream-dark rounded-full overflow-hidden">
+              <div
+                className={`h-full ${color} rounded-full transition-all duration-500 flex items-center justify-end pr-1.5`}
+                style={{ width: `${Math.max((count[key] / total) * 100, 8)}%` }}
+              >
+                {count[key] > 0 && (
+                  <span className="text-[10px] font-bold text-white" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
+                    {count[key]}
+                  </span>
+                )}
+              </div>
+            </div>
+            <span className="text-xs font-bold w-5 text-right text-dark">{count[key]}</span>
           </div>
         ))}
       </div>

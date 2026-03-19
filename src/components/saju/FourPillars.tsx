@@ -10,8 +10,11 @@ export function FourPillars({ data }: FourPillarsProps) {
   const { pillars } = data;
 
   return (
-    <Card>
-      <h3 className="text-sm font-medium text-warm-gray mb-3 text-center">사주팔자</h3>
+    <Card className="bg-gradient-to-br from-white to-cream-dark/30">
+      <h3 className="text-sm font-bold text-dark mb-3 text-center flex items-center justify-center gap-1.5">
+        <span className="w-6 h-6 rounded-full bg-brown/10 flex items-center justify-center text-xs">🏛️</span>
+        사주팔자
+      </h3>
       <div className="flex justify-center gap-3">
         <PillarCard pillar={pillars.hour} label="시주" />
         <PillarCard pillar={pillars.day} label="일주" isDay />

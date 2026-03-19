@@ -8,11 +8,14 @@ interface ChapterAccordionProps {
 }
 
 export function ChapterAccordion({ chapters }: ChapterAccordionProps) {
-  const [openId, setOpenId] = useState<string | null>(chapters[0]?.id ?? null);
+  const safeChapters = Array.isArray(chapters) ? chapters : [];
+  const [openId, setOpenId] = useState<string | null>(safeChapters[0]?.id ?? null);
+
+  if (safeChapters.length === 0) return null;
 
   return (
     <div className="space-y-2">
-      {chapters.map(chapter => {
+      {safeChapters.map(chapter => {
         const isOpen = openId === chapter.id;
         return (
           <Card key={chapter.id} padding="sm" className="overflow-hidden">

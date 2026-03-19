@@ -67,10 +67,16 @@ export function Compatibility() {
   if (profiles.length < 2) {
     return (
       <Layout>
-        <h2 className="text-xl font-bold text-dark mb-4 font-serif">궁합</h2>
+        {/* 헤더 */}
+        <div className="text-center mb-5 -mx-4 -mt-4 px-4 pt-6 pb-5 gradient-hero rounded-b-3xl">
+          <span className="text-3xl">💕</span>
+          <h2 className="text-xl font-bold text-dark font-serif mt-1">궁합</h2>
+        </div>
         <Card className="text-center py-8">
-          <p className="text-4xl mb-3">💕</p>
-          <p className="text-warm-gray mb-3">두 명 이상의 프로필이 필요해요</p>
+          <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-pink-50 flex items-center justify-center">
+            <span className="text-3xl">💕</span>
+          </div>
+          <p className="text-warm-gray mb-3 font-medium">두 명 이상의 프로필이 필요해요</p>
           <p className="text-sm text-warm-gray-light mb-4">현재 {profiles.length}개 등록됨</p>
           <Button onClick={() => navigate('/add-profile')}>프로필 추가하기</Button>
         </Card>
@@ -80,7 +86,12 @@ export function Compatibility() {
 
   return (
     <Layout>
-      <h2 className="text-xl font-bold text-dark mb-4 font-serif">궁합</h2>
+      {/* 헤더 */}
+      <div className="text-center mb-5 -mx-4 -mt-4 px-4 pt-6 pb-5 gradient-hero rounded-b-3xl">
+        <span className="text-3xl">💕</span>
+        <h2 className="text-xl font-bold text-dark font-serif mt-1">궁합</h2>
+        <p className="text-sm text-warm-gray mt-1">두 사람의 인연과 케미를 확인해요</p>
+      </div>
 
       {!result ? (
         <Card>
@@ -94,11 +105,11 @@ export function Compatibility() {
 
               return (
                 <div key={index} className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-full bg-brown/10 flex items-center justify-center text-xs font-bold text-brown shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-200 to-rose-300 flex items-center justify-center text-xs font-bold text-white shrink-0 shadow-sm ring-2 ring-white">
                     {index + 1}
                   </div>
                   <select
-                    className="flex-1 rounded-xl border border-warm-gray-light/50 bg-white px-4 py-2.5 text-dark outline-none focus:border-brown text-sm"
+                    className="flex-1 rounded-xl border border-warm-gray-light/50 bg-white px-4 py-2.5 text-dark outline-none focus:border-brown focus:ring-1 focus:ring-brown/20 text-sm transition-all"
                     value={id}
                     onChange={e => handleChange(index, e.target.value)}
                   >
@@ -144,7 +155,20 @@ export function Compatibility() {
           {/* 점수 */}
           {result.overallScore !== undefined && (
             <Card className="text-center">
-              <p className="text-5xl font-bold text-brown font-serif">{result.overallScore}</p>
+              <div className="relative w-32 h-32 mx-auto mb-3">
+                <div
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    background: `conic-gradient(#ec4899 ${result.overallScore}%, #E8DFD3 ${result.overallScore}%)`,
+                    padding: '5px',
+                  }}
+                >
+                  <div className="w-full h-full rounded-full bg-white flex flex-col items-center justify-center">
+                    <span className="text-4xl font-bold text-brown font-serif">{result.overallScore}</span>
+                    <span className="text-xs text-warm-gray">점</span>
+                  </div>
+                </div>
+              </div>
               <p className="text-sm text-warm-gray mt-1">궁합 점수</p>
               <p className="text-base font-medium text-dark mt-2 font-serif">"{result.summary}"</p>
             </Card>

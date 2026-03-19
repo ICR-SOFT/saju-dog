@@ -81,18 +81,26 @@ export function SharedReading() {
   return (
     <Layout>
       {/* 브랜딩 헤더 */}
-      <div className="text-center mb-6 -mx-4 -mt-4 px-4 pt-6 pb-5 gradient-hero rounded-b-3xl">
-        <div className="flex justify-center items-center gap-2 mb-2">
-          <span className="text-3xl">🐕</span>
+      <div
+        className="text-center mb-6 -mx-4 -mt-4 px-4 pt-6 pb-6 rounded-b-3xl relative overflow-hidden"
+        style={{
+          background: 'linear-gradient(135deg, #C67A3C15 0%, #F5F0E8 50%, #D4945E10 100%)',
+        }}
+      >
+        <div className="absolute inset-0 paw-bg opacity-30" />
+        <div className="relative z-10">
+          <div className="flex justify-center items-center gap-2 mb-2">
+            <img src="/images/logo.png" alt="사주독" className="w-10 h-10 rounded-full shadow-sm" />
+          </div>
+          <p className="text-xs text-warm-gray mb-2 font-medium">사주독 — 사주로 보는 나의 이야기</p>
+          <span className="text-4xl">{serviceInfo.emoji}</span>
+          <h2 className="text-xl font-bold text-dark font-serif mt-2">
+            {serviceInfo.label}
+          </h2>
+          <p className="text-sm text-warm-gray mt-1">
+            {new Date(reading.created_at).toLocaleDateString('ko-KR')}
+          </p>
         </div>
-        <p className="text-xs text-warm-gray mb-1">사주독 — 사주로 보는 나의 이야기</p>
-        <span className="text-4xl">{serviceInfo.emoji}</span>
-        <h2 className="text-xl font-bold text-dark font-serif mt-2">
-          {serviceInfo.label}
-        </h2>
-        <p className="text-sm text-warm-gray mt-1">
-          {new Date(reading.created_at).toLocaleDateString('ko-KR')}
-        </p>
       </div>
 
       {result ? (
@@ -158,13 +166,21 @@ export function SharedReading() {
 
       {/* CTA */}
       <div className="mt-8 text-center">
-        <Card className="bg-gradient-to-r from-amber-50 to-orange-50">
-          <p className="text-lg mb-1">🐕</p>
-          <p className="font-bold text-dark mb-1">나도 사주 보러 가기</p>
-          <p className="text-xs text-warm-gray mb-3">사주독에서 나만의 운세를 확인해보세요</p>
-          <Button onClick={() => navigate('/')} size="lg">
-            사주독 시작하기
-          </Button>
+        <Card
+          className="border-brown/15 relative overflow-hidden"
+          style={{
+            background: 'linear-gradient(135deg, #FEF3C7 0%, #FECACA20 50%, #FDE68A40 100%)',
+          }}
+        >
+          <div className="absolute inset-0 paw-bg opacity-20" />
+          <div className="relative z-10">
+            <span className="text-4xl animate-float inline-block">🐕</span>
+            <p className="font-bold text-dark text-lg mt-2 font-serif">나도 사주 보러 가기</p>
+            <p className="text-sm text-warm-gray mb-4">사주독에서 나만의 운세를 확인해보세요</p>
+            <Button onClick={() => navigate('/')} size="lg">
+              사주독 시작하기
+            </Button>
+          </div>
         </Card>
       </div>
     </Layout>

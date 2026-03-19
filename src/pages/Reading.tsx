@@ -57,6 +57,15 @@ export function Reading() {
   // 현재 표시할 결과: store cache > currentReading > DB cache
   const displayResult = cachedResult ?? currentReading ?? null;
 
+  // 예상 대기시간 계산 (최근 완료된 readings의 평균 duration)
+  const estimatedWaitSec = useMemo(() => {
+    const completed = readings.filter(r => r.processing_status === 'completed' && r.processing_duration_ms);
+    if (completed.length === 0) return 45; // 기본값
+    const recent = completed.slice(0, 10);
+    const avg = recent.reduce((sum, r) => sum + (r.processing_duration_ms || 0), 0) / recent.length;
+    return Math.round(avg / 1000);
+  }, [readings]);
+
   // Phase를 store 상태에서 파생
   const phase: ReadingPhase = useMemo(() => {
     // 스토어에서 이 프로필을 처리 중
@@ -140,22 +149,40 @@ export function Reading() {
     );
   }
 
+  const SERVICE_LABELS: Record<string, string> = {
+    comprehensive: '종합 사주풀이',
+    daeun: '대운 해설',
+    yearly: '연도별 운세',
+    luckyday: '택일/길일',
+    love: '연애 시기 분석',
+    wealth: '재물운 특화',
+    health: '건강운 분석',
+    career: '직업 적성 분석',
+    pastlife: '전생 이야기',
+    moving: '이사/부동산 운',
+  };
+
   const pillarNames = ['year', 'month', 'day', 'hour'] as const;
   const pillarLabels = { year: '년주', month: '월주', day: '일주', hour: '시주' };
 
   return (
     <Layout>
       {/* 프로필 헤더 */}
-      <div className="text-center mb-4 -mx-4 -mt-4 px-4 pt-5 pb-4 gradient-hero rounded-b-3xl">
+      <div className="text-center mb-4 -mx-4 -mt-4 px-4 pt-6 pb-5 gradient-hero rounded-b-3xl">
+        <div className="flex justify-center mb-2">
+          <div className="w-14 h-14 rounded-full bg-brown/10 flex items-center justify-center border-2 border-brown/15 shadow-sm">
+            <span className="text-3xl">{profile.gender === 'male' ? '👦' : '👧'}</span>
+          </div>
+        </div>
         <h2 className="text-xl font-bold text-dark font-serif">
-          {profile.name}님의 사주풀이
+          {profile.name}님의 {serviceType !== 'comprehensive' && SERVICE_LABELS[serviceType] ? SERVICE_LABELS[serviceType] : '사주풀이'}
         </h2>
         {sajuData && (
           <div className="flex flex-wrap gap-2 justify-center mt-2">
-            <span className="text-xs bg-brown/10 text-brown rounded-full px-3 py-1 font-medium">
+            <span className="text-xs bg-white/70 text-brown rounded-full px-3 py-1 font-medium shadow-sm border border-brown/10">
               {sajuData.ddi.fullName}
             </span>
-            <span className="text-xs bg-brown/10 text-brown rounded-full px-3 py-1 font-medium">
+            <span className="text-xs bg-white/70 text-brown rounded-full px-3 py-1 font-medium shadow-sm border border-brown/10">
               {sajuData.zodiac.emoji} {sajuData.zodiac.name}
             </span>
           </div>
@@ -241,16 +268,22 @@ export function Reading() {
       )}
 
       {/* 복돌이 풀이 섹션 */}
-      <div className="border-t-2 border-brown/20 pt-4 mt-2">
-        <h3 className="text-lg font-bold text-dark font-serif mb-3">
-          🐕 복돌이 풀이
-        </h3>
+      <div className="mt-4">
+        <Card className="bg-gradient-to-br from-amber-50/80 to-orange-50/50 border-brown/10 mb-4">
+          <h3 className="text-lg font-bold text-dark font-serif flex items-center gap-2">
+            <span className="w-8 h-8 rounded-full bg-brown/10 flex items-center justify-center text-lg">🐕</span>
+            복돌이 풀이
+          </h3>
+        </Card>
 
         {/* 이미 풀이된 결과가 있는 경우 (DB 캐시) */}
         {cachedReading?.result && activePhase === 'view' ? (
           <div className="space-y-4">
-            <Card className="text-center bg-green-50/50 border-green-200">
-              <p className="text-xs text-green-600 mb-1">이전 풀이 결과</p>
+            <Card className="text-center bg-gradient-to-br from-green-50/60 to-emerald-50/40 border-green-200/50">
+              <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-green-100 flex items-center justify-center">
+                <span className="text-lg">✅</span>
+              </div>
+              <p className="text-xs text-green-600 mb-1 font-medium">이전 풀이 결과</p>
               <p className="text-lg font-medium text-dark font-serif">
                 "{(cachedReading.result as any).summary}"
               </p>
@@ -288,7 +321,7 @@ export function Reading() {
               </div>
               <div className="flex justify-between">
                 <span className="text-warm-gray">예상 소요</span>
-                <span className="text-dark">약 30~60초</span>
+                <span className="text-dark">약 {estimatedWaitSec}초</span>
               </div>
             </div>
 
@@ -312,13 +345,16 @@ export function Reading() {
                 {processingStatus === 'requesting' ? '요청을 접수하고 있어요...' : '복돌이가 12~15개 챕터를 작성 중이에요'}
               </p>
               <p className="text-xs text-warm-gray-light">
-                {processingStatus === 'requesting' ? '잠시만 기다려주세요' : '페이지를 나가도 괜찮아요. 완료되면 보관함에서 확인할 수 있어요!'}
+                {processingStatus === 'requesting' ? '잠시만 기다려주세요' : `예상 약 ${estimatedWaitSec}초 · 페이지를 나가도 보관함에서 확인할 수 있어요`}
               </p>
             </div>
           </Card>
         ) : activePhase === 'error' ? (
-          <Card className="text-center">
-            <p className="text-red-500 mb-3 text-sm">{error || '풀이를 불러올 수 없습니다'}</p>
+          <Card className="text-center bg-gradient-to-br from-red-50/50 to-orange-50/30 border-red-200/50">
+            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-red-100 flex items-center justify-center">
+              <span className="text-2xl">😢</span>
+            </div>
+            <p className="text-red-500 mb-3 text-sm font-medium">{error || '풀이를 불러올 수 없습니다'}</p>
             {processingInfo?.refunded && (
               <p className="text-xs text-green-600 mb-3">크레딧이 자동 환불되었습니다</p>
             )}

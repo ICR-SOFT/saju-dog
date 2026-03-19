@@ -22,10 +22,10 @@ interface DailyResult {
 
 const SCORE_EMOJIS = ['', '😢', '😐', '🙂', '😊', '🤩'];
 const CATEGORY_INFO = [
-  { key: 'love' as const, label: '연애', emoji: '💕', bgColor: 'bg-gradient-to-br from-pink-50 to-rose-50' },
-  { key: 'money' as const, label: '재물', emoji: '💰', bgColor: 'bg-gradient-to-br from-yellow-50 to-amber-50' },
-  { key: 'work' as const, label: '직장', emoji: '💼', bgColor: 'bg-gradient-to-br from-blue-50 to-indigo-50' },
-  { key: 'health' as const, label: '건강', emoji: '🏥', bgColor: 'bg-gradient-to-br from-green-50 to-emerald-50' },
+  { key: 'love' as const, label: '연애', emoji: '💕', bgColor: 'bg-gradient-to-br from-pink-50 to-rose-50', iconBg: 'bg-pink-100 ring-2 ring-pink-200/50' },
+  { key: 'money' as const, label: '재물', emoji: '💰', bgColor: 'bg-gradient-to-br from-yellow-50 to-amber-50', iconBg: 'bg-yellow-100 ring-2 ring-yellow-200/50' },
+  { key: 'work' as const, label: '직장', emoji: '💼', bgColor: 'bg-gradient-to-br from-blue-50 to-indigo-50', iconBg: 'bg-blue-100 ring-2 ring-blue-200/50' },
+  { key: 'health' as const, label: '건강', emoji: '🏥', bgColor: 'bg-gradient-to-br from-green-50 to-emerald-50', iconBg: 'bg-green-100 ring-2 ring-green-200/50' },
 ];
 
 export function DailyFortune() {
@@ -85,13 +85,25 @@ export function DailyFortune() {
         <div className="space-y-3">
           {/* 총운 */}
           <Card className="text-center">
-            <div className="text-4xl mb-2">
-              {SCORE_EMOJIS[result.overallLuck] || '🐕'}
+            <div className="relative w-28 h-28 mx-auto mb-3">
+              {/* 색 링 */}
+              <div
+                className="absolute inset-0 rounded-full"
+                style={{
+                  background: `conic-gradient(#C67A3C ${result.overallLuck * 20}%, #E8DFD3 ${result.overallLuck * 20}%)`,
+                  padding: '4px',
+                }}
+              >
+                <div className="w-full h-full rounded-full bg-white flex flex-col items-center justify-center">
+                  <span className="text-3xl">{SCORE_EMOJIS[result.overallLuck] || '🐕'}</span>
+                  <span className="text-2xl font-bold text-brown font-serif mt-0.5">{result.overallLuck}/5</span>
+                </div>
+              </div>
             </div>
-            <p className="font-medium text-dark font-serif">{result.summary}</p>
+            <p className="font-medium text-dark font-serif text-lg">{result.summary}</p>
             <div className="flex justify-center gap-1 mt-2">
               {[1, 2, 3, 4, 5].map(n => (
-                <span key={n} className={`text-lg ${n <= result.overallLuck ? '' : 'opacity-20'}`}>⭐</span>
+                <span key={n} className={`text-xl ${n <= result.overallLuck ? '' : 'opacity-20'}`}>⭐</span>
               ))}
             </div>
           </Card>
@@ -102,12 +114,19 @@ export function DailyFortune() {
               const data = result.categories[cat.key];
               return (
                 <Card key={cat.key} padding="sm" className={cat.bgColor}>
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <div className="w-8 h-8 rounded-lg bg-white/70 flex items-center justify-center shadow-sm">
-                      <span>{cat.emoji}</span>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className={`w-10 h-10 rounded-full ${cat.iconBg} flex items-center justify-center shadow-sm`}>
+                      <span className="text-lg">{cat.emoji}</span>
                     </div>
-                    <span className="text-xs font-bold text-dark">{cat.label}</span>
-                    <span className="ml-auto text-xs text-brown font-bold">{data.score}/5</span>
+                    <div className="flex-1">
+                      <span className="text-xs font-bold text-dark">{cat.label}</span>
+                      <div className="flex gap-0.5 mt-0.5">
+                        {[1, 2, 3, 4, 5].map(n => (
+                          <span key={n} className={`text-[10px] ${n <= data.score ? '' : 'opacity-20'}`}>⭐</span>
+                        ))}
+                      </div>
+                    </div>
+                    <span className="text-sm text-brown font-bold">{data.score}/5</span>
                   </div>
                   <p className="text-xs text-dark-light leading-relaxed">{data.message}</p>
                 </Card>
@@ -124,20 +143,26 @@ export function DailyFortune() {
 
           {/* 행운 아이템 */}
           {result.luckyItems && (
-            <Card padding="sm">
-              <h3 className="text-xs font-medium text-warm-gray mb-2 text-center">🍀 행운 아이템</h3>
-              <div className="flex justify-around text-center text-xs">
-                <div className="bg-cream-dark/50 rounded-xl px-3 py-2">
-                  <p className="text-warm-gray mb-0.5">색</p>
-                  <p className="font-medium text-dark">{result.luckyItems.color}</p>
+            <Card className="bg-gradient-to-br from-emerald-50/50 to-green-50/30">
+              <h3 className="text-sm font-bold text-dark mb-3 text-center flex items-center justify-center gap-1.5">
+                <span className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center text-sm">🍀</span>
+                행운 아이템
+              </h3>
+              <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                <div className="bg-white/70 rounded-2xl px-3 py-3 shadow-sm border border-green-100/50">
+                  <span className="text-lg">🎨</span>
+                  <p className="text-warm-gray mt-1 mb-0.5">행운 색</p>
+                  <p className="font-bold text-dark">{result.luckyItems.color}</p>
                 </div>
-                <div className="bg-cream-dark/50 rounded-xl px-3 py-2">
-                  <p className="text-warm-gray mb-0.5">숫자</p>
-                  <p className="font-medium text-dark">{result.luckyItems.number}</p>
+                <div className="bg-white/70 rounded-2xl px-3 py-3 shadow-sm border border-green-100/50">
+                  <span className="text-lg">🔢</span>
+                  <p className="text-warm-gray mt-1 mb-0.5">행운 숫자</p>
+                  <p className="font-bold text-dark">{result.luckyItems.number}</p>
                 </div>
-                <div className="bg-cream-dark/50 rounded-xl px-3 py-2">
-                  <p className="text-warm-gray mb-0.5">음식</p>
-                  <p className="font-medium text-dark">{result.luckyItems.food}</p>
+                <div className="bg-white/70 rounded-2xl px-3 py-3 shadow-sm border border-green-100/50">
+                  <span className="text-lg">🍽️</span>
+                  <p className="text-warm-gray mt-1 mb-0.5">행운 음식</p>
+                  <p className="font-bold text-dark">{result.luckyItems.food}</p>
                 </div>
               </div>
             </Card>
