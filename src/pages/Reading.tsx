@@ -40,8 +40,9 @@ export function Reading() {
   const storeProfile = profiles.find(p => p.id === profileId);
   const profile = storeProfile || directProfile;
 
-  // 캐시된 결과 확인 (store readingCache 우선, 그 다음 readings DB 캐시)
-  const cachedResult = profileId ? readingCache[profileId] : undefined;
+  // 캐시된 결과 확인 (store readingCache 우선, 서비스 타입별)
+  const cacheKey = profileId ? `${profileId}:${serviceType}` : '';
+  const cachedResult = cacheKey ? readingCache[cacheKey] : undefined;
 
   // DB readings에서 이 프로필의 상태 확인
   const cachedReading = readings.find(

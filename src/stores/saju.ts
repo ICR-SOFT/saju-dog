@@ -103,7 +103,7 @@ export const useSajuStore = create<SajuState>((set, get) => ({
           currentReading: requestResult.result!,
           isLoading: false,
           processingStatus: 'completed',
-          readingCache: { ...state.readingCache, [profileId]: requestResult.result! },
+          readingCache: { ...state.readingCache, [`${profileId}:${serviceType}`]: requestResult.result! },
         }));
         return;
       }
@@ -133,7 +133,7 @@ export const useSajuStore = create<SajuState>((set, get) => ({
                   duration_ms: status.duration_ms,
                   api_cost: status.api_cost,
                 },
-                readingCache: { ...state.readingCache, [profileId]: status.result! },
+                readingCache: { ...state.readingCache, [`${profileId}:${serviceType}`]: status.result! },
               }));
               get().fetchReadings();
               return;
