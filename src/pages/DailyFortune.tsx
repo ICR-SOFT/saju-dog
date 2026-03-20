@@ -167,7 +167,12 @@ export function DailyFortune() {
           <p className="text-warm-gray animate-pulse">운세 확인 중...</p>
         </Card>
       ) : phase === 'loading' ? (
-        <PhotoLoading />
+        <Card className="text-center py-4 gradient-hero">
+          <PhotoLoading />
+          <p className="text-xs text-warm-gray animate-pulse-warm mt-2">복돌이가 오늘의 운세를 살펴보고 있어요...</p>
+          <p className="text-xs text-warm-gray-light mt-1">풀이가 완료되면 보관함에서도 확인할 수 있어요</p>
+          <p className="text-[10px] text-warm-gray-light/70 mt-0.5">완료 전까지 잠시만 기다려주세요</p>
+        </Card>
       ) : error ? (
         <Card className="text-center">
           <p className="text-red-500 mb-3">{error}</p>

@@ -165,7 +165,8 @@ export function Compatibility() {
         <Card className="text-center py-4 gradient-hero mb-4">
           <PhotoLoading />
           <p className="text-xs text-warm-gray animate-pulse-warm mt-2">복돌이가 인연을 살펴보고 있어요...</p>
-          <p className="text-xs text-warm-gray-light">페이지를 나가도 보관함에서 확인할 수 있어요</p>
+          <p className="text-xs text-warm-gray-light mt-1">풀이가 완료되면 보관함에서도 확인할 수 있어요</p>
+          <p className="text-[10px] text-warm-gray-light/70 mt-0.5">완료 전까지 잠시만 기다려주세요</p>
         </Card>
       )}
 

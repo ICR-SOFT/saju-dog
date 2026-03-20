@@ -402,8 +402,13 @@ export function Reading() {
                 : <LoadingMessages />
               }
               <p className="text-xs text-warm-gray-light">
-                {processingStatus === 'requesting' ? '잠시만 기다려주세요' : `예상 약 ${estimatedWaitSec}초 · 페이지를 나가도 보관함에서 확인할 수 있어요`}
+                {processingStatus === 'requesting'
+                  ? '요청이 접수될 때까지 잠시만 기다려주세요'
+                  : `복돌이가 열심히 풀이 중이에요! 예상 약 ${estimatedWaitSec}초`}
               </p>
+              {processingStatus === 'processing' && (
+                <p className="text-xs text-warm-gray-light mt-1">페이지를 나가도 완료되면 보관함에서 확인할 수 있어요</p>
+              )}
             </div>
           </Card>
         ) : activePhase === 'error' ? (
