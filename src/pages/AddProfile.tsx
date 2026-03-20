@@ -29,6 +29,16 @@ export function AddProfile() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+
+    // 수동 validation
+    if (!form.name.trim()) { setError('이름을 입력해주세요'); return; }
+    if (!form.birthYear || !form.birthMonth || !form.birthDay) { setError('생년월일을 입력해주세요'); return; }
+    const y = Number(form.birthYear), m = Number(form.birthMonth), d = Number(form.birthDay);
+    if (y < 1900 || y > 2100) { setError('올바른 연도를 입력해주세요'); return; }
+    if (m < 1 || m > 12) { setError('올바른 월을 입력해주세요'); return; }
+    if (d < 1 || d > 31) { setError('올바른 일을 입력해주세요'); return; }
+
     setIsLoading(true);
 
     try {
@@ -150,31 +160,25 @@ export function AddProfile() {
             <label className="text-sm font-medium text-dark-light block mb-1.5">생년월일</label>
             <div className="grid grid-cols-3 gap-2">
               <Input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 value={form.birthYear}
                 onChange={e => updateField('birthYear', e.target.value)}
                 placeholder="년"
-                min="1900"
-                max="2100"
-                required
               />
               <Input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 value={form.birthMonth}
                 onChange={e => updateField('birthMonth', e.target.value)}
                 placeholder="월"
-                min="1"
-                max="12"
-                required
               />
               <Input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 value={form.birthDay}
                 onChange={e => updateField('birthDay', e.target.value)}
                 placeholder="일"
-                min="1"
-                max="31"
-                required
               />
             </div>
           </div>
@@ -183,7 +187,7 @@ export function AddProfile() {
             <label className="text-sm font-medium text-dark-light block mb-1.5">태어난 시간</label>
             <div className="grid grid-cols-2 gap-2">
               <Input
-                type="number"
+                type="text" inputMode="numeric"
                 value={form.birthHour}
                 onChange={e => updateField('birthHour', e.target.value)}
                 placeholder="시 (0-23)"
@@ -191,7 +195,7 @@ export function AddProfile() {
                 max="23"
               />
               <Input
-                type="number"
+                type="text" inputMode="numeric"
                 value={form.birthMinute}
                 onChange={e => updateField('birthMinute', e.target.value)}
                 placeholder="분 (0-59)"
