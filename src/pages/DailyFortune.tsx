@@ -171,7 +171,7 @@ export function DailyFortune() {
       ) : error ? (
         <Card className="text-center">
           <p className="text-red-500 mb-3">{error}</p>
-          <Button variant="secondary" onClick={fetchDaily}>다시 시도</Button>
+          <Button variant="secondary" onClick={() => fetchDaily()}>다시 시도</Button>
         </Card>
       ) : result ? (
         <div className="space-y-3">
