@@ -1,5 +1,4 @@
 import { supabase } from './supabase.ts';
-import type {} from '@/types/api.ts';
 import type { SajuApiResponse } from '@/types/saju.ts';
 
 // ===== 큐 기반 API =====
@@ -13,17 +12,10 @@ export interface RequestResult {
   error?: string;
 }
 
-export interface WorkerResult {
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  result?: SajuApiResponse;
-  duration_ms?: number;
-  error?: string;
-  refunded?: boolean;
-}
-
 /**
- * Step 1: 풀이 요청 접수 (빠른 응답)
+ * 풀이 요청 접수 (빠른 응답)
  * 크레딧 차감 + pending reading 생성 + reading ID 반환
+ * EC2 워커가 자동으로 처리 → 프론트는 pollReadingStatus로 폴링
  */
 export async function requestReading(
   profileId: string,
@@ -47,23 +39,7 @@ export async function requestReading(
 }
 
 /**
- * Step 2: 풀이 처리 요청 (시간 소요)
- * pending → processing → completed/failed
- */
-export async function processReading(readingId: string): Promise<WorkerResult> {
-  const { data, error } = await supabase.functions.invoke('saju-worker', {
-    body: { readingId },
-  });
-
-  if (error) {
-    // 타임아웃이면 processing 상태일 수 있음 → 폴링으로 확인
-    return { status: 'processing' };
-  }
-  return data as WorkerResult;
-}
-
-/**
- * Step 3: 상태 폴링 (DB에서 직접 확인)
+ * 상태 폴링 (DB에서 직접 확인)
  */
 export async function pollReadingStatus(readingId: string): Promise<{
   status: string;
