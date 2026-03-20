@@ -11,8 +11,9 @@ import type { Gender, CalendarType } from '@/types/saju.ts';
 
 export function AddProfile() {
   const navigate = useNavigate();
-  const { addProfile } = useSajuStore();
+  void useSajuStore; // fetchProfiles는 아래서 직접 호출
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const [form, setForm] = useState({
     name: '',
@@ -49,26 +50,37 @@ export function AddProfile() {
         longitude: 126.978,
       });
 
-      // 프로필 저장
-      const profile = await addProfile({
-        name: form.name,
-        relation: form.relation,
-        birth_date: birthDate.toISOString(),
-        calendar_type: form.calendarType,
-        gender: form.gender,
-        use_true_solar: true,
-        birth_city: '서울',
-        longitude: 126.978,
-      });
+      // 프로필 저장 (calculated_saju 포함, 한 번의 INSERT)
+      // addProfile에서 user_id 자동 설정됨
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('로그인이 필요합니다');
 
-      // calculated_saju 업데이트
-      await supabase
+      const { error: insertError } = await supabase
         .from('saju_profiles')
-        .update({ calculated_saju: sajuResult })
-        .eq('id', profile.id);
+        .insert({
+          user_id: user.id,
+          name: form.name,
+          relation: form.relation,
+          birth_date: birthDate.toISOString(),
+          calendar_type: form.calendarType,
+          gender: form.gender,
+          use_true_solar: true,
+          birth_city: '서울',
+          longitude: 126.978,
+          calculated_saju: JSON.parse(JSON.stringify(sajuResult)),
+        })
+        .select()
+        .single();
+
+      if (insertError) throw new Error(insertError.message);
+
+      // 스토어에도 추가
+      useSajuStore.getState().fetchProfiles();
 
       navigate('/');
     } catch (err) {
+      const msg = err instanceof Error ? err.message : '프로필 등록에 실패했어요';
+      setError(msg);
       console.error('프로필 추가 실패:', err);
     } finally {
       setIsLoading(false);
@@ -212,6 +224,10 @@ export function AddProfile() {
               ))}
             </div>
           </div>
+
+          {error && (
+            <p className="text-sm text-red-500 text-center bg-red-50 rounded-xl p-2">{error}</p>
+          )}
 
           <Button type="submit" size="lg" isLoading={isLoading}>
             등록하기
