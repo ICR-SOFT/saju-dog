@@ -285,9 +285,7 @@ export function SharedReading() {
                     <span className="w-7 h-7 rounded-full bg-brown/10 flex items-center justify-center text-sm">🐾</span>
                     복돌이의 조언
                   </h3>
-                  <p className="text-sm text-dark-light leading-relaxed">
-                    {daily.advice}
-                  </p>
+                  <p className="text-sm text-dark-light leading-relaxed" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(daily.advice) }} />
                 </Card>
               )}
 
