@@ -92,19 +92,30 @@ async function callClaude(params) {
 
 // ===== 프롬프트 설정 로드 =====
 async function getPromptConfig(serviceType) {
-  // 먼저 해당 서비스 타입으로 조회
-  let { data, error } = await supabase
-    .from('prompt_configs').select('*')
-    .eq('service_type', serviceType).eq('is_active', true).single();
-
-  // 없으면 comprehensive fallback
-  if (error || !data) {
-    ({ data, error } = await supabase
+  // 해당 서비스 타입으로 조회 (최대 3회 재시도)
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const { data, error } = await supabase
       .from('prompt_configs').select('*')
-      .eq('service_type', 'comprehensive').eq('is_active', true).single());
+      .eq('service_type', serviceType).eq('is_active', true).single();
+
+    if (data) {
+      log('info', `Prompt config loaded: ${serviceType} (${data.id.slice(0, 8)})`);
+      return data;
+    }
+
+    if (attempt < 3) {
+      log('warn', `Prompt config query failed for "${serviceType}" (attempt ${attempt}/3): ${error?.message || 'no data'}`);
+      await sleep(1000);
+    }
   }
 
-  if (error || !data) throw new Error(`No prompt config: ${serviceType}`);
+  // 3회 실패 → comprehensive fallback (경고 로그)
+  log('error', `⚠️ FALLBACK: "${serviceType}" prompt not found after 3 attempts, using comprehensive`);
+  const { data, error } = await supabase
+    .from('prompt_configs').select('*')
+    .eq('service_type', 'comprehensive').eq('is_active', true).single();
+
+  if (error || !data) throw new Error(`No prompt config: ${serviceType} (and no comprehensive fallback)`);
   return data;
 }
 
@@ -154,7 +165,24 @@ ${participantBlocks}
 궁합을 JSON으로 작성해주세요.`;
   }
 
-  return `아래는 서버에서 정밀 계산된 사주 데이터입니다. 이 데이터만 기반으로 해설하세요.
+  // 서비스 타입별 분석 지시
+  const SERVICE_INSTRUCTIONS = {
+    comprehensive: '종합 사주풀이를 해주세요.',
+    daeun: '대운(10년 단위) 흐름을 시간순으로 상세 분석해주세요. 현재 대운과 다음 대운 전환 시점을 특히 상세히.',
+    yearly: '올해/특정연도 운세를 월별로 상세 분석해주세요.',
+    luckyday: '결혼/이사/개업 등 중요한 일의 길일을 월별로 추천해주세요.',
+    love: '연애/결혼 운세와 연애 시기를 분석해주세요. 이상형, 연애 스타일, 골든타임.',
+    wealth: '재물운을 특화 분석해주세요. 돈 버는 스타일, 투자 적기, 위험 시기.',
+    health: '건강운을 특화 분석해주세요. 오행 건강, 약한 장기, 운동/식이 조언.',
+    career: '직업 적성을 특화 분석해주세요. 추천 직종, 이직 타이밍, 성공 전략.',
+    pastlife: '전생 이야기를 사주 기반으로 재미있게 풀어주세요.',
+    moving: '이사/부동산 운을 특화 분석해주세요. 좋은 방위, 피할 방위, 이사 적기, 부동산 투자.',
+    daily: '오늘의 운세를 분석해주세요.',
+  };
+  const serviceInstruction = SERVICE_INSTRUCTIONS[reading.service_type] || SERVICE_INSTRUCTIONS.comprehensive;
+
+  return `[분석 유형: ${reading.service_type}]
+아래는 서버에서 정밀 계산된 사주 데이터입니다. 이 데이터만 기반으로 해설하세요.
 
 ## 기본 정보
 - 이름: ${data.input?.name || profile.name} / 성별: ${data.input?.gender === 'male' ? '남성' : '여성'}
@@ -194,8 +222,9 @@ ${data.daeun?.map(d => `- ${d.startAge}~${d.endAge}세: ${d.stem}${d.branch} [${
 ## ${data.currentYear?.year || new Date().getFullYear()}년 세운
 - ${data.currentYear?.stem || '?'}${data.currentYear?.branch || '?'}년
 
-위 모든 데이터를 종합하여 사주 풀이를 JSON으로 작성해주세요.
-신살, 귀인, 기둥별 관계, 띠, 별자리를 적극 활용하세요.`;
+[중요 지시] ${serviceInstruction}
+위 사주 데이터를 기반으로, 이 분석 유형(${reading.service_type})에 맞는 풀이를 JSON으로 작성하세요.
+종합 사주풀이처럼 일반적인 분석을 하지 말고, 반드시 요청된 분석 유형에 집중하세요.`;
 }
 
 // ===== Structured Outputs 스키마 (response_format: json_schema) =====
