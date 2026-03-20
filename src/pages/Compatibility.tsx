@@ -7,7 +7,7 @@ import { PhotoLoading } from '@/components/ui/PhotoLoading.tsx';
 import { Recommendations } from '@/components/saju/Recommendations.tsx';
 import { useSajuStore } from '@/stores/saju.ts';
 import { useCreditStore } from '@/stores/credit.ts';
-import { requestReading } from '@/lib/api.ts';
+import { requestReading, pollReadingStatus } from '@/lib/api.ts';
 
 const MAX_PEOPLE = 5;
 
@@ -34,25 +34,27 @@ export function Compatibility() {
     fetchReadings();
   }, [fetchReadings]);
 
-  // pending/processing이 있으면 5초마다 폴링
+  // 페이지 로드 시 진행 중인 궁합이 있으면 폴링
   useEffect(() => {
     if (!pendingCompat) return;
     setPhase('loading');
-    const interval = setInterval(async () => {
-      await fetchReadings();
-      // 완료됐으면 done으로
-      const updated = useSajuStore.getState().readings.find(r => r.id === pendingCompat.id);
-      if (updated?.processing_status === 'completed') {
-        setPhase('done');
-        clearInterval(interval);
-      } else if (updated?.processing_status === 'failed') {
-        setPhase('select');
-        setError('궁합 분석에 실패했어요. 크레딧이 환불되었어요.');
-        clearInterval(interval);
-      }
+    const poll = setInterval(async () => {
+      try {
+        const status = await pollReadingStatus(pendingCompat.id);
+        if (status.status === 'completed') {
+          setPhase('done');
+          fetchReadings();
+          clearInterval(poll);
+        } else if (status.status === 'failed') {
+          setPhase('select');
+          setError('궁합 분석에 실패했어요. 크레딧이 환불되었어요.');
+          fetchReadings();
+          clearInterval(poll);
+        }
+      } catch {}
     }, 5000);
-    return () => clearInterval(interval);
-  }, [pendingCompat, fetchReadings]);
+    return () => clearInterval(poll);
+  }, [pendingCompat?.id, fetchReadings]);
 
   const availableProfiles = profiles.filter(p => !selectedIds.includes(p.id));
   const canAddMore = selectedIds.length < MAX_PEOPLE && availableProfiles.length > 0;
@@ -71,8 +73,23 @@ export function Compatibility() {
         return;
       }
 
-      // 폴링은 useEffect에서 자동 처리
-      fetchReadings();
+      // 직접 폴링 시작
+      const readingId = reqResult.readingId;
+      const poll = setInterval(async () => {
+        try {
+          const status = await pollReadingStatus(readingId);
+          if (status.status === 'completed') {
+            setPhase('done');
+            fetchReadings();
+            clearInterval(poll);
+          } else if (status.status === 'failed') {
+            setPhase('select');
+            setError(status.failure_reason || '궁합 분석에 실패했어요. 크레딧이 환불되었어요.');
+            fetchReadings();
+            clearInterval(poll);
+          }
+        } catch {}
+      }, 5000);
     } catch (err) {
       setError(err instanceof Error ? err.message : '궁합 요청에 실패했습니다');
       setPhase('select');

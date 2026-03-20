@@ -356,38 +356,56 @@ async function processReading(reading) {
     }
 
     // 품질 검증 포함 재시도 루프
-    const MAX_QUALITY_RETRIES = 3;
+    const MAX_QUALITY_RETRIES = 5;
     let parsed = null;
     let apiCost = null;
     let totalApiCost = 0;
 
     for (let attempt = 1; attempt <= MAX_QUALITY_RETRIES; attempt++) {
+      // 재시도 시 유저 메시지에 피드백 추가
+      if (attempt > 1) {
+        const minChapters = reading.service_type === 'daily' ? 0 : reading.service_type === 'compatibility' ? 6 : 8;
+        const retryMsg = `\n\n[중요] 이전 시도에서 챕터가 부족했습니다. 반드시 최소 ${minChapters}개 이상의 완전한 챕터를 생성하세요. 각 챕터의 content는 최소 200자 이상이어야 합니다. 챕터를 절대 생략하지 마세요.`;
+        params.messages = [{ role: 'user', content: userMessage + retryMsg }];
+      }
+
       const apiResponse = await callClaude(params);
 
+      // stop_reason 체크
+      const stopReason = apiResponse.stop_reason;
+      if (stopReason === 'max_tokens') {
+        log('warn', `[${rid}] Hit max_tokens (attempt ${attempt}), output truncated`);
+      }
+
       const text = apiResponse.content.filter(b => b.type === 'text').map(b => b.text).join('');
-      const result = JSON.parse(text);
+      let result;
+      try { result = JSON.parse(text); } catch (e) {
+        log('warn', `[${rid}] JSON parse failed (attempt ${attempt}): ${e.message}`);
+        if (attempt === MAX_QUALITY_RETRIES) throw e;
+        continue;
+      }
       apiCost = calculateCost(config.model, apiResponse.usage || {});
       totalApiCost += apiCost.cost_usd;
 
       // 품질 검증
       const chapters = result.chapters;
       const minChapters = reading.service_type === 'daily' ? 0 : reading.service_type === 'compatibility' ? 6 : 8;
-      const hasEnoughChapters = !chapters || chapters.length >= minChapters;
+      const chapterCount = Array.isArray(chapters) ? chapters.length : 0;
+      const hasEnoughChapters = minChapters === 0 || chapterCount >= minChapters;
 
-      // 챕터 내용 잘림 체크 (content가 100자 미만이면 잘린 것으로 판단)
-      const truncatedChapters = chapters?.filter(ch => ch.content && ch.content.length < 100) || [];
+      // 챕터 내용 잘림 체크
+      const truncatedChapters = Array.isArray(chapters) ? chapters.filter(ch => ch.content && ch.content.length < 100) : [];
       const hasTruncated = truncatedChapters.length > 2;
 
       if (hasEnoughChapters && !hasTruncated) {
         parsed = result;
-        log('info', `[${rid}] Quality OK (attempt ${attempt}): ${chapters?.length || 0} chapters`);
+        log('info', `[${rid}] Quality OK (attempt ${attempt}): ${chapterCount} chapters, stop=${stopReason}`);
         break;
       }
 
-      log('warn', `[${rid}] Quality FAIL (attempt ${attempt}/${MAX_QUALITY_RETRIES}): chapters=${chapters?.length || 0} (min ${minChapters}), truncated=${truncatedChapters.length}`);
+      log('warn', `[${rid}] Quality FAIL (attempt ${attempt}/${MAX_QUALITY_RETRIES}): chapters=${chapterCount}/${minChapters}, truncated=${truncatedChapters.length}, stop=${stopReason}`);
 
       if (attempt === MAX_QUALITY_RETRIES) {
-        // 마지막 시도면 그냥 사용
         parsed = result;
         log('warn', `[${rid}] Using last attempt result despite quality issues`);
       }
