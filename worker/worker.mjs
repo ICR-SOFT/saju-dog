@@ -412,16 +412,32 @@ async function processReading(reading) {
     const durationMs = Date.now() - startTime;
     const reason = err.message || String(err);
 
-    await supabase.from('readings').update({
-      processing_status: 'failed',
-      processing_completed_at: new Date().toISOString(),
-      processing_duration_ms: durationMs,
-      failure_reason: reason,
-    }).eq('id', reading.id);
+    // 재시도 횟수 체크 (failure_reason에 retry count 기록)
+    const prevReason = reading.failure_reason || '';
+    const retryMatch = prevReason.match(/\[retry:(\d+)\]/);
+    const retryCount = retryMatch ? parseInt(retryMatch[1]) + 1 : 1;
+    const MAX_READING_RETRIES = 5;
 
-    await refundCredits(reading.user_id, reading.service_type, reading.id);
-    totalFailed++;
-    log('error', `[${rid}] Failed: ${reason}`);
+    if (retryCount < MAX_READING_RETRIES) {
+      // pending으로 되돌려서 자동 재시도
+      await supabase.from('readings').update({
+        processing_status: 'pending',
+        processing_started_at: null,
+        failure_reason: `[retry:${retryCount}] ${reason}`,
+      }).eq('id', reading.id);
+      log('warn', `[${rid}] Failed (retry ${retryCount}/${MAX_READING_RETRIES}): ${reason}`);
+    } else {
+      // 최대 재시도 초과 → 최종 실패 + 환불
+      await supabase.from('readings').update({
+        processing_status: 'failed',
+        processing_completed_at: new Date().toISOString(),
+        processing_duration_ms: durationMs,
+        failure_reason: `[max retries] ${reason}`,
+      }).eq('id', reading.id);
+      await refundCredits(reading.user_id, reading.service_type, reading.id);
+      totalFailed++;
+      log('error', `[${rid}] Final fail after ${MAX_READING_RETRIES} retries: ${reason}`);
+    }
   } finally {
     activeJobs.delete(reading.id);
   }
