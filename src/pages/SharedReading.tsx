@@ -15,6 +15,27 @@ import { calculateSaju } from '@/core/calculator.ts';
 import type { Reading } from '@/types/user.ts';
 import type { SajuApiResponse, SajuPillars } from '@/types/saju.ts';
 
+interface DailyResult {
+  summary: string;
+  overallLuck: number;
+  categories: {
+    love: { score: number; message: string };
+    money: { score: number; message: string };
+    work: { score: number; message: string };
+    health: { score: number; message: string };
+  };
+  advice: string;
+  luckyItems: { color: string; number: string; food: string };
+}
+
+const DAILY_SCORE_EMOJIS = ['', '😢', '😐', '🙂', '😊', '🤩'];
+const DAILY_CATEGORY_INFO = [
+  { key: 'love' as const, label: '연애', emoji: '💕', bgColor: 'bg-gradient-to-br from-pink-50 to-rose-50', iconBg: 'bg-pink-100 ring-2 ring-pink-200/50' },
+  { key: 'money' as const, label: '재물', emoji: '💰', bgColor: 'bg-gradient-to-br from-yellow-50 to-amber-50', iconBg: 'bg-yellow-100 ring-2 ring-yellow-200/50' },
+  { key: 'work' as const, label: '직장', emoji: '💼', bgColor: 'bg-gradient-to-br from-blue-50 to-indigo-50', iconBg: 'bg-blue-100 ring-2 ring-blue-200/50' },
+  { key: 'health' as const, label: '건강', emoji: '🏥', bgColor: 'bg-gradient-to-br from-green-50 to-emerald-50', iconBg: 'bg-green-100 ring-2 ring-green-200/50' },
+];
+
 const SERVICE_LABELS: Record<string, { label: string; emoji: string }> = {
   comprehensive: { label: '종합 사주풀이', emoji: '🔮' },
   compatibility: { label: '궁합', emoji: '💕' },
@@ -90,6 +111,7 @@ export function SharedReading() {
   const result = reading?.result as unknown as SajuApiResponse | null;
   const profileName = reading?.saju_profiles?.name || '';
   const isCompatibility = reading?.service_type === 'compatibility';
+  const isDaily = reading?.service_type === 'daily';
 
   if (isLoading) return <Layout><Loading message="풀이를 불러오는 중..." /></Layout>;
 
@@ -140,8 +162,8 @@ export function SharedReading() {
         </div>
       </div>
 
-      {/* 만세력 정보 (궁합은 개인 사주 데이터 표시 안 함) */}
-      {sajuData && !isCompatibility && (
+      {/* 만세력 정보 (궁합/일간 운세는 개인 사주 데이터 표시 안 함) */}
+      {sajuData && !isCompatibility && !isDaily && (
         <div className="space-y-3 mb-6">
           <FourPillars data={sajuData} />
           <OhaengBar count={sajuData.ohaengCount} />
@@ -185,6 +207,93 @@ export function SharedReading() {
 
       {/* 풀이 결과 */}
       {result ? (
+        isDaily ? (() => {
+          const daily = result as unknown as DailyResult;
+          return (
+            <div className="space-y-3">
+              {/* 총운 */}
+              <Card className="text-center">
+                <ScoreRing score={daily.overallLuck} maxScore={5} size="lg" color="#C67A3C" label="" />
+                <div className="mt-3 flex items-center justify-center gap-1">
+                  <span className="text-2xl">{DAILY_SCORE_EMOJIS[daily.overallLuck] || '🐕'}</span>
+                </div>
+                <p className="font-medium text-dark font-serif text-lg mt-2">{daily.summary}</p>
+                <div className="flex justify-center gap-1 mt-2">
+                  {[1, 2, 3, 4, 5].map(n => (
+                    <span key={n} className={`text-xl ${n <= daily.overallLuck ? '' : 'opacity-20'}`}>⭐</span>
+                  ))}
+                </div>
+              </Card>
+
+              {/* 카테고리별 */}
+              <div className="grid grid-cols-2 gap-2">
+                {DAILY_CATEGORY_INFO.map(cat => {
+                  const data = daily.categories[cat.key];
+                  return (
+                    <Card key={cat.key} padding="sm" className={cat.bgColor}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className={`w-10 h-10 rounded-full ${cat.iconBg} flex items-center justify-center shadow-sm`}>
+                          <span className="text-lg">{cat.emoji}</span>
+                        </div>
+                        <div className="flex-1">
+                          <span className="text-xs font-bold text-dark">{cat.label}</span>
+                          <div className="flex gap-0.5 mt-0.5">
+                            {[1, 2, 3, 4, 5].map(n => (
+                              <span key={n} className={`text-[10px] ${n <= data.score ? '' : 'opacity-20'}`}>⭐</span>
+                            ))}
+                          </div>
+                        </div>
+                        <span className="text-sm text-brown font-bold">{data.score}/5</span>
+                      </div>
+                      <p className="text-xs text-dark-light leading-relaxed">{data.message}</p>
+                    </Card>
+                  );
+                })}
+              </div>
+
+              {/* 조언 */}
+              {daily.advice && (
+                <Card>
+                  <h3 className="font-bold text-dark mb-2 flex items-center gap-2">
+                    <span className="w-7 h-7 rounded-full bg-brown/10 flex items-center justify-center text-sm">🐾</span>
+                    복돌이의 조언
+                  </h3>
+                  <p className="text-sm text-dark-light leading-relaxed">
+                    {daily.advice}
+                  </p>
+                </Card>
+              )}
+
+              {/* 행운 아이템 */}
+              {daily.luckyItems && (
+                <Card className="bg-gradient-to-br from-emerald-50/50 to-green-50/30">
+                  <h3 className="text-sm font-bold text-dark mb-3 text-center flex items-center justify-center gap-1.5">
+                    <span className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center text-sm">🍀</span>
+                    행운 아이템
+                  </h3>
+                  <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                    <div className="bg-white/70 rounded-2xl px-3 py-3 shadow-sm border border-green-100/50">
+                      <span className="text-lg">🎨</span>
+                      <p className="text-warm-gray mt-1 mb-0.5">행운 색</p>
+                      <p className="font-bold text-dark">{daily.luckyItems.color}</p>
+                    </div>
+                    <div className="bg-white/70 rounded-2xl px-3 py-3 shadow-sm border border-green-100/50">
+                      <span className="text-lg">🔢</span>
+                      <p className="text-warm-gray mt-1 mb-0.5">행운 숫자</p>
+                      <p className="font-bold text-dark">{daily.luckyItems.number}</p>
+                    </div>
+                    <div className="bg-white/70 rounded-2xl px-3 py-3 shadow-sm border border-green-100/50">
+                      <span className="text-lg">🍽️</span>
+                      <p className="text-warm-gray mt-1 mb-0.5">행운 음식</p>
+                      <p className="font-bold text-dark">{daily.luckyItems.food}</p>
+                    </div>
+                  </div>
+                </Card>
+              )}
+            </div>
+          );
+        })()
+        : (
         <div className="space-y-4">
           {result.overallScore !== undefined && (
             <Card className="text-center py-6">
@@ -238,6 +347,7 @@ export function SharedReading() {
             </Card>
           )}
         </div>
+        )
       ) : (
         <Card className="text-center py-8">
           <p className="text-warm-gray">결과 데이터가 없습니다</p>
