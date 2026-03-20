@@ -272,17 +272,16 @@ const DAILY_SCHEMA = {
   },
 };
 
-function getResponseFormat(serviceType) {
+function getOutputConfig(serviceType) {
   let schema;
   if (serviceType === 'compatibility') schema = COMPATIBILITY_SCHEMA;
   else if (serviceType === 'daily') schema = DAILY_SCHEMA;
   else schema = READING_SCHEMA;
 
+  // Claude API: output_config.format (not response_format)
   return {
-    type: 'json_schema',
-    json_schema: {
-      name: 'saju_result',
-      strict: true,
+    format: {
+      type: 'json_schema',
       schema,
     },
   };
@@ -339,14 +338,14 @@ async function processReading(reading) {
     const config = await getPromptConfig(reading.service_type);
     const userMessage = buildUserMessage(reading, profile, secondaryProfile);
 
-    // Structured Outputs — response_format: json_schema (100% 스키마 보장)
-    const responseFormat = getResponseFormat(reading.service_type);
+    // Structured Outputs — output_config.format (Claude API 네이티브)
+    const outputConfig = getOutputConfig(reading.service_type);
 
     const params = {
       model: config.model,
       max_tokens: config.max_tokens,
       messages: [{ role: 'user', content: userMessage }],
-      response_format: responseFormat,
+      output_config: outputConfig,
     };
 
     if (config.temperature !== null) params.temperature = config.temperature;
