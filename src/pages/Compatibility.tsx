@@ -236,7 +236,7 @@ export function Compatibility() {
                   </button>
                 ))}
                 <button type="button"
-                  onClick={() => { setIsRoleInput(true); setIsCustomRelation(false); setRelationType('동업관계'); }}
+                  onClick={() => { setIsRoleInput(true); setIsCustomRelation(false); setRelationType(''); }}
                   className={`text-xs px-3 py-1.5 rounded-full transition-all border ${
                     isRoleInput
                       ? 'bg-brown text-cream border-brown'
