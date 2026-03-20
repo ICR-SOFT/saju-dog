@@ -124,7 +124,7 @@ const MORE_SERVICES: typeof MAIN_SERVICES = [
 export function Home() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuthStore();
-  const { profiles, fetchProfiles } = useSajuStore();
+  const { profiles, fetchProfiles, deleteProfile } = useSajuStore();
   const { fetchCredits } = useCreditStore();
   const [toast, setToast] = useState('');
   const [selectedProfileIdx, setSelectedProfileIdx] = useState(0);
@@ -254,6 +254,35 @@ export function Home() {
               </button>
             ))}
           </div>
+          {/* 선택된 프로필 수정/삭제 */}
+          {profiles[selectedProfileIdx] && (
+            <div className="flex items-center justify-between mt-2 pt-2 border-t border-cream-dark">
+              <p className="text-xs text-warm-gray">
+                {profiles[selectedProfileIdx].name} · {profiles[selectedProfileIdx].gender === 'male' ? '남' : '여'} · {new Date(profiles[selectedProfileIdx].birth_date).toLocaleDateString('ko-KR')}
+              </p>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => navigate(`/edit-profile/${profiles[selectedProfileIdx].id}`)}
+                  className="text-xs text-brown hover:text-brown-dark px-2 py-1 rounded-lg hover:bg-brown/5 transition-colors"
+                >
+                  수정
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!confirm(`${profiles[selectedProfileIdx].name} 프로필을 삭제할까요?`)) return;
+                    try {
+                      await deleteProfile(profiles[selectedProfileIdx].id);
+                      setSelectedProfileIdx(0);
+                      showToast('프로필이 삭제되었어요');
+                    } catch { showToast('삭제에 실패했어요'); }
+                  }}
+                  className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded-lg hover:bg-red-50 transition-colors"
+                >
+                  삭제
+                </button>
+              </div>
+            </div>
+          )}
         </Card>
       )}
 

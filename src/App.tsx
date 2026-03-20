@@ -15,6 +15,7 @@ import { Compatibility } from '@/pages/Compatibility.tsx';
 import { SajuChat } from '@/pages/SajuChat.tsx';
 import { MyPage } from '@/pages/MyPage.tsx';
 import { SharedReading } from '@/pages/SharedReading.tsx';
+import { EditProfile } from '@/pages/EditProfile.tsx';
 import './App.css';
 
 /** 인증 시 프로필/크레딧/보관함 자동 로드 */
@@ -71,6 +72,7 @@ export default function App() {
 
         {/* 로그인 필요 */}
         <Route path="/add-profile" element={<AuthRequired><AddProfile /></AuthRequired>} />
+        <Route path="/edit-profile/:profileId" element={<AuthRequired><EditProfile /></AuthRequired>} />
         <Route path="/reading/:profileId" element={<AuthRequired><Reading /></AuthRequired>} />
         <Route path="/archive" element={<AuthRequired><Archive /></AuthRequired>} />
         <Route path="/archive/:readingId" element={<AuthRequired><ReadingDetail /></AuthRequired>} />
