@@ -355,26 +355,58 @@ async function processReading(reading) {
       params.system = config.system_prompt;
     }
 
-    const apiResponse = await callClaude(params);
-    const durationMs = Date.now() - startTime;
+    // 품질 검증 포함 재시도 루프
+    const MAX_QUALITY_RETRIES = 3;
+    let parsed = null;
+    let apiCost = null;
+    let totalApiCost = 0;
 
-    // Structured Outputs는 text 블록에 JSON string을 반환
-    const text = apiResponse.content.filter(b => b.type === 'text').map(b => b.text).join('');
-    const parsed = JSON.parse(text);
-    const apiCost = calculateCost(config.model, apiResponse.usage || {});
+    for (let attempt = 1; attempt <= MAX_QUALITY_RETRIES; attempt++) {
+      const apiResponse = await callClaude(params);
+
+      const text = apiResponse.content.filter(b => b.type === 'text').map(b => b.text).join('');
+      const result = JSON.parse(text);
+      apiCost = calculateCost(config.model, apiResponse.usage || {});
+      totalApiCost += apiCost.cost_usd;
+
+      // 품질 검증
+      const chapters = result.chapters;
+      const minChapters = reading.service_type === 'daily' ? 0 : reading.service_type === 'compatibility' ? 6 : 8;
+      const hasEnoughChapters = !chapters || chapters.length >= minChapters;
+
+      // 챕터 내용 잘림 체크 (content가 100자 미만이면 잘린 것으로 판단)
+      const truncatedChapters = chapters?.filter(ch => ch.content && ch.content.length < 100) || [];
+      const hasTruncated = truncatedChapters.length > 2;
+
+      if (hasEnoughChapters && !hasTruncated) {
+        parsed = result;
+        log('info', `[${rid}] Quality OK (attempt ${attempt}): ${chapters?.length || 0} chapters`);
+        break;
+      }
+
+      log('warn', `[${rid}] Quality FAIL (attempt ${attempt}/${MAX_QUALITY_RETRIES}): chapters=${chapters?.length || 0} (min ${minChapters}), truncated=${truncatedChapters.length}`);
+
+      if (attempt === MAX_QUALITY_RETRIES) {
+        // 마지막 시도면 그냥 사용
+        parsed = result;
+        log('warn', `[${rid}] Using last attempt result despite quality issues`);
+      }
+    }
+
+    const durationMs = Date.now() - startTime;
 
     await supabase.from('readings').update({
       result: parsed,
       processing_status: 'completed',
       processing_completed_at: new Date().toISOString(),
       processing_duration_ms: durationMs,
-      api_cost: apiCost,
+      api_cost: { ...apiCost, total_cost_usd: Math.round(totalApiCost * 10000) / 10000 },
       prompt_config_id: config.id,
     }).eq('id', reading.id);
 
     totalProcessed++;
-    totalCostUsd += apiCost.cost_usd;
-    log('info', `[${rid}] Done ${(durationMs / 1000).toFixed(1)}s | ${apiCost.input_tokens}→${apiCost.output_tokens} tok | $${apiCost.cost_usd}`);
+    totalCostUsd += totalApiCost;
+    log('info', `[${rid}] Done ${(durationMs / 1000).toFixed(1)}s | ${apiCost.input_tokens}→${apiCost.output_tokens} tok | $${Math.round(totalApiCost * 10000) / 10000}`);
 
   } catch (err) {
     const durationMs = Date.now() - startTime;
