@@ -571,10 +571,37 @@ async function processReading(reading) {
 
       const text = apiResponse.content.filter(b => b.type === 'text').map(b => b.text).join('');
       let result;
-      try { result = JSON.parse(text); } catch (e) {
-        log('warn', `[${rid}] JSON parse failed (attempt ${attempt}): ${e.message}`);
-        if (attempt === MAX_QUALITY_RETRIES) throw e;
-        continue;
+      try {
+        result = JSON.parse(text);
+      } catch (e) {
+        // JSON 복구 시도: content 필드 내 이스케이프 안 된 따옴표 수정
+        try {
+          const fixed = text.replace(/"content"\s*:\s*"((?:[^"\\]|\\.)*)(?="(?:\s*[,}]))/gs, (match) => {
+            return match;
+          });
+          // 더 공격적인 복구: 잘린 JSON 닫기
+          let repaired = text;
+          if (!repaired.trim().endsWith('}')) {
+            // 마지막 완전한 객체까지 자르기
+            const lastBrace = repaired.lastIndexOf('}');
+            if (lastBrace > 0) {
+              repaired = repaired.slice(0, lastBrace + 1);
+              // 배열/객체 닫기
+              const opens = (repaired.match(/\[/g) || []).length;
+              const closes = (repaired.match(/\]/g) || []).length;
+              for (let j = 0; j < opens - closes; j++) repaired += ']';
+              const openBraces = (repaired.match(/\{/g) || []).length;
+              const closeBraces = (repaired.match(/\}/g) || []).length;
+              for (let j = 0; j < openBraces - closeBraces; j++) repaired += '}';
+            }
+          }
+          result = JSON.parse(repaired);
+          log('info', `[${rid}] JSON repaired successfully (attempt ${attempt})`);
+        } catch {
+          log('warn', `[${rid}] JSON parse failed (attempt ${attempt}): ${e.message}`);
+          if (attempt === MAX_QUALITY_RETRIES) throw e;
+          continue;
+        }
       }
       apiCost = calculateCost(config.model, apiResponse.usage || {});
       totalApiCost += apiCost.cost_usd;
