@@ -16,21 +16,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const userAgent = req.headers['user-agent'] || '';
   const isCrawler = CRAWLERS.test(userAgent);
 
-  // 브라우저 → SPA로 처리 (index.html 서빙)
+  // 브라우저 → SPA로 리다이렉트
   if (!isCrawler) {
-    // SPA의 index.html을 읽어서 서빙
-    try {
-      const fs = require('fs');
-      const path = require('path');
-      // Vercel 빌드 후 static 파일 위치
-      const indexPath = path.join(process.cwd(), 'dist', 'index.html');
-      const html = fs.readFileSync(indexPath, 'utf-8');
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      return res.status(200).send(html);
-    } catch {
-      // dist 접근 실패 시 redirect
-      return res.redirect(302, `/?r=/share/${shareId}`);
-    }
+    return res.redirect(302, `/share/${shareId}`);
   }
 
   // 크롤러 → OG 태그 포함 HTML 반환
@@ -85,7 +73,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   <meta property="og:image" content="${imageUrl}" />
   <meta property="og:image:width" content="512" />
   <meta property="og:image:height" content="512" />
-  <meta property="og:url" content="${baseUrl}/share/${shareId}" />
+  <meta property="og:url" content="${baseUrl}/api/share/${shareId}" />
   <meta property="og:site_name" content="사주독" />
   <meta property="og:locale" content="ko_KR" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -97,7 +85,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 <body>
   <h1>${escapeHtml(title)}</h1>
   <p>${escapeHtml(description)}</p>
-  <a href="${baseUrl}/share/${shareId}">사주독에서 보기</a>
+  <a href="${baseUrl}/api/share/${shareId}">사주독에서 보기</a>
 </body>
 </html>`;
 

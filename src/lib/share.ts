@@ -26,7 +26,7 @@ export async function createShareLink(readingId: string): Promise<string> {
   if (fetchErr) throw new Error(`조회 실패: ${fetchErr.message}`);
 
   if (existing?.share_id) {
-    return `${window.location.origin}/share/${existing.share_id}`;
+    return `${window.location.origin}/api/share/${existing.share_id}`;
   }
 
   // 없으면 새로 생성
@@ -41,7 +41,7 @@ export async function createShareLink(readingId: string): Promise<string> {
   if (error) throw new Error(`공유 링크 생성 실패: ${error.message}`);
   if (!data?.share_id) throw new Error('공유 링크가 저장되지 않았습니다');
 
-  return `${window.location.origin}/share/${data.share_id}`;
+  return `${window.location.origin}/api/share/${data.share_id}`;
 }
 
 export async function getSharedReading(shareId: string) {
