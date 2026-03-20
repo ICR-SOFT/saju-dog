@@ -55,7 +55,7 @@ export const useSajuStore = create<SajuState>((set, get) => ({
     const { data, error } = await supabase
       .from('saju_profiles')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: true });
 
     if (error) throw new Error(error.message);
     set({ profiles: data || [] });
