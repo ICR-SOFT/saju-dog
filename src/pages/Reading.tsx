@@ -295,7 +295,7 @@ export function Reading() {
             {/* 요약 */}
             <Card className="text-center bg-gradient-to-br from-brown/5 to-amber-50/30">
               <p className="text-lg font-medium text-dark font-serif">
-                "{displayResult.summary}"
+                " <span dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(displayResult.summary) }} /> "
               </p>
               {cachedReading && (
                 <p className="text-xs text-warm-gray mt-1">

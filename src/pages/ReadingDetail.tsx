@@ -365,7 +365,7 @@ export function ReadingDetail() {
 
           {result.summary && (
             <Card className="text-center bg-gradient-to-br from-brown/5 to-amber-50/30">
-              <p className="text-lg font-medium text-dark font-serif">"{result.summary}"</p>
+              <p className="text-lg font-medium text-dark font-serif" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(`"${result.summary}"`) }} />
             </Card>
           )}
 
