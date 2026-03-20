@@ -15,13 +15,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const userAgent = req.headers['user-agent'] || '';
   const isCrawler = CRAWLERS.test(userAgent);
+  const baseUrl = 'https://saju-dog.vercel.app';
+  const spaUrl = `${baseUrl}/share/${shareId}`;
 
-  // 브라우저 → SPA로 리다이렉트
+  // 브라우저 → SPA로 리다이렉트 (302 + JS fallback)
   if (!isCrawler) {
-    return res.redirect(302, `/share/${shareId}`);
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.status(200).send(`<!DOCTYPE html>
+<html><head>
+  <meta http-equiv="refresh" content="0;url=${spaUrl}" />
+  <script>window.location.replace("${spaUrl}");</script>
+</head><body>
+  <p>리다이렉트 중... <a href="${spaUrl}">여기를 클릭하세요</a></p>
+</body></html>`);
   }
 
-  // 크롤러 → OG 태그 포함 HTML 반환
+  // 크롤러 → OG 태그 포함 HTML
   try {
     const supabase = createClient(
       process.env.VITE_SUPABASE_URL || '',
@@ -30,7 +39,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const { data } = await supabase
       .from('readings')
-      .select('result, service_type, metadata, saju_profiles!profile_id(name, calculated_saju)')
+      .select('result, service_type, profile_id, secondary_profile_id, metadata, saju_profiles!profile_id(name, calculated_saju)')
       .eq('share_id', shareId)
       .single();
 
@@ -39,21 +48,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const summary = result?.summary || '사주독에서 나만의 운세를 확인해보세요';
     const profileName = profile?.name || '';
     const animal = profile?.calculated_saju?.ddi?.animal;
+    const isCompat = data?.service_type === 'compatibility' || data?.service_type === 'business';
 
-    const baseUrl = 'https://saju-dog.vercel.app';
-
-    // 이미지 결정
+    // 이미지
     let imageUrl = `${baseUrl}/images/og-image.png`;
-    if (data?.service_type === 'compatibility' || data?.service_type === 'business') {
+    if (isCompat) {
       imageUrl = `${baseUrl}/images/zodiac/compatibility.png`;
     } else if (animal && ANIMAL_MAP[animal]) {
       imageUrl = `${baseUrl}/images/zodiac/${ANIMAL_MAP[animal]}.png`;
     }
 
-    // 제목 결정
+    // 궁합 제목: 모든 참여자 이름 조합
     let title = '사주독 — 사주로 보는 나의 이야기';
-    if (data?.service_type === 'compatibility' || data?.service_type === 'business') {
-      title = profileName ? `${profileName}님의 궁합 — 사주독` : '궁합 — 사주독';
+    if (isCompat) {
+      const names: string[] = [];
+      if (profileName) names.push(profileName);
+
+      // secondary profile 이름
+      if (data?.secondary_profile_id) {
+        const { data: sec } = await supabase.from('saju_profiles').select('name').eq('id', data.secondary_profile_id).single();
+        if (sec?.name) names.push(sec.name);
+      }
+
+      // metadata에서 추가 프로필
+      const meta = data?.metadata as any;
+      if (meta?.allProfileIds) {
+        try {
+          const allIds = JSON.parse(meta.allProfileIds) as string[];
+          for (const id of allIds) {
+            if (id !== data?.profile_id && id !== data?.secondary_profile_id) {
+              const { data: ep } = await supabase.from('saju_profiles').select('name').eq('id', id).single();
+              if (ep?.name && !names.includes(ep.name)) names.push(ep.name);
+            }
+          }
+        } catch {}
+      }
+
+      title = names.length > 0
+        ? `${names.join(' × ')}님의 궁합 — 사주독`
+        : '궁합 — 사주독';
     } else if (profileName) {
       title = `${profileName}님의 사주풀이 — 사주독`;
     }
@@ -92,13 +125,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=3600');
     return res.status(200).send(html);
-  } catch (err) {
-    // 에러 시 기본 OG
+  } catch {
     const html = `<!DOCTYPE html>
 <html lang="ko"><head>
   <meta property="og:title" content="사주독 — 사주로 보는 나의 이야기" />
-  <meta property="og:image" content="https://saju-dog.vercel.app/images/og-image.png" />
-</head><body><a href="https://saju-dog.vercel.app">사주독</a></body></html>`;
+  <meta property="og:image" content="${baseUrl}/images/og-image.png" />
+</head><body><a href="${baseUrl}">사주독</a></body></html>`;
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     return res.status(200).send(html);
   }
