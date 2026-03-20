@@ -25,21 +25,31 @@ const SAMHAP_GROUP: Record<Branch, number> = {
   '해': 3, '묘': 3, '미': 3,
 };
 
-// ===== 역마/천살/지살/반안살 (삼합 기반 4살) =====
-const FOUR_SPIRITS: Record<number, { 역마: Branch; 반안: Branch; 천살: Branch; 지살: Branch }> = {
-  0: { 역마: '신', 반안: '유', 천살: '자', 지살: '인' }, // 인오술
-  1: { 역마: '해', 반안: '자', 천살: '묘', 지살: '사' }, // 사유축
-  2: { 역마: '인', 반안: '묘', 천살: '오', 지살: '신' }, // 신자진
-  3: { 역마: '사', 반안: '진', 천살: '술', 지살: '해' }, // 해묘미
+// ===== 12신살 (삼합 기반 전체) =====
+// 겁살→재살→천살→지살→년살→월살→망신살→장성살→반안살→역마살→육해살→화개살
+type TwelveSinsal = {
+  겁살: Branch; 재살: Branch; 천살: Branch; 지살: Branch;
+  년살: Branch; 월살: Branch; 망신살: Branch; 장성살: Branch;
+  반안살: Branch; 역마살: Branch; 육해살: Branch; 화개살: Branch;
+  도화살: Branch;
 };
 
-// ===== 도화살/화개살/겁살 (삼합 기반) =====
-const SAMHAP_SPIRITS: Record<number, { 도화: Branch; 화개: Branch; 겁살: Branch }> = {
-  0: { 도화: '묘', 화개: '술', 겁살: '해' }, // 인오술
-  1: { 도화: '오', 화개: '축', 겁살: '인' }, // 사유축
-  2: { 도화: '유', 화개: '진', 겁살: '사' }, // 신자진
-  3: { 도화: '자', 화개: '미', 겁살: '신' }, // 해묘미
+const TWELVE_SINSAL: Record<number, TwelveSinsal> = {
+  // 인오술 (화국)
+  0: { 겁살: '해', 재살: '자', 천살: '축', 지살: '인', 년살: '묘', 월살: '진',
+       망신살: '사', 장성살: '오', 반안살: '미', 역마살: '신', 육해살: '유', 화개살: '술', 도화살: '묘' },
+  // 사유축 (금국)
+  1: { 겁살: '인', 재살: '묘', 천살: '진', 지살: '사', 년살: '오', 월살: '미',
+       망신살: '신', 장성살: '유', 반안살: '술', 역마살: '해', 육해살: '자', 화개살: '축', 도화살: '오' },
+  // 신자진 (수국)
+  2: { 겁살: '사', 재살: '오', 천살: '미', 지살: '신', 년살: '유', 월살: '술',
+       망신살: '해', 장성살: '자', 반안살: '축', 역마살: '인', 육해살: '묘', 화개살: '진', 도화살: '유' },
+  // 해묘미 (목국)
+  3: { 겁살: '신', 재살: '유', 천살: '술', 지살: '해', 년살: '자', 월살: '축',
+       망신살: '인', 장성살: '묘', 반안살: '진', 역마살: '사', 육해살: '오', 화개살: '미', 도화살: '자' },
 };
+
+const TWELVE_SINSAL_NAMES = ['겁살', '재살', '천살', '지살', '년살', '월살', '망신살', '장성살', '반안살', '역마살', '육해살', '화개살', '도화살'] as const;
 
 // ===== 괴강살 (魁罡) =====
 const GWAEGANG_PILLARS = new Set(['무진', '무술', '경진', '경술']);
@@ -299,18 +309,19 @@ export function calculateSinsal(
   const guiin: string[] = [];
 
   // ===== 1. 삼합 기반 4살 (년지 기준) =====
+  // ===== 12신살 전체 체크 (삼합 기반) =====
   const yearGroup = SAMHAP_GROUP[year.branch];
-  const fourSpirits = FOUR_SPIRITS[yearGroup];
-  const samhapSpirits = SAMHAP_SPIRITS[yearGroup];
+  const twelveSinsal = TWELVE_SINSAL[yearGroup];
 
   for (const p of pillars) {
-    if (p.branch === fourSpirits.역마) { pillarSinsal[p.name].push('역마살'); allSinsal.push(`${PILLAR_KOR[p.name]}주 역마살`); }
-    if (p.branch === fourSpirits.반안) { pillarSinsal[p.name].push('반안살'); }
-    if (p.branch === fourSpirits.천살) { pillarSinsal[p.name].push('천살'); }
-    if (p.branch === fourSpirits.지살) { pillarSinsal[p.name].push('지살'); }
-    if (p.branch === samhapSpirits.도화) { pillarSinsal[p.name].push('도화살'); allSinsal.push('도화살'); }
-    if (p.branch === samhapSpirits.화개) { pillarSinsal[p.name].push('화개살'); allSinsal.push('화개살'); }
-    if (p.branch === samhapSpirits.겁살) { pillarSinsal[p.name].push('겁살'); allSinsal.push('겁살'); }
+    for (const sinsalName of TWELVE_SINSAL_NAMES) {
+      if (p.branch === twelveSinsal[sinsalName]) {
+        pillarSinsal[p.name].push(sinsalName);
+        if (['역마살', '도화살', '화개살', '겁살', '망신살', '년살', '재살', '장성살'].includes(sinsalName)) {
+          allSinsal.push(sinsalName);
+        }
+      }
+    }
   }
 
   // ===== 2. 괴강 =====
