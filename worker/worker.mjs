@@ -181,136 +181,111 @@ ${data.daeun?.map(d => `- ${d.startAge}~${d.endAge}세: ${d.stem}${d.branch} [${
 신살, 귀인, 기둥별 관계, 띠, 별자리를 적극 활용하세요.`;
 }
 
-// ===== tool_use 스키마 (서비스별) =====
+// ===== Structured Outputs 스키마 (response_format: json_schema) =====
+// https://platform.claude.com/docs/en/build-with-claude/structured-outputs
+
 const READING_SCHEMA = {
-  name: 'saju_reading_result',
-  description: '사주 풀이 결과를 구조화된 JSON으로 반환',
-  input_schema: {
-    type: 'object',
-    required: ['summary', 'chapters', 'advice', 'luckyItems'],
-    properties: {
-      summary: { type: 'string', description: '임팩트 있는 한줄 요약 (30자 이내)' },
-      chapters: {
-        type: 'array',
-        items: {
-          type: 'object',
-          required: ['id', 'title', 'emoji', 'content'],
-          properties: {
-            id: { type: 'string' },
-            title: { type: 'string', description: '문학적/비유적 제목' },
-            emoji: { type: 'string' },
-            content: { type: 'string', description: 'HTML 본문 (300~800자)' },
-          },
+  type: 'object',
+  required: ['summary', 'chapters', 'advice', 'luckyItems'],
+  additionalProperties: false,
+  properties: {
+    summary: { type: 'string' },
+    chapters: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['id', 'title', 'emoji', 'content'],
+        additionalProperties: false,
+        properties: {
+          id: { type: 'string' },
+          title: { type: 'string' },
+          emoji: { type: 'string' },
+          content: { type: 'string' },
         },
       },
-      advice: { type: 'array', items: { type: 'string' } },
-      luckyItems: {
-        type: 'object',
-        properties: {
-          color: { type: 'string' },
-          number: { type: 'string' },
-          direction: { type: 'string' },
-          food: { type: 'string' },
-        },
+    },
+    advice: { type: 'array', items: { type: 'string' } },
+    luckyItems: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['color', 'number', 'direction', 'food'],
+      properties: {
+        color: { type: 'string' },
+        number: { type: 'string' },
+        direction: { type: 'string' },
+        food: { type: 'string' },
       },
     },
   },
 };
 
 const COMPATIBILITY_SCHEMA = {
-  name: 'compatibility_result',
-  description: '궁합 결과를 구조화된 JSON으로 반환',
-  input_schema: {
-    type: 'object',
-    required: ['summary', 'overallScore', 'chapters', 'advice'],
-    properties: {
-      summary: { type: 'string' },
-      overallScore: { type: 'number', description: '0~100 궁합 점수' },
-      chapters: {
-        type: 'array',
-        items: {
-          type: 'object',
-          required: ['id', 'title', 'emoji', 'content'],
-          properties: {
-            id: { type: 'string' },
-            title: { type: 'string' },
-            emoji: { type: 'string' },
-            content: { type: 'string' },
-          },
+  type: 'object',
+  required: ['summary', 'overallScore', 'chapters', 'advice'],
+  additionalProperties: false,
+  properties: {
+    summary: { type: 'string' },
+    overallScore: { type: 'number' },
+    chapters: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['id', 'title', 'emoji', 'content'],
+        additionalProperties: false,
+        properties: {
+          id: { type: 'string' },
+          title: { type: 'string' },
+          emoji: { type: 'string' },
+          content: { type: 'string' },
         },
       },
-      advice: { type: 'array', items: { type: 'string' } },
     },
+    advice: { type: 'array', items: { type: 'string' } },
   },
 };
 
 const DAILY_SCHEMA = {
-  name: 'daily_fortune_result',
-  description: '오늘의 운세 결과',
-  input_schema: {
-    type: 'object',
-    required: ['summary', 'overallLuck', 'categories', 'advice', 'luckyItems'],
-    properties: {
-      summary: { type: 'string' },
-      overallLuck: { type: 'number', description: '1~5' },
-      categories: {
-        type: 'object',
-        properties: {
-          love: { type: 'object', properties: { score: { type: 'number' }, message: { type: 'string' } } },
-          money: { type: 'object', properties: { score: { type: 'number' }, message: { type: 'string' } } },
-          work: { type: 'object', properties: { score: { type: 'number' }, message: { type: 'string' } } },
-          health: { type: 'object', properties: { score: { type: 'number' }, message: { type: 'string' } } },
-        },
+  type: 'object',
+  required: ['summary', 'overallLuck', 'categories', 'advice', 'luckyItems'],
+  additionalProperties: false,
+  properties: {
+    summary: { type: 'string' },
+    overallLuck: { type: 'number' },
+    categories: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['love', 'money', 'work', 'health'],
+      properties: {
+        love: { type: 'object', additionalProperties: false, required: ['score', 'message'], properties: { score: { type: 'number' }, message: { type: 'string' } } },
+        money: { type: 'object', additionalProperties: false, required: ['score', 'message'], properties: { score: { type: 'number' }, message: { type: 'string' } } },
+        work: { type: 'object', additionalProperties: false, required: ['score', 'message'], properties: { score: { type: 'number' }, message: { type: 'string' } } },
+        health: { type: 'object', additionalProperties: false, required: ['score', 'message'], properties: { score: { type: 'number' }, message: { type: 'string' } } },
       },
-      advice: { type: 'string' },
-      luckyItems: {
-        type: 'object',
-        properties: { color: { type: 'string' }, number: { type: 'string' }, food: { type: 'string' } },
-      },
+    },
+    advice: { type: 'string' },
+    luckyItems: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['color', 'number', 'food'],
+      properties: { color: { type: 'string' }, number: { type: 'string' }, food: { type: 'string' } },
     },
   },
 };
 
-function getToolSchema(serviceType) {
-  if (serviceType === 'compatibility') return COMPATIBILITY_SCHEMA;
-  if (serviceType === 'daily') return DAILY_SCHEMA;
-  return READING_SCHEMA; // comprehensive + 기타
-}
+function getResponseFormat(serviceType) {
+  let schema;
+  if (serviceType === 'compatibility') schema = COMPATIBILITY_SCHEMA;
+  else if (serviceType === 'daily') schema = DAILY_SCHEMA;
+  else schema = READING_SCHEMA;
 
-// ===== 응답에서 tool_use 결과 추출 + 필드 정규화 =====
-function extractToolResult(apiResponse) {
-  let result;
-
-  // tool_use 블록 찾기
-  const toolBlock = apiResponse.content.find(b => b.type === 'tool_use');
-  if (toolBlock?.input) {
-    result = toolBlock.input;
-  } else {
-    // fallback: text에서 JSON 추출
-    const text = apiResponse.content.filter(b => b.type === 'text').map(b => b.text).join('');
-    if (!text) throw new Error('빈 응답');
-
-    const jsonMatch = text.match(/```json\s*([\s\S]*?)```/);
-    const jsonStr = jsonMatch ? jsonMatch[1].trim() : text.trim();
-    try { result = JSON.parse(jsonStr); } catch {
-      const start = jsonStr.indexOf('{');
-      const end = jsonStr.lastIndexOf('}');
-      if (start !== -1 && end !== -1) result = JSON.parse(jsonStr.slice(start, end + 1));
-      else throw new Error('JSON 파싱 실패');
-    }
-  }
-
-  // 필드 정규화: string으로 들어온 배열/객체 필드를 파싱
-  if (result) {
-    for (const key of ['chapters', 'advice', 'luckyItems', 'categories']) {
-      if (typeof result[key] === 'string') {
-        try { result[key] = JSON.parse(result[key]); }
-        catch { log('warn', `Failed to parse ${key} as JSON, keeping as string`); }
-      }
-    }
-  }
-
-  return result;
+  return {
+    type: 'json_schema',
+    json_schema: {
+      name: 'saju_result',
+      strict: true,
+      schema,
+    },
+  };
 }
 
 // ===== 비용 계산 =====
@@ -364,18 +339,16 @@ async function processReading(reading) {
     const config = await getPromptConfig(reading.service_type);
     const userMessage = buildUserMessage(reading, profile, secondaryProfile);
 
-    // tool_use로 JSON 스키마 강제
-    const toolSchema = getToolSchema(reading.service_type);
+    // Structured Outputs — response_format: json_schema (100% 스키마 보장)
+    const responseFormat = getResponseFormat(reading.service_type);
 
     const params = {
       model: config.model,
       max_tokens: config.max_tokens,
       messages: [{ role: 'user', content: userMessage }],
-      tools: [toolSchema],
+      response_format: responseFormat,
     };
 
-    // tool_choice forced → JSON 스키마 100% 보장 (thinking 비활성화 필수)
-    params.tool_choice = { type: 'tool', name: toolSchema.name };
     if (config.temperature !== null) params.temperature = config.temperature;
     if (config.use_prompt_caching) {
       params.system = [{ type: 'text', text: config.system_prompt, cache_control: { type: 'ephemeral' } }];
@@ -386,7 +359,9 @@ async function processReading(reading) {
     const apiResponse = await callClaude(params);
     const durationMs = Date.now() - startTime;
 
-    const parsed = extractToolResult(apiResponse);
+    // Structured Outputs는 text 블록에 JSON string을 반환
+    const text = apiResponse.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    const parsed = JSON.parse(text);
     const apiCost = calculateCost(config.model, apiResponse.usage || {});
 
     await supabase.from('readings').update({
