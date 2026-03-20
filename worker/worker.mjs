@@ -155,13 +155,23 @@ function buildUserMessage(reading, profile, secondaryProfile, extraProfiles = []
 신살: ${fmtArr(ps.allSinsal)} / 귀인: ${fmtArr(ps.guiin)}`;
     }).join('\n\n');
 
-    return `${relationContext}
+    const userQ = (reading.metadata || {}).userQuestion;
+    const questionBlock = userQ ? `
+## ★★★ 사용자 질문 (최우선) ★★★
+"${userQ}"
+
+[절대 규칙] 위 질문에 대한 답변을 반드시 전용 챕터 1개로 작성하세요.
+- 챕터 제목에 질문 키워드를 포함하세요 (예: "프로포즈 타이밍", "결혼 시기" 등)
+- 사주 데이터를 근거로 질문에 대한 구체적이고 실질적인 답변을 하세요
+- 이 챕터가 없으면 실패 처리됩니다
+` : '';
+
+    return `${questionBlock}${relationContext}
 ${participantBlocks}
 
 [중요] 이 궁합에는 총 ${totalCount}명이 참여합니다. 반드시 ${totalCount}명 전원의 관계를 분석하세요.
 각 챕터에서 모든 참여자의 이름을 언급하고, 서로 간의 관계를 비교 분석해야 합니다.
 2명만 분석하고 나머지를 빠뜨리면 실패 처리됩니다.
-${(() => { const q = (reading.metadata || {}).userQuestion; return q ? `\n## 사용자 질문: "${q}"\n이 질문에 특별히 초점을 맞춰서 궁합 풀이에 반영해주세요.\n` : ''; })()}
 궁합을 JSON으로 작성해주세요.`;
   }
 
@@ -222,7 +232,19 @@ ${data.daeun?.map(d => `- ${d.startAge}~${d.endAge}세: ${d.stem}${d.branch} [${
 ## ${data.currentYear?.year || new Date().getFullYear()}년 세운
 - ${data.currentYear?.stem || '?'}${data.currentYear?.branch || '?'}년
 
-${(() => { const q = (reading.metadata || {}).userQuestion; return q ? `\n## 사용자 질문: "${q}"\n이 질문에 특별히 초점을 맞춰서 풀이에 반영해주세요.\n` : ''; })()}
+${(() => {
+  const q = (reading.metadata || {}).userQuestion;
+  if (!q) return '';
+  return `
+## ★★★ 사용자 질문 (최우선) ★★★
+"${q}"
+
+[절대 규칙] 위 질문에 대한 답변을 반드시 전용 챕터 1개로 작성하세요.
+- 챕터 제목에 질문 키워드를 포함하세요
+- 사주 데이터를 근거로 질문에 대한 구체적이고 실질적인 답변을 하세요
+- 이 챕터가 없으면 실패 처리됩니다
+`;
+})()}
 [중요 지시] ${serviceInstruction}
 위 사주 데이터를 기반으로, 이 분석 유형(${reading.service_type})에 맞는 풀이를 JSON으로 작성하세요.
 종합 사주풀이처럼 일반적인 분석을 하지 말고, 반드시 요청된 분석 유형에 집중하세요.`;
