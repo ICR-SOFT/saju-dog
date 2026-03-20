@@ -8,7 +8,12 @@ interface ChapterAccordionProps {
 }
 
 export function ChapterAccordion({ chapters }: ChapterAccordionProps) {
-  const safeChapters = Array.isArray(chapters) ? chapters : [];
+  // chapters가 string으로 들어올 수 있음 (tool_use auto 모드에서 발생)
+  let parsed = chapters;
+  if (typeof parsed === 'string') {
+    try { parsed = JSON.parse(parsed); } catch { parsed = []; }
+  }
+  const safeChapters = Array.isArray(parsed) ? parsed : [];
   // Set으로 여러 개 동시 오픈
   const [openIds, setOpenIds] = useState<Set<string>>(() => {
     return safeChapters[0] ? new Set([safeChapters[0].id]) : new Set();

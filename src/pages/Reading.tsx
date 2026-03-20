@@ -133,10 +133,10 @@ export function Reading() {
     return () => clearInterval(interval);
   }, [processingReading, fetchReadings]);
 
-  const handleRequestReading = () => {
+  const handleRequestReading = (force = false) => {
     if (!profileId) return;
     setLocalPhase(null);
-    startReading(profileId, serviceType);
+    startReading(profileId, serviceType, force);
   };
 
   if (!profile) {
@@ -361,8 +361,8 @@ export function Reading() {
             )}
 
             {/* 새로 풀이받기 */}
-            <Button variant="ghost" size="lg" onClick={() => setLocalPhase('confirm')} className="text-warm-gray">
-              다시 풀이받기
+            <Button variant="ghost" size="lg" onClick={() => handleRequestReading(true)} className="text-warm-gray">
+              다시 풀이받기 (🦴 차감)
             </Button>
 
             <Recommendations exclude={[serviceType]} />
@@ -398,7 +398,7 @@ export function Reading() {
 
             <Button
               size="lg"
-              onClick={handleRequestReading}
+              onClick={() => handleRequestReading(false)}
               disabled={(credits?.bones ?? 0) < 3}
             >
               🦴 3개로 풀이받기

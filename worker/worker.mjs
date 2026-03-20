@@ -277,23 +277,40 @@ function getToolSchema(serviceType) {
   return READING_SCHEMA; // comprehensive + 기타
 }
 
-// ===== 응답에서 tool_use 결과 추출 =====
+// ===== 응답에서 tool_use 결과 추출 + 필드 정규화 =====
 function extractToolResult(apiResponse) {
+  let result;
+
   // tool_use 블록 찾기
   const toolBlock = apiResponse.content.find(b => b.type === 'tool_use');
-  if (toolBlock?.input) return toolBlock.input;
+  if (toolBlock?.input) {
+    result = toolBlock.input;
+  } else {
+    // fallback: text에서 JSON 추출
+    const text = apiResponse.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    if (!text) throw new Error('빈 응답');
 
-  // fallback: text에서 JSON 추출
-  const text = apiResponse.content.filter(b => b.type === 'text').map(b => b.text).join('');
-  if (!text) throw new Error('빈 응답');
+    const jsonMatch = text.match(/```json\s*([\s\S]*?)```/);
+    const jsonStr = jsonMatch ? jsonMatch[1].trim() : text.trim();
+    try { result = JSON.parse(jsonStr); } catch {
+      const start = jsonStr.indexOf('{');
+      const end = jsonStr.lastIndexOf('}');
+      if (start !== -1 && end !== -1) result = JSON.parse(jsonStr.slice(start, end + 1));
+      else throw new Error('JSON 파싱 실패');
+    }
+  }
 
-  const jsonMatch = text.match(/```json\s*([\s\S]*?)```/);
-  const jsonStr = jsonMatch ? jsonMatch[1].trim() : text.trim();
-  try { return JSON.parse(jsonStr); } catch {}
-  const start = jsonStr.indexOf('{');
-  const end = jsonStr.lastIndexOf('}');
-  if (start !== -1 && end !== -1) return JSON.parse(jsonStr.slice(start, end + 1));
-  throw new Error('JSON 파싱 실패');
+  // 필드 정규화: string으로 들어온 배열/객체 필드를 파싱
+  if (result) {
+    for (const key of ['chapters', 'advice', 'luckyItems', 'categories']) {
+      if (typeof result[key] === 'string') {
+        try { result[key] = JSON.parse(result[key]); }
+        catch { log('warn', `Failed to parse ${key} as JSON, keeping as string`); }
+      }
+    }
+  }
+
+  return result;
 }
 
 // ===== 비용 계산 =====

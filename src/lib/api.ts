@@ -39,9 +39,10 @@ export async function requestReading(
   profileId: string,
   serviceType: string,
   secondaryProfileId?: string,
+  force = false,
 ): Promise<RequestResult> {
   const { data, error } = await supabase.functions.invoke('saju-request', {
-    body: { profileId, serviceType, secondaryProfileId },
+    body: { profileId, serviceType, secondaryProfileId, force },
   });
 
   if (error) throw new Error(error.message || '요청 실패');

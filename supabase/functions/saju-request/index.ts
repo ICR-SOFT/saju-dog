@@ -26,7 +26,7 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const { profileId, serviceType = 'comprehensive', secondaryProfileId } = await req.json();
+    const { profileId, serviceType = 'comprehensive', secondaryProfileId, force = false } = await req.json();
 
     // Auth
     const authHeader = req.headers.get('Authorization')!;
@@ -43,24 +43,26 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // 캐시 확인 (이미 완료된 풀이가 있으면 즉시 반환)
-    const { data: cached } = await supabase
-      .from('readings')
-      .select('id, result, processing_status')
-      .eq('profile_id', profileId)
-      .eq('service_type', serviceType)
-      .eq('processing_status', 'completed')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    // 캐시 확인 (force=true면 캐시 무시하고 새로 풀이)
+    if (!force) {
+      const { data: cached } = await supabase
+        .from('readings')
+        .select('id, result, processing_status')
+        .eq('profile_id', profileId)
+        .eq('service_type', serviceType)
+        .eq('processing_status', 'completed')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-    if (cached?.result) {
-      return new Response(JSON.stringify({
-        readingId: cached.id,
-        status: 'completed',
-        result: cached.result,
-        cached: true,
-      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (cached?.result) {
+        return new Response(JSON.stringify({
+          readingId: cached.id,
+          status: 'completed',
+          result: cached.result,
+          cached: true,
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
     }
 
     // 진행 중인 요청 확인

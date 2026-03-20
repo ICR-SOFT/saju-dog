@@ -27,7 +27,7 @@ interface SajuState {
   fetchProfiles: () => Promise<void>;
   addProfile: (profile: Omit<SajuProfile, 'id' | 'user_id' | 'calculated_saju' | 'created_at' | 'updated_at'>) => Promise<SajuProfile>;
   deleteProfile: (id: string) => Promise<void>;
-  startReading: (profileId: string, serviceType: string) => Promise<void>;
+  startReading: (profileId: string, serviceType: string, force?: boolean) => Promise<void>;
   fetchReadings: () => Promise<void>;
   clearCurrentReading: () => void;
 }
@@ -88,7 +88,7 @@ export const useSajuStore = create<SajuState>((set, get) => ({
    * 2. saju-worker → 처리 시작
    * 3. 폴링으로 완료 확인
    */
-  startReading: async (profileId, serviceType) => {
+  startReading: async (profileId, serviceType, force = false) => {
     set({
       isLoading: true,
       error: null,
@@ -99,7 +99,7 @@ export const useSajuStore = create<SajuState>((set, get) => ({
 
     try {
       // Step 1: 요청 접수
-      const requestResult = await apiRequestReading(profileId, serviceType);
+      const requestResult = await apiRequestReading(profileId, serviceType, undefined, force);
 
       // 캐시 히트
       if (requestResult.cached && requestResult.result) {
