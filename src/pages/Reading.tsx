@@ -171,13 +171,13 @@ export function Reading() {
   return (
     <Layout>
       {/* 프로필 헤더 — 띠 이미지 배경 */}
-      <div className="relative text-center mb-4 -mx-4 -mt-4 rounded-b-3xl overflow-hidden">
+      <div className="relative text-center mb-4 -mx-4 -mt-4 rounded-b-3xl overflow-hidden" style={{ minHeight: '220px' }}>
         {sajuData && (
           <img src={getZodiacImageUrl(sajuData.ddi.animal)} alt={sajuData.ddi.fullName}
             className="absolute inset-0 w-full h-full object-cover" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
-        <div className="relative z-10 px-4 pt-8 pb-6">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/10" />
+        <div className="relative z-10 px-4 pt-16 pb-6">
           <h2 className="text-xl font-bold text-white font-serif" style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.7)' }}>
             {profile.name}님의 {serviceType !== 'comprehensive' && SERVICE_LABELS[serviceType] ? SERVICE_LABELS[serviceType] : '사주풀이'}
           </h2>
