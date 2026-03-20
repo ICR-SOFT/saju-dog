@@ -84,8 +84,10 @@ export function AddProfile() {
 
       if (insertError) throw new Error(insertError.message);
 
-      // 스토어에도 추가
-      useSajuStore.getState().fetchProfiles();
+      // 스토어에도 추가 + 새 프로필 선택
+      await useSajuStore.getState().fetchProfiles();
+      const newProfiles = useSajuStore.getState().profiles;
+      useSajuStore.getState().selectProfile(newProfiles.length - 1);
 
       navigate('/');
     } catch (err) {
