@@ -1,7 +1,13 @@
 import { supabase } from './supabase.ts';
 import type { SajuApiResponse } from '@/types/saju.ts';
 
-// ===== 큐 기반 API =====
+// ===== 큐 기반 API (DB 직접 insert) =====
+
+const CREDIT_COSTS: Record<string, number> = {
+  comprehensive: 3, compatibility: 3, daeun: 2, yearly: 2,
+  daily: 0, chat: 1, business: 3, luckyday: 2,
+  love: 2, wealth: 2, health: 2, career: 2, pastlife: 2, moving: 2,
+};
 
 export interface RequestResult {
   readingId: string;
@@ -13,8 +19,10 @@ export interface RequestResult {
 }
 
 /**
- * 풀이 요청 접수 (빠른 응답)
- * 크레딧 차감 + pending reading 생성 + reading ID 반환
+ * 풀이 요청 접수 (DB 직접 insert)
+ * 1. 캐시/진행중 확인
+ * 2. 크레딧 차감
+ * 3. pending reading 생성
  * EC2 워커가 자동으로 처리 → 프론트는 pollReadingStatus로 폴링
  */
 export async function requestReading(
@@ -24,18 +32,83 @@ export async function requestReading(
   force = false,
   metadata?: Record<string, string>,
 ): Promise<RequestResult> {
-  const { data, error } = await supabase.functions.invoke('saju-request', {
-    body: { profileId, serviceType, secondaryProfileId, force, metadata },
-  });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('로그인이 필요합니다');
 
-  if (error) {
-    // 401이면 세션 만료
-    if (error.message?.includes('401') || error.message?.includes('JWT')) {
-      throw new Error('세션이 만료되었습니다. 페이지를 새로고침해주세요.');
+  // 캐시 확인 (force=true면 건너뜀)
+  if (!force) {
+    const { data: cached } = await supabase
+      .from('readings')
+      .select('id, result, processing_status')
+      .eq('profile_id', profileId)
+      .eq('service_type', serviceType)
+      .eq('processing_status', 'completed')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (cached?.result) {
+      return { readingId: cached.id, status: 'completed', result: cached.result, cached: true };
     }
-    throw new Error(error.message || '요청 실패');
   }
-  return data as RequestResult;
+
+  // 진행 중인 요청 확인 (force=true면 건너뜀)
+  if (!force) {
+    const { data: pending } = await supabase
+      .from('readings')
+      .select('id, processing_status')
+      .eq('profile_id', profileId)
+      .eq('service_type', serviceType)
+      .in('processing_status', ['pending', 'processing'])
+      .maybeSingle();
+
+    if (pending) {
+      return { readingId: pending.id, status: pending.processing_status as RequestResult['status'] };
+    }
+  }
+
+  // 크레딧 차감
+  const cost = (serviceType === 'daily' && force) ? 1 : (CREDIT_COSTS[serviceType] ?? 2);
+  if (cost > 0) {
+    const { data: credits } = await supabase
+      .from('credits')
+      .select('bones')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!credits || credits.bones < cost) {
+      throw new Error(`뼈다귀가 부족합니다 (필요: ${cost}, 보유: ${credits?.bones ?? 0})`);
+    }
+
+    await supabase
+      .from('credits')
+      .update({ bones: credits.bones - cost, updated_at: new Date().toISOString() })
+      .eq('user_id', user.id);
+
+    await supabase.from('credit_transactions').insert({
+      user_id: user.id, type: 'usage', bones_delta: -cost,
+      description: `${serviceType} 풀이 요청`,
+    });
+  }
+
+  // pending reading 생성
+  const { data: reading, error: insertError } = await supabase
+    .from('readings')
+    .insert({
+      user_id: user.id,
+      profile_id: profileId,
+      secondary_profile_id: secondaryProfileId || null,
+      service_type: serviceType,
+      status: 'completed',
+      processing_status: 'pending',
+      ...(metadata ? { metadata } : {}),
+    })
+    .select('id')
+    .single();
+
+  if (insertError) throw new Error(`요청 생성 실패: ${insertError.message}`);
+
+  return { readingId: reading.id, status: 'pending', cost };
 }
 
 /**
