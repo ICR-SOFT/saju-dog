@@ -127,7 +127,15 @@ export function Home() {
   const { profiles, fetchProfiles, deleteProfile } = useSajuStore();
   const { fetchCredits } = useCreditStore();
   const [toast, setToast] = useState('');
-  const [selectedProfileIdx, setSelectedProfileIdx] = useState(0);
+  const [selectedProfileIdx, setSelectedProfileIdx] = useState(() => {
+    const saved = localStorage.getItem('saju-selected-profile-idx');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+
+  const selectProfile = (idx: number) => {
+    setSelectedProfileIdx(idx);
+    localStorage.setItem('saju-selected-profile-idx', String(idx));
+  };
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -239,7 +247,7 @@ export function Home() {
             {profiles.map((p, i) => (
               <button
                 key={p.id}
-                onClick={() => setSelectedProfileIdx(i)}
+                onClick={() => selectProfile(i)}
                 className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl transition-all ${
                   i === selectedProfileIdx
                     ? 'bg-brown text-cream shadow-md ring-2 ring-brown/30'
@@ -272,7 +280,7 @@ export function Home() {
                     if (!confirm(`${profiles[selectedProfileIdx].name} 프로필을 삭제할까요?`)) return;
                     try {
                       await deleteProfile(profiles[selectedProfileIdx].id);
-                      setSelectedProfileIdx(0);
+                      selectProfile(0);
                       showToast('프로필이 삭제되었어요');
                     } catch { showToast('삭제에 실패했어요'); }
                   }}
