@@ -83,8 +83,8 @@ serve(async (req) => {
       }
     }
 
-    // 크레딧 차감
-    const cost = CREDIT_COSTS[serviceType] ?? 2;
+    // 크레딧 차감 (일일운세 재열람 시 1개 차감)
+    const cost = (serviceType === 'daily' && force) ? 1 : (CREDIT_COSTS[serviceType] ?? 2);
     if (cost > 0) {
       const { data: credits } = await adminSupabase
         .from('credits')

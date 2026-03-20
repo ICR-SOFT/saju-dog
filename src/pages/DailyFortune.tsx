@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/Button.tsx';
 import { PhotoLoading } from '@/components/ui/PhotoLoading.tsx';
 import { Recommendations } from '@/components/saju/Recommendations.tsx';
 import { useSajuStore } from '@/stores/saju.ts';
+import { useCreditStore } from '@/stores/credit.ts';
 import { requestReading, pollReadingStatus } from '@/lib/api.ts';
+import { ConfirmModal } from '@/components/ui/ConfirmModal.tsx';
 
 interface DailyResult {
   summary: string;
@@ -40,7 +42,8 @@ export function DailyFortune() {
   const [result, setResult] = useState<DailyResult | null>(null);
   const [phase, setPhase] = useState<'init' | 'idle' | 'loading' | 'done'>('init');
   const [error, setError] = useState('');
-  const [userQuestion, setUserQuestion] = useState('');
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [isReread, setIsReread] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const profile = profiles[selectedProfileIdx] || profiles[0];
@@ -115,14 +118,15 @@ export function DailyFortune() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.id]);
 
-  const fetchDaily = async () => {
+  const fetchDaily = async (question?: string, force = false) => {
     if (!profile) return;
+    setShowConfirmModal(false);
     setPhase('loading');
     setError('');
 
     try {
-      const meta = userQuestion.trim() ? { userQuestion: userQuestion.trim() } : undefined;
-      const reqResult = await requestReading(profile.id, 'daily', undefined, false, meta);
+      const meta = question ? { userQuestion: question } : undefined;
+      const reqResult = await requestReading(profile.id, 'daily', undefined, force, meta);
 
       // 캐시 히트
       if (reqResult.cached && reqResult.result) {
@@ -270,24 +274,30 @@ export function DailyFortune() {
             </button>
           </div>
 
+          {/* 다시 보기 */}
+          <Button variant="ghost" size="lg" onClick={() => { setIsReread(true); setShowConfirmModal(true); }} className="text-warm-gray">
+            다시 보기 (🦴 1개)
+          </Button>
+
           <Recommendations exclude={['daily']} />
         </div>
       ) : (
-        // idle 상태 — 오늘 결과 없음, 버튼 표시
+        // idle 상태 — 오늘 결과 없음
         <Card className="text-center py-8">
           <p className="text-4xl mb-3">🐕</p>
           <p className="text-warm-gray mb-3">오늘의 운세를 확인해보세요</p>
-          <input
-            type="text"
-            value={userQuestion}
-            onChange={e => setUserQuestion(e.target.value.slice(0, 80))}
-            placeholder="오늘 궁금한 점이 있다면? (선택)"
-            className="w-full rounded-xl border border-warm-gray-light/50 bg-white px-4 py-2.5 text-dark text-sm outline-none focus:border-brown placeholder:text-warm-gray-light mb-3"
-            maxLength={80}
-          />
-          <Button onClick={fetchDaily}>오늘의 운세 보기</Button>
+          <Button onClick={() => { setIsReread(false); setShowConfirmModal(true); }}>오늘의 운세 보기</Button>
         </Card>
       )}
+
+      <ConfirmModal
+        isOpen={showConfirmModal}
+        title={isReread ? '오늘의 운세 다시 보기' : '오늘의 운세'}
+        cost={isReread ? 1 : 0}
+        bones={useCreditStore.getState().credits?.bones ?? 0}
+        onConfirm={(q) => fetchDaily(q || undefined, isReread)}
+        onCancel={() => setShowConfirmModal(false)}
+      />
     </Layout>
   );
 }
