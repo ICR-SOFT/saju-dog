@@ -34,6 +34,7 @@ export async function requestReading(
   serviceType: string,
   secondaryProfileId?: string,
   force = false,
+  metadata?: Record<string, string>,
 ): Promise<RequestResult> {
   // 세션 갱신 시도
   const { data: { session } } = await supabase.auth.getSession();
@@ -42,7 +43,7 @@ export async function requestReading(
   }
 
   const { data, error } = await supabase.functions.invoke('saju-request', {
-    body: { profileId, serviceType, secondaryProfileId, force },
+    body: { profileId, serviceType, secondaryProfileId, force, metadata },
   });
 
   if (error) {

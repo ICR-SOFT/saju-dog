@@ -118,11 +118,24 @@ function buildUserMessage(reading, profile, secondaryProfile) {
   const fmtArr = (arr) => arr?.length > 0 ? arr.join(', ') : '없음';
   const fmtJJ = (jj) => jj?.map(j => `${j.stem}(${j.sipsin}·${j.type})`).join(', ') || '';
 
-  if (reading.service_type === 'compatibility' && secondaryProfile?.calculated_saju) {
+  if ((reading.service_type === 'compatibility' || reading.service_type === 'business') && secondaryProfile?.calculated_saju) {
     const d2 = secondaryProfile.calculated_saju;
     const p2 = d2.pillars;
     const s2 = d2.sinsal || {};
-    return `## 첫 번째 (${data.input?.name || profile.name})
+
+    // metadata에서 관계 유형 읽기 (error 필드에 임시 저장됨)
+    let relationType = '';
+    try {
+      const meta = reading.error ? JSON.parse(reading.error) : {};
+      relationType = meta.relationType || '';
+    } catch {}
+
+    const relationContext = relationType
+      ? `\n## 관계 유형: ${relationType}\n이 관계에 맞게 궁합을 풀어주세요. 연인이면 연애/결혼 중심, 친구면 우정/신뢰 중심, 동업이면 사업/역할분담 중심, 가족이면 소통/갈등해결 중심으로.\n`
+      : '';
+
+    return `${relationContext}
+## 첫 번째 (${data.input?.name || profile.name})
 사주: ${p.year.stem}${p.year.branch} ${p.month.stem}${p.month.branch} ${p.day.stem}${p.day.branch} ${p.hour.stem}${p.hour.branch}
 오행: 목${data.ohaengCount?.['목']} 화${data.ohaengCount?.['화']} 토${data.ohaengCount?.['토']} 금${data.ohaengCount?.['금']} 수${data.ohaengCount?.['수']}
 띠: ${data.ddi?.fullName || '?'} / 별자리: ${data.zodiac?.name || '?'}

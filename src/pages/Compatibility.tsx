@@ -27,6 +27,16 @@ export function Compatibility() {
   }, [profiles, initialized]);
   const [phase, setPhase] = useState<Phase>('select');
   const [error, setError] = useState('');
+  const [relationType, setRelationType] = useState('');
+
+  const RELATION_PRESETS = [
+    { label: '연인/부부', value: '연인/부부', emoji: '💕' },
+    { label: '친구/동료', value: '친구/동료', emoji: '🤝' },
+    { label: '동업/사업', value: '동업/사업 파트너', emoji: '💼' },
+    { label: '가족', value: '가족', emoji: '👨‍👩‍👧‍👦' },
+    { label: '상사/부하', value: '직장 상사와 부하', emoji: '🏢' },
+    { label: '직접 입력', value: '', emoji: '✏️' },
+  ];
 
   // 궁합 내역 (completed)
   const compatReadings = readings.filter(r => r.service_type === 'compatibility' && r.processing_status === 'completed');
@@ -68,7 +78,10 @@ export function Compatibility() {
     setError('');
     try {
       // 항상 새로 요청 (force=true — 궁합은 매번 새로 볼 수 있어야 함)
-      const reqResult = await requestReading(selectedIds[0], 'compatibility', selectedIds[1], true);
+      const reqResult = await requestReading(
+        selectedIds[0], 'compatibility', selectedIds[1], true,
+        relationType ? { relationType } : undefined,
+      );
       useCreditStore.getState().fetchCredits();
 
       if (reqResult.cached && reqResult.result) {
@@ -175,6 +188,32 @@ export function Compatibility() {
                 + 프로필 추가 ({selectedIds.length}/{MAX_PEOPLE})
               </button>
             )}
+
+            {/* 관계 유형 선택 */}
+            <div>
+              <p className="text-sm font-medium text-dark-light mb-2">어떤 관계인가요?</p>
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {RELATION_PRESETS.map(r => (
+                  <button key={r.label} type="button"
+                    onClick={() => setRelationType(r.value)}
+                    className={`text-xs px-3 py-1.5 rounded-full transition-all border ${
+                      relationType === r.value
+                        ? 'bg-brown text-cream border-brown'
+                        : 'bg-white text-dark border-cream-dark hover:border-brown/30'
+                    }`}>
+                    {r.emoji} {r.label}
+                  </button>
+                ))}
+              </div>
+              {relationType === '' && (
+                <input
+                  type="text"
+                  placeholder="관계를 직접 입력하세요 (예: 룸메이트, 선후배)"
+                  className="w-full rounded-xl border border-warm-gray-light/50 bg-white px-4 py-2 text-dark text-sm outline-none focus:border-brown"
+                  onChange={e => setRelationType(e.target.value)}
+                />
+              )}
+            </div>
 
             {error && <p className="text-sm text-red-500 text-center bg-red-50 rounded-xl p-2">{error}</p>}
 
