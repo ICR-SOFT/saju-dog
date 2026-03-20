@@ -16,7 +16,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 const POLL_INTERVAL = parseInt(process.env.POLL_INTERVAL_MS || '3000');
-const MAX_CONCURRENT = parseInt(process.env.MAX_CONCURRENT || '5');
+const MAX_CONCURRENT = parseInt(process.env.MAX_CONCURRENT || '500');
 const RETRY_BASE_DELAY = parseInt(process.env.RETRY_BASE_DELAY_MS || '5000');
 const RETRY_MAX_DELAY = 60_000; // 최대 60초 대기
 
