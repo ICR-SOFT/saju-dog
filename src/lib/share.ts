@@ -5,6 +5,18 @@ export function generateShareId(): string {
 }
 
 export async function createShareLink(readingId: string): Promise<string> {
+  // 이미 share_id가 있으면 재사용
+  const { data: existing } = await supabase
+    .from('readings')
+    .select('share_id')
+    .eq('id', readingId)
+    .single();
+
+  if (existing?.share_id) {
+    return `${window.location.origin}/share/${existing.share_id}`;
+  }
+
+  // 없으면 새로 생성
   const shareId = generateShareId();
   const { data, error } = await supabase
     .from('readings')
