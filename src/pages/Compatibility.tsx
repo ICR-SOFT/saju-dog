@@ -16,12 +16,15 @@ type Phase = 'select' | 'loading' | 'done';
 export function Compatibility() {
   const navigate = useNavigate();
   const { profiles, readings, fetchReadings } = useSajuStore();
-  const [selectedIds, setSelectedIds] = useState<string[]>(() => {
-    const initial: string[] = [];
-    if (profiles[0]) initial.push(profiles[0].id);
-    if (profiles[1]) initial.push(profiles[1].id);
-    return initial;
-  });
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [initialized, setInitialized] = useState(false);
+
+  // profiles 로드 후 초기 선택
+  useEffect(() => {
+    if (initialized || profiles.length < 2) return;
+    setSelectedIds([profiles[0].id, profiles[1].id]);
+    setInitialized(true);
+  }, [profiles, initialized]);
   const [phase, setPhase] = useState<Phase>('select');
   const [error, setError] = useState('');
 
