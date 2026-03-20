@@ -1,9 +1,5 @@
 import { supabase } from './supabase.ts';
-import type {
-  DailyFortuneRequest,
-  ChatRequest,
-  ChatResponse,
-} from '@/types/api.ts';
+import type {} from '@/types/api.ts';
 import type { SajuApiResponse } from '@/types/saju.ts';
 
 // ===== 큐 기반 API =====
@@ -91,22 +87,87 @@ export async function pollReadingStatus(readingId: string): Promise<{
   };
 }
 
-// ===== 기존 API (daily, chat은 아직 동기식) =====
+// ===== 채팅 API (큐 기반) =====
 
-async function callEdgeFunction<T>(name: string, body: object): Promise<T> {
-  const { data, error } = await supabase.functions.invoke(name, { body });
-  if (error) throw new Error(error.message || `Edge Function 호출 실패: ${name}`);
-  return data as T;
+export interface ChatSession {
+  id: string;
+  user_id: string;
+  profile_id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
 }
 
-export async function getDailyFortune(req: DailyFortuneRequest): Promise<SajuApiResponse> {
-  return callEdgeFunction<SajuApiResponse>('daily-fortune', req);
+export interface ChatMessageRow {
+  id: string;
+  session_id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  processing_status: string;
+  created_at: string;
 }
 
-export async function sendChat(req: ChatRequest): Promise<ChatResponse> {
-  return callEdgeFunction<ChatResponse>('saju-chat', req);
+/** 세션 목록 */
+export async function getChatSessions(): Promise<ChatSession[]> {
+  const { data, error } = await supabase
+    .from('chat_sessions')
+    .select('*')
+    .order('updated_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return data || [];
 }
 
-export async function getCompatibility(req: { profileIds: string[] }): Promise<SajuApiResponse> {
-  return callEdgeFunction<SajuApiResponse>('compatibility', req);
+/** 세션 생성 */
+export async function createChatSession(profileId: string): Promise<ChatSession> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('로그인 필요');
+  const { data, error } = await supabase
+    .from('chat_sessions')
+    .insert({ user_id: user.id, profile_id: profileId })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/** 세션 삭제 */
+export async function deleteChatSession(sessionId: string): Promise<void> {
+  const { error } = await supabase.from('chat_sessions').delete().eq('id', sessionId);
+  if (error) throw new Error(error.message);
+}
+
+/** 메시지 목록 */
+export async function getChatMessages(sessionId: string): Promise<ChatMessageRow[]> {
+  const { data, error } = await supabase
+    .from('chat_messages')
+    .select('*')
+    .eq('session_id', sessionId)
+    .order('created_at', { ascending: true });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+/** 메시지 전송 (pending으로 insert → 워커가 처리) */
+export async function sendChatMessage(sessionId: string, content: string): Promise<ChatMessageRow> {
+  const { data, error } = await supabase
+    .from('chat_messages')
+    .insert({ session_id: sessionId, role: 'user', content, processing_status: 'pending' })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/** 새 메시지 폴링 (특정 시점 이후) */
+export async function pollChatMessages(sessionId: string, afterDate: string): Promise<ChatMessageRow[]> {
+  const { data, error } = await supabase
+    .from('chat_messages')
+    .select('*')
+    .eq('session_id', sessionId)
+    .gt('created_at', afterDate)
+    .eq('role', 'assistant')
+    .eq('processing_status', 'completed')
+    .order('created_at', { ascending: true });
+  if (error) throw new Error(error.message);
+  return data || [];
 }

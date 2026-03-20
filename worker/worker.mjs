@@ -386,6 +386,108 @@ async function refundCredits(userId, serviceType, readingId) {
   }
 }
 
+// ===== 채팅 메시지 처리 =====
+async function processChatMessage(msg) {
+  const mid = msg.id.slice(0, 8);
+  log('info', `[CHAT:${mid}] Start`);
+
+  await supabase.from('chat_messages').update({ processing_status: 'processing' }).eq('id', msg.id);
+
+  try {
+    // 세션 + 프로필 로드
+    const { data: session } = await supabase.from('chat_sessions').select('*, saju_profiles(*)').eq('id', msg.session_id).single();
+    if (!session) throw new Error('세션 없음');
+    const profile = session.saju_profiles;
+    if (!profile?.calculated_saju) throw new Error('calculated_saju 없음');
+
+    // 이전 메시지 로드 (최근 20개)
+    const { data: history } = await supabase.from('chat_messages')
+      .select('role, content')
+      .eq('session_id', msg.session_id)
+      .eq('processing_status', 'completed')
+      .order('created_at', { ascending: true })
+      .limit(20);
+
+    // 사주 데이터 요약
+    const data = profile.calculated_saju;
+    const p = data.pillars;
+    const s = data.sinsal || {};
+    const fmtArr = (arr) => arr?.length > 0 ? arr.join(', ') : '없음';
+
+    const sajuContext = `사주 정보 (${data.input?.name || profile.name}, ${data.input?.gender === 'male' ? '남' : '여'}):
+사주: ${p.year.stem}${p.year.branch} ${p.month.stem}${p.month.branch} ${p.day.stem}${p.day.branch} ${p.hour.stem}${p.hour.branch}
+오행: 목${data.ohaengCount?.['목']} 화${data.ohaengCount?.['화']} 토${data.ohaengCount?.['토']} 금${data.ohaengCount?.['금']} 수${data.ohaengCount?.['수']}
+띠: ${data.ddi?.fullName || '?'} / 별자리: ${data.zodiac?.name || '?'}
+신살: ${fmtArr(s.allSinsal)} / 귀인: ${fmtArr(s.guiin)}
+현재 대운: ${data.daeun?.find(d => d.isCurrent)?.stem || '?'}${data.daeun?.find(d => d.isCurrent)?.branch || '?'}`;
+
+    const systemPrompt = `당신은 '복돌이'라는 이름의 사주 상담 골든 리트리버입니다.
+사용자의 사주 데이터를 기반으로 친근하고 따뜻하게 상담합니다.
+
+${sajuContext}
+
+규칙:
+- 한국어로 답변하세요
+- 반말이 아닌 존댓말을 사용하세요
+- 사주 데이터를 근거로 구체적으로 답변하세요
+- 딱딱한 한문 용어 대신 쉬운 말로 설명하세요
+- 가끔 강아지 이모지(🐾🐕)를 섞어 친근감을 주세요
+- 답변은 300자 이내로 간결하게 하세요
+- <strong>태그로 핵심 키워드를 강조하세요`;
+
+    const messages = [
+      ...(history || []).map(h => ({ role: h.role, content: h.content })),
+      { role: 'user', content: msg.content },
+    ];
+
+    const apiResponse = await callClaude({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1024,
+      system: systemPrompt,
+      messages,
+    });
+
+    const reply = apiResponse.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    const cost = calculateCost('sonnet', apiResponse.usage || {});
+
+    // 응답 메시지 저장 (API 비용 포함)
+    await supabase.from('chat_messages').insert({
+      session_id: msg.session_id,
+      role: 'assistant',
+      content: reply,
+      processing_status: 'completed',
+      api_cost: cost,
+    });
+
+    // 원본 메시지 완료 처리
+    await supabase.from('chat_messages').update({ processing_status: 'completed' }).eq('id', msg.id);
+
+    // 세션 제목 자동 생성 (첫 메시지일 때)
+    if (!history || history.length === 0) {
+      const title = msg.content.length > 20 ? msg.content.slice(0, 20) + '...' : msg.content;
+      await supabase.from('chat_sessions').update({ title, updated_at: new Date().toISOString() }).eq('id', msg.session_id);
+    } else {
+      await supabase.from('chat_sessions').update({ updated_at: new Date().toISOString() }).eq('id', msg.session_id);
+    }
+
+    log('info', `[CHAT:${mid}] Done | ${cost.input_tokens}→${cost.output_tokens} tok | $${cost.cost_usd}`);
+    totalCostUsd += cost.cost_usd;
+
+  } catch (err) {
+    log('error', `[CHAT:${mid}] Failed: ${err.message}`);
+    await supabase.from('chat_messages').update({ processing_status: 'failed' }).eq('id', msg.id);
+    // 실패 시 에러 메시지 응답
+    await supabase.from('chat_messages').insert({
+      session_id: msg.session_id,
+      role: 'assistant',
+      content: '죄송해요, 잠시 문제가 생겼어요. 다시 보내주세요 🐾',
+      processing_status: 'completed',
+    });
+  } finally {
+    activeJobs.delete(`chat:${msg.id}`);
+  }
+}
+
 // ===== 단일 reading 처리 =====
 async function processReading(reading) {
   const startTime = Date.now();
@@ -598,6 +700,29 @@ async function pollLoop() {
               activeJobs.add(reading.id);
               // 비동기로 동시 실행 (await 안 함)
               processReading(reading);
+            }
+          }
+        }
+      }
+
+      // 채팅 메시지 폴링
+      const chatAvailable = MAX_CONCURRENT - activeJobs.size;
+      if (chatAvailable > 0) {
+        const { data: pendingChats } = await supabase
+          .from('chat_messages')
+          .select('*')
+          .eq('processing_status', 'pending')
+          .eq('role', 'user')
+          .order('created_at', { ascending: true })
+          .limit(Math.min(chatAvailable, 10));
+
+        if (pendingChats?.length > 0) {
+          log('info', `Found ${pendingChats.length} pending chats`);
+          for (const cm of pendingChats) {
+            const key = `chat:${cm.id}`;
+            if (!activeJobs.has(key)) {
+              activeJobs.add(key);
+              processChatMessage(cm);
             }
           }
         }
