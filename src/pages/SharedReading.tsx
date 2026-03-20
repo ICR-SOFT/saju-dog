@@ -60,7 +60,7 @@ export function SharedReading() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [sajuData, setSajuData] = useState<SajuPillars | null>(null);
-  const [secondaryProfileName, setSecondaryProfileName] = useState('');
+  const [allCompatNames, setAllCompatNames] = useState('');
 
   useEffect(() => {
     if (!shareId) return;
@@ -70,14 +70,30 @@ export function SharedReading() {
         const data = await getSharedReading(shareId);
         setReading(data as any);
 
-        // 궁합인 경우 secondary profile 이름 조회
-        if (data.service_type === 'compatibility' && data.secondary_profile_id) {
-          const { data: secProfile } = await supabase
-            .from('saju_profiles')
-            .select('name')
-            .eq('id', data.secondary_profile_id)
-            .single();
-          if (secProfile?.name) setSecondaryProfileName(secProfile.name);
+        // 궁합인 경우 모든 프로필 이름 조회
+        if ((data.service_type === 'compatibility' || data.service_type === 'business')) {
+          const names = [data.saju_profiles?.name || ''];
+
+          if (data.secondary_profile_id) {
+            const { data: sec } = await supabase.from('saju_profiles').select('name').eq('id', data.secondary_profile_id).single();
+            if (sec?.name) names.push(sec.name);
+          }
+
+          // metadata에서 추가 프로필
+          const meta = (data as any).metadata;
+          if (meta?.allProfileIds) {
+            try {
+              const allIds = JSON.parse(meta.allProfileIds) as string[];
+              for (const id of allIds) {
+                if (id !== data.profile_id && id !== data.secondary_profile_id) {
+                  const { data: ep } = await supabase.from('saju_profiles').select('name').eq('id', id).single();
+                  if (ep?.name) names.push(ep.name);
+                }
+              }
+            } catch {}
+          }
+
+          setAllCompatNames(names.filter(Boolean).join(' & '));
         }
 
         // 프로필 데이터가 있으면 만세력 계산
@@ -153,8 +169,8 @@ export function SharedReading() {
         <p className="text-xs text-warm-gray mb-2 font-medium">사주독 — 사주로 보는 나의 이야기</p>
         <span className="text-4xl">{serviceInfo.emoji}</span>
         <h2 className="text-xl font-bold text-dark font-serif mt-2">
-          {isCompatibility && secondaryProfileName
-            ? `${profileName} & ${secondaryProfileName}의 궁합`
+          {isCompatibility && allCompatNames
+            ? `${allCompatNames}의 궁합`
             : profileName ? `${profileName}님의 ${serviceInfo.label}` : serviceInfo.label}
         </h2>
         <p className="text-sm text-warm-gray mt-1">
