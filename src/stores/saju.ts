@@ -18,7 +18,6 @@ interface SajuState {
   processingStatus: 'idle' | 'requesting' | 'processing' | 'completed' | 'failed';
   processingInfo: {
     duration_ms?: number;
-    api_cost?: Record<string, unknown>;
     failure_reason?: string;
     refunded?: boolean;
   } | null;
@@ -135,7 +134,6 @@ export const useSajuStore = create<SajuState>((set, get) => ({
                 pendingReadingId: null,
                 processingInfo: {
                   duration_ms: status.duration_ms,
-                  api_cost: status.api_cost,
                 },
                 readingCache: { ...state.readingCache, [`${profileId}:${serviceType}`]: status.result! },
               }));

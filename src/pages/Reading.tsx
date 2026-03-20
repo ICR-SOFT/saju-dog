@@ -292,12 +292,6 @@ export function Reading() {
                   {cachedReading.processing_duration_ms && ` · ${(cachedReading.processing_duration_ms / 1000).toFixed(0)}초 소요`}
                 </p>
               )}
-              {processingInfo?.duration_ms && (
-                <p className="text-[10px] text-warm-gray-light mt-1">
-                  {(processingInfo.duration_ms / 1000).toFixed(1)}초 소요
-                  {processingInfo.api_cost && ` · $${(processingInfo.api_cost as any).cost_usd?.toFixed(4) || '?'}`}
-                </p>
-              )}
             </Card>
 
             {/* 챕터 */}

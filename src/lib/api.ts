@@ -21,12 +21,6 @@ export interface WorkerResult {
   status: 'pending' | 'processing' | 'completed' | 'failed';
   result?: SajuApiResponse;
   duration_ms?: number;
-  api_cost?: {
-    model: string;
-    input_tokens: number;
-    output_tokens: number;
-    cost_usd: number;
-  };
   error?: string;
   refunded?: boolean;
 }
@@ -72,12 +66,11 @@ export async function pollReadingStatus(readingId: string): Promise<{
   status: string;
   result?: SajuApiResponse;
   duration_ms?: number;
-  api_cost?: Record<string, unknown>;
   failure_reason?: string;
 }> {
   const { data, error } = await supabase
     .from('readings')
-    .select('processing_status, result, processing_duration_ms, api_cost, failure_reason')
+    .select('processing_status, result, processing_duration_ms, failure_reason')
     .eq('id', readingId)
     .single();
 
@@ -87,7 +80,6 @@ export async function pollReadingStatus(readingId: string): Promise<{
     status: data.processing_status,
     result: data.result as SajuApiResponse | undefined,
     duration_ms: data.processing_duration_ms,
-    api_cost: data.api_cost,
     failure_reason: data.failure_reason,
   };
 }
