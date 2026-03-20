@@ -124,18 +124,9 @@ const MORE_SERVICES: typeof MAIN_SERVICES = [
 export function Home() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuthStore();
-  const { profiles, fetchProfiles, deleteProfile } = useSajuStore();
+  const { profiles, selectedProfileIdx, selectProfile, fetchProfiles, deleteProfile } = useSajuStore();
   const { fetchCredits } = useCreditStore();
   const [toast, setToast] = useState('');
-  const [selectedProfileIdx, setSelectedProfileIdx] = useState(() => {
-    const saved = localStorage.getItem('saju-selected-profile-idx');
-    return saved ? parseInt(saved, 10) : 0;
-  });
-
-  const selectProfile = (idx: number) => {
-    setSelectedProfileIdx(idx);
-    localStorage.setItem('saju-selected-profile-idx', String(idx));
-  };
 
   useEffect(() => {
     if (isAuthenticated) {

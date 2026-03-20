@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Layout } from '@/components/layout/Layout.tsx';
 import { Card } from '@/components/ui/Card.tsx';
 import { Button } from '@/components/ui/Button.tsx';
-import { Loading } from '@/components/ui/Loading.tsx';
+import { PhotoLoading } from '@/components/ui/PhotoLoading.tsx';
 import { Recommendations } from '@/components/saju/Recommendations.tsx';
 import { useSajuStore } from '@/stores/saju.ts';
-import { getDailyFortune } from '@/lib/api.ts';
+import { requestReading, pollReadingStatus } from '@/lib/api.ts';
 
 interface DailyResult {
   summary: string;
@@ -28,33 +28,153 @@ const CATEGORY_INFO = [
   { key: 'health' as const, label: '건강', emoji: '🏥', bgColor: 'bg-gradient-to-br from-green-50 to-emerald-50', iconBg: 'bg-green-100 ring-2 ring-green-200/50' },
 ];
 
+const POLL_INTERVAL = 5000;
+
 export function DailyFortune() {
-  const { profiles } = useSajuStore();
+  const { profiles, selectedProfileIdx, readings, fetchReadings } = useSajuStore();
   const [result, setResult] = useState<DailyResult | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [phase, setPhase] = useState<'idle' | 'loading' | 'done'>('idle');
   const [error, setError] = useState('');
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pendingIdRef = useRef<string | null>(null);
 
-  const profile = profiles[0];
+  const profile = profiles[selectedProfileIdx] || profiles[0];
 
-  useEffect(() => {
-    if (profile?.id) {
-      fetchDaily();
+  // 오늘 날짜 문자열 (한국 시간)
+  const todayStr = new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' });
+
+  // readings에서 오늘의 daily 결과 찾기
+  const findTodayReading = useCallback(() => {
+    if (!profile) return null;
+    return readings.find(r => {
+      if (r.profile_id !== profile.id || r.service_type !== 'daily') return false;
+      const createdDate = new Date(r.created_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' });
+      return createdDate === todayStr;
+    });
+  }, [readings, profile, todayStr]);
+
+  // 폴링 정리
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
     }
-  }, [profile?.id]);
+  }, []);
+
+  // 초기 로드: readings 가져와서 오늘 결과 확인
+  useEffect(() => {
+    if (!profile?.id) return;
+    fetchReadings();
+  }, [profile?.id, fetchReadings]);
+
+  // readings 변경 시 오늘 결과 확인
+  useEffect(() => {
+    const todayReading = findTodayReading();
+    if (!todayReading) return;
+
+    if (todayReading.processing_status === 'completed' && todayReading.result) {
+      setResult(todayReading.result as unknown as DailyResult);
+      setPhase('done');
+      stopPolling();
+    } else if (todayReading.processing_status === 'pending' || todayReading.processing_status === 'processing') {
+      // 이미 요청 중인 게 있으면 폴링 시작
+      if (phase !== 'loading') {
+        setPhase('loading');
+        pendingIdRef.current = todayReading.id;
+        startPolling(todayReading.id);
+      }
+    } else if (todayReading.processing_status === 'failed') {
+      setError(todayReading.failure_reason || '운세 생성에 실패했습니다');
+      setPhase('idle');
+      stopPolling();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readings, profile?.id]);
+
+  // 컴포넌트 언마운트 시 폴링 정리
+  useEffect(() => {
+    return () => stopPolling();
+  }, [stopPolling]);
+
+  const startPolling = (readingId: string) => {
+    stopPolling();
+    pollRef.current = setInterval(async () => {
+      try {
+        const status = await pollReadingStatus(readingId);
+        if (status.status === 'completed' && status.result) {
+          setResult(status.result as unknown as DailyResult);
+          setPhase('done');
+          stopPolling();
+          fetchReadings();
+        } else if (status.status === 'failed') {
+          setError(status.failure_reason || '운세 생성에 실패했습니다');
+          setPhase('idle');
+          stopPolling();
+        }
+      } catch {
+        // 폴링 실패 시 재시도
+      }
+    }, POLL_INTERVAL);
+  };
 
   const fetchDaily = async () => {
     if (!profile) return;
-    setIsLoading(true);
+
+    // 이미 오늘 결과가 있으면 스킵
+    const todayReading = findTodayReading();
+    if (todayReading?.processing_status === 'completed' && todayReading.result) {
+      setResult(todayReading.result as unknown as DailyResult);
+      setPhase('done');
+      return;
+    }
+
+    setPhase('loading');
     setError('');
+
     try {
-      const data = await getDailyFortune({ profileId: profile.id });
-      setResult(data as unknown as DailyResult);
+      const reqResult = await requestReading(profile.id, 'daily');
+
+      // 캐시 히트
+      if (reqResult.cached && reqResult.result) {
+        setResult(reqResult.result as unknown as DailyResult);
+        setPhase('done');
+        return;
+      }
+
+      // 폴링 시작
+      pendingIdRef.current = reqResult.readingId;
+      startPolling(reqResult.readingId);
     } catch (err) {
       setError(err instanceof Error ? err.message : '운세를 가져올 수 없습니다');
-    } finally {
-      setIsLoading(false);
+      setPhase('idle');
     }
   };
+
+  // 프로필이 있고 결과가 없으면 자동 요청
+  useEffect(() => {
+    if (!profile?.id || phase !== 'idle' || result) return;
+
+    // readings 로드 후 오늘 결과가 없으면 자동 요청
+    const todayReading = findTodayReading();
+    if (todayReading) return; // readings에서 처리됨
+
+    // readings가 로드되었는데 오늘 daily가 없으면 요청
+    if (readings.length >= 0) {
+      const hasAnyReading = readings.some(r => r.profile_id === profile.id);
+      // readings가 빈 배열이거나, 로드되었는데 오늘 daily가 없으면
+      if (readings.length === 0 || hasAnyReading || !hasAnyReading) {
+        // 잠시 대기 후 요청 (fetchReadings 완료 보장)
+        const timer = setTimeout(() => {
+          const check = findTodayReading();
+          if (!check && phase === 'idle' && !result) {
+            fetchDaily();
+          }
+        }, 500);
+        return () => clearTimeout(timer);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id, readings, phase, result]);
 
   const today = new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'long' });
 
@@ -74,8 +194,8 @@ export function DailyFortune() {
         <Card className="text-center py-8">
           <p className="text-warm-gray">프로필을 먼저 등록해주세요</p>
         </Card>
-      ) : isLoading ? (
-        <Loading message="복돌이가 오늘의 운세를 보고 있어요..." />
+      ) : phase === 'loading' ? (
+        <PhotoLoading />
       ) : error ? (
         <Card className="text-center">
           <p className="text-red-500 mb-3">{error}</p>

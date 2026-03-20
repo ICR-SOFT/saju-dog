@@ -7,6 +7,7 @@ import { useCreditStore } from './credit.ts';
 
 interface SajuState {
   profiles: SajuProfile[];
+  selectedProfileIdx: number;
   currentReading: SajuApiResponse | null;
   readings: Reading[];
   isLoading: boolean;
@@ -26,6 +27,7 @@ interface SajuState {
   fetchProfiles: () => Promise<void>;
   addProfile: (profile: Omit<SajuProfile, 'id' | 'user_id' | 'calculated_saju' | 'created_at' | 'updated_at'>) => Promise<SajuProfile>;
   deleteProfile: (id: string) => Promise<void>;
+  selectProfile: (idx: number) => void;
   startReading: (profileId: string, serviceType: string, force?: boolean) => Promise<void>;
   fetchReadings: () => Promise<void>;
   clearCurrentReading: () => void;
@@ -35,6 +37,10 @@ const POLL_INTERVAL = 3000; // 3초마다 폴링
 
 export const useSajuStore = create<SajuState>((set, get) => ({
   profiles: [],
+  selectedProfileIdx: (() => {
+    const saved = localStorage.getItem('saju-selected-profile-idx');
+    return saved ? parseInt(saved, 10) : 0;
+  })(),
   currentReading: null,
   readings: [],
   isLoading: false,
@@ -79,6 +85,11 @@ export const useSajuStore = create<SajuState>((set, get) => ({
 
     if (error) throw new Error(error.message);
     set({ profiles: get().profiles.filter(p => p.id !== id) });
+  },
+
+  selectProfile: (idx) => {
+    set({ selectedProfileIdx: idx });
+    localStorage.setItem('saju-selected-profile-idx', String(idx));
   },
 
   /**

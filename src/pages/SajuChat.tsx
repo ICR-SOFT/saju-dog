@@ -14,42 +14,67 @@ const SUGGESTED_QUESTIONS = [
   { text: '건강 조심할 게 있나요?', icon: '🐾' },
 ];
 
+const MAX_RETRIES = 2;
+
 export function SajuChat() {
-  const { profiles } = useSajuStore();
+  const { profiles, selectedProfileIdx } = useSajuStore();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [retryData, setRetryData] = useState<{ message: string; history: ChatMessage[] } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const profile = profiles[0];
+  const profile = profiles[selectedProfileIdx] || profiles[0];
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!input.trim() || !profile || isLoading) return;
-
-    const userMessage = input.trim();
-    setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
-    setIsLoading(true);
-
+  const doSend = async (userMessage: string, history: ChatMessage[], attempt = 0) => {
     try {
       const { message } = await sendChat({
         profileId: profile.id,
         message: userMessage,
-        history: messages,
+        history,
       });
       setMessages(prev => [...prev, { role: 'assistant', content: message }]);
+      setRetryData(null);
     } catch {
+      if (attempt < MAX_RETRIES) {
+        // 자동 재시도
+        await doSend(userMessage, history, attempt + 1);
+        return;
+      }
+      // 최종 실패
+      setRetryData({ message: userMessage, history });
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: '죄송해요, 잠시 문제가 생겼어요. 다시 시도해주세요 🐾',
+        content: '죄송해요, 잠시 문제가 생겼어요. 아래 버튼으로 다시 시도해주세요 🐾',
       }]);
-    } finally {
-      setIsLoading(false);
     }
+  };
+
+  const handleSend = async () => {
+    if (!input.trim() || !profile || isLoading) return;
+
+    const userMessage = input.trim();
+    const currentHistory = [...messages];
+    setInput('');
+    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setIsLoading(true);
+    setRetryData(null);
+
+    await doSend(userMessage, currentHistory);
+    setIsLoading(false);
+  };
+
+  const handleRetry = async () => {
+    if (!retryData || isLoading) return;
+    setIsLoading(true);
+    // 마지막 에러 메시지 제거
+    setMessages(prev => prev.slice(0, -1));
+    await doSend(retryData.message, retryData.history);
+    setIsLoading(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -121,6 +146,18 @@ export function SajuChat() {
                 </div>
               </div>
             ))}
+
+            {/* 재시도 버튼 */}
+            {retryData && !isLoading && (
+              <div className="flex justify-start pl-10">
+                <button
+                  onClick={handleRetry}
+                  className="text-xs text-brown font-medium px-3 py-1.5 rounded-full bg-brown/5 hover:bg-brown/10 transition-colors border border-brown/10"
+                >
+                  🔄 다시 시도
+                </button>
+              </div>
+            )}
 
             {isLoading && (
               <div className="flex justify-start">
