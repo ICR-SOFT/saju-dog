@@ -95,7 +95,24 @@ export function Archive() {
                       </span>
                     </div>
                     <p className="text-xs text-warm-gray">
-                      {getProfileName(reading.profile_id)}{reading.service_type === 'compatibility' && reading.secondary_profile_id ? ` & ${getProfileName(reading.secondary_profile_id)}` : ''} · {date}
+                      {(() => {
+                        const names = [getProfileName(reading.profile_id)];
+                        if (reading.secondary_profile_id) names.push(getProfileName(reading.secondary_profile_id));
+                        // metadata에서 추가 프로필 확인
+                        const meta = (reading as any).metadata;
+                        if (meta?.allProfileIds) {
+                          try {
+                            const allIds = JSON.parse(meta.allProfileIds) as string[];
+                            allIds.forEach(id => {
+                              if (id !== reading.profile_id && id !== reading.secondary_profile_id) {
+                                const n = getProfileName(id);
+                                if (n !== '?') names.push(n);
+                              }
+                            });
+                          } catch {}
+                        }
+                        return names.join(' & ');
+                      })()} · {date}
                       {reading.processing_duration_ms && reading.processing_status === 'completed' && (
                         <span> · {(reading.processing_duration_ms / 1000).toFixed(0)}초 소요</span>
                       )}

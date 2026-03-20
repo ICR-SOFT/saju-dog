@@ -257,7 +257,23 @@ export function Compatibility() {
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-dark">
-                      {getProfileName(r.profile_id)} & {r.secondary_profile_id ? getProfileName(r.secondary_profile_id) : '?'}
+                      {(() => {
+                        const names = [getProfileName(r.profile_id)];
+                        if (r.secondary_profile_id) names.push(getProfileName(r.secondary_profile_id));
+                        const meta = (r as any).metadata;
+                        if (meta?.allProfileIds) {
+                          try {
+                            const allIds = JSON.parse(meta.allProfileIds) as string[];
+                            allIds.forEach(id => {
+                              if (id !== r.profile_id && id !== r.secondary_profile_id) {
+                                const n = getProfileName(id);
+                                if (n !== '?') names.push(n);
+                              }
+                            });
+                          } catch {}
+                        }
+                        return names.join(' & ');
+                      })()}
                     </p>
                     <p className="text-xs text-warm-gray">
                       {new Date(r.created_at).toLocaleDateString('ko-KR')}

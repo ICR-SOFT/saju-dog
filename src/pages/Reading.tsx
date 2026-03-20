@@ -16,6 +16,7 @@ import { createShareLink } from '@/lib/share.ts';
 import type { SajuPillars, ServiceType } from '@/types/saju.ts';
 import type { SajuProfile } from '@/types/user.ts';
 import { supabase } from '@/lib/supabase.ts';
+import { getZodiacImageUrl } from '@/lib/zodiac-images.ts';
 
 type ReadingPhase = 'view' | 'confirm' | 'loading' | 'result' | 'error';
 
@@ -169,26 +170,28 @@ export function Reading() {
 
   return (
     <Layout>
-      {/* 프로필 헤더 */}
-      <div className="text-center mb-4 -mx-4 -mt-4 px-4 pt-6 pb-5 gradient-hero rounded-b-3xl">
-        <div className="flex justify-center mb-2">
-          <div className="w-14 h-14 rounded-full bg-brown/10 flex items-center justify-center border-2 border-brown/15 shadow-sm">
-            <span className="text-3xl">{profile.gender === 'male' ? '👦' : '👧'}</span>
-          </div>
-        </div>
-        <h2 className="text-xl font-bold text-dark font-serif">
-          {profile.name}님의 {serviceType !== 'comprehensive' && SERVICE_LABELS[serviceType] ? SERVICE_LABELS[serviceType] : '사주풀이'}
-        </h2>
+      {/* 프로필 헤더 — 띠 이미지 배경 */}
+      <div className="relative text-center mb-4 -mx-4 -mt-4 rounded-b-3xl overflow-hidden">
         {sajuData && (
-          <div className="flex flex-wrap gap-2 justify-center mt-2">
-            <span className="text-xs bg-white/70 text-brown rounded-full px-3 py-1 font-medium shadow-sm border border-brown/10">
-              {sajuData.ddi.fullName}
-            </span>
-            <span className="text-xs bg-white/70 text-brown rounded-full px-3 py-1 font-medium shadow-sm border border-brown/10">
-              {sajuData.zodiac.emoji} {sajuData.zodiac.name}
-            </span>
-          </div>
+          <img src={getZodiacImageUrl(sajuData.ddi.animal)} alt={sajuData.ddi.fullName}
+            className="absolute inset-0 w-full h-full object-cover" />
         )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
+        <div className="relative z-10 px-4 pt-8 pb-6">
+          <h2 className="text-xl font-bold text-white font-serif" style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.7)' }}>
+            {profile.name}님의 {serviceType !== 'comprehensive' && SERVICE_LABELS[serviceType] ? SERVICE_LABELS[serviceType] : '사주풀이'}
+          </h2>
+          {sajuData && (
+            <div className="flex flex-wrap gap-2 justify-center mt-2">
+              <span className="text-xs bg-white/80 text-brown rounded-full px-3 py-1 font-medium shadow-sm">
+                {sajuData.ddi.fullName}
+              </span>
+              <span className="text-xs bg-white/80 text-brown rounded-full px-3 py-1 font-medium shadow-sm">
+                {sajuData.zodiac.emoji} {sajuData.zodiac.name}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       {sajuData && (

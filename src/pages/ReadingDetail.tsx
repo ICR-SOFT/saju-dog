@@ -16,6 +16,7 @@ import { createShareLink } from '@/lib/share.ts';
 import { calculateSaju } from '@/core/calculator.ts';
 import type { Reading, SajuProfile } from '@/types/user.ts';
 import type { SajuApiResponse, SajuPillars, ServiceType } from '@/types/saju.ts';
+// import { getZodiacImageUrl } from '@/lib/zodiac-images.ts'; // TODO: 헤더에 띠 이미지 적용
 
 interface DailyResult {
   summary: string;
@@ -114,11 +115,29 @@ export function ReadingDetail() {
     ? profiles.find(p => p.id === reading.profile_id)?.name ?? '알 수 없음'
     : '';
 
-  const secondaryProfileName = reading?.secondary_profile_id
-    ? profiles.find(p => p.id === reading.secondary_profile_id)?.name ?? '알 수 없음'
-    : '';
+  // N명 궁합 이름 조합
+  const allCompatNames = (() => {
+    if (!reading) return '';
+    const names = [profileName];
+    if (reading.secondary_profile_id) {
+      names.push(profiles.find(p => p.id === reading.secondary_profile_id)?.name ?? '?');
+    }
+    const meta = (reading as any).metadata;
+    if (meta?.allProfileIds) {
+      try {
+        const allIds = JSON.parse(meta.allProfileIds) as string[];
+        allIds.forEach(id => {
+          if (id !== reading.profile_id && id !== reading.secondary_profile_id) {
+            const n = profiles.find(p => p.id === id)?.name;
+            if (n) names.push(n);
+          }
+        });
+      } catch {}
+    }
+    return names.join(' & ');
+  })();
 
-  const isCompatibility = reading?.service_type === 'compatibility';
+  const isCompatibility = reading?.service_type === 'compatibility' || reading?.service_type === 'business';
   const isDaily = reading?.service_type === 'daily';
 
   const serviceInfo = reading
@@ -167,8 +186,8 @@ export function ReadingDetail() {
           <span className="text-3xl">{serviceInfo.emoji}</span>
         </div>
         <h2 className="text-xl font-bold text-dark font-serif">
-          {isCompatibility && secondaryProfileName
-            ? `${profileName} & ${secondaryProfileName}의 궁합`
+          {isCompatibility && allCompatNames
+            ? `${allCompatNames}의 궁합`
             : serviceInfo.label}
         </h2>
         <p className="text-sm text-warm-gray mt-1">
