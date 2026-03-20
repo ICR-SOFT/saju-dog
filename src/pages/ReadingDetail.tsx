@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { Layout } from '@/components/layout/Layout.tsx';
+import { FourPillars } from '@/components/saju/FourPillars.tsx';
+import { OhaengBar } from '@/components/saju/OhaengBar.tsx';
+import { DaeunTimeline } from '@/components/saju/DaeunTimeline.tsx';
 import { ChapterAccordion } from '@/components/saju/ChapterAccordion.tsx';
 import { Recommendations } from '@/components/saju/Recommendations.tsx';
 import { Loading } from '@/components/ui/Loading.tsx';
@@ -9,8 +12,9 @@ import { Button } from '@/components/ui/Button.tsx';
 import { supabase } from '@/lib/supabase.ts';
 import { useSajuStore } from '@/stores/saju.ts';
 import { createShareLink } from '@/lib/share.ts';
-import type { Reading } from '@/types/user.ts';
-import type { SajuApiResponse, ServiceType } from '@/types/saju.ts';
+import { calculateSaju } from '@/core/calculator.ts';
+import type { Reading, SajuProfile } from '@/types/user.ts';
+import type { SajuApiResponse, SajuPillars, ServiceType } from '@/types/saju.ts';
 
 const SERVICE_LABELS: Record<string, { label: string; emoji: string }> = {
   comprehensive: { label: '종합 사주풀이', emoji: '🔮' },
@@ -37,31 +41,52 @@ export function ReadingDetail() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [shareToast, setShareToast] = useState('');
+  const [sajuData, setSajuData] = useState<SajuPillars | null>(null);
 
   useEffect(() => {
     if (!readingId) return;
-
-    const fetchReading = async () => {
+    (async () => {
       setIsLoading(true);
-      setError('');
       try {
-        const { data, error: fetchError } = await supabase
-          .from('readings')
-          .select('*')
-          .eq('id', readingId)
-          .single();
-
-        if (fetchError) throw new Error(fetchError.message);
+        const { data, error: e } = await supabase.from('readings').select('*').eq('id', readingId).single();
+        if (e) throw new Error(e.message);
         setReading(data);
+
+        // 프로필에서 만세력 계산
+        const profile = profiles.find(p => p.id === data.profile_id);
+        if (profile) {
+          const saju = calculateSaju({
+            name: profile.name,
+            birthDate: new Date(profile.birth_date),
+            gender: profile.gender as 'male' | 'female',
+            calendarType: profile.calendar_type as 'solar' | 'lunar' | 'lunar_leap',
+            useTrueSolar: profile.use_true_solar,
+            longitude: profile.longitude,
+          });
+          setSajuData(saju);
+        } else if (data.profile_id) {
+          // 프로필이 스토어에 없으면 직접 조회
+          const { data: pData } = await supabase.from('saju_profiles').select('*').eq('id', data.profile_id).single();
+          if (pData) {
+            const p = pData as SajuProfile;
+            const saju = calculateSaju({
+              name: p.name,
+              birthDate: new Date(p.birth_date),
+              gender: p.gender as 'male' | 'female',
+              calendarType: p.calendar_type as 'solar' | 'lunar' | 'lunar_leap',
+              useTrueSolar: p.use_true_solar,
+              longitude: p.longitude,
+            });
+            setSajuData(saju);
+          }
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : '풀이를 불러올 수 없습니다');
       } finally {
         setIsLoading(false);
       }
-    };
-
-    fetchReading();
-  }, [readingId]);
+    })();
+  }, [readingId, profiles]);
 
   const profileName = reading
     ? profiles.find(p => p.id === reading.profile_id)?.name ?? '알 수 없음'
@@ -73,12 +98,18 @@ export function ReadingDetail() {
 
   const result = reading?.result as unknown as SajuApiResponse | null;
 
+  const handleShare = async () => {
+    if (!reading) return;
+    try {
+      const url = await createShareLink(reading.id);
+      await navigator.clipboard.writeText(url);
+      setShareToast('링크가 복사되었어요!');
+    } catch { setShareToast('공유 실패'); }
+    setTimeout(() => setShareToast(''), 2000);
+  };
+
   if (isLoading) {
-    return (
-      <Layout>
-        <Loading message="풀이를 불러오는 중..." />
-      </Layout>
-    );
+    return <Layout><Loading message="풀이를 불러오는 중..." /></Layout>;
   }
 
   if (error || !reading) {
@@ -96,93 +127,84 @@ export function ReadingDetail() {
   return (
     <Layout>
       {/* 헤더 */}
-      <div className="text-center mb-6 -mx-4 -mt-4 px-4 pt-6 pb-5 gradient-hero rounded-b-3xl">
+      <div className="text-center mb-5 -mx-4 -mt-4 px-4 pt-6 pb-5 gradient-hero rounded-b-3xl relative">
         <button
           onClick={() => navigate('/archive')}
-          className="absolute left-4 top-5 flex items-center gap-1 text-warm-gray text-sm hover:text-dark transition-colors"
+          className="absolute left-4 top-5 flex items-center gap-1 text-warm-gray text-sm hover:text-dark"
         >
-          <span>←</span>
-          <span>보관함</span>
+          ← 보관함
         </button>
         <div className="w-14 h-14 mx-auto mb-2 rounded-full bg-brown/10 flex items-center justify-center border border-brown/10">
           <span className="text-3xl">{serviceInfo.emoji}</span>
         </div>
-        <h2 className="text-xl font-bold text-dark font-serif">
-          {serviceInfo.label}
-        </h2>
+        <h2 className="text-xl font-bold text-dark font-serif">{serviceInfo.label}</h2>
         <p className="text-sm text-warm-gray mt-1">
           {profileName} · {new Date(reading.created_at).toLocaleDateString('ko-KR')}
+          {reading.processing_duration_ms && ` · ${(reading.processing_duration_ms / 1000).toFixed(0)}초`}
         </p>
+        {sajuData && (
+          <div className="flex flex-wrap gap-2 justify-center mt-2">
+            <span className="text-xs bg-brown/10 text-brown rounded-full px-3 py-1 font-medium">
+              {sajuData.ddi.fullName}
+            </span>
+            <span className="text-xs bg-brown/10 text-brown rounded-full px-3 py-1 font-medium">
+              {sajuData.zodiac.emoji} {sajuData.zodiac.name}
+            </span>
+          </div>
+        )}
       </div>
 
+      {/* 만세력 정보 */}
+      {sajuData && (
+        <div className="space-y-3 mb-6">
+          <FourPillars data={sajuData} />
+          <OhaengBar count={sajuData.ohaengCount} />
+          <DaeunTimeline daeun={sajuData.daeun} />
+        </div>
+      )}
+
+      {/* 풀이 결과 */}
       {result ? (
         <div className="space-y-4">
-          {/* 요약 */}
           {result.summary && (
-            <Card className="text-center bg-brown/5">
-              <p className="text-lg font-medium text-dark font-serif">
-                "{result.summary}"
-              </p>
+            <Card className="text-center bg-gradient-to-br from-brown/5 to-amber-50/30">
+              <p className="text-lg font-medium text-dark font-serif">"{result.summary}"</p>
             </Card>
           )}
 
-          {/* 챕터 */}
-          {result.chapters && result.chapters.length > 0 && (
-            <ChapterAccordion chapters={result.chapters} />
-          )}
+          {result.chapters && <ChapterAccordion chapters={result.chapters} />}
 
-          {/* 조언 */}
           {result.advice && result.advice.length > 0 && (
             <Card>
-              <h3 className="font-medium text-dark mb-2">복돌이의 조언</h3>
+              <h3 className="font-bold text-dark mb-2 flex items-center gap-2">
+                <span className="w-7 h-7 rounded-full bg-brown/10 flex items-center justify-center text-sm">🐾</span>
+                복돌이의 조언
+              </h3>
               <ul className="space-y-2">
                 {result.advice.map((a, i) => (
                   <li key={i} className="flex gap-2 text-sm text-dark-light">
-                    <span className="text-brown">🐾</span><span>{a}</span>
+                    <span className="text-brown">•</span><span>{a}</span>
                   </li>
                 ))}
               </ul>
             </Card>
           )}
 
-          {/* 행운 아이템 */}
           {result.luckyItems && (
-            <Card>
-              <h3 className="font-medium text-dark mb-2">행운 아이템</h3>
+            <Card className="bg-gradient-to-br from-emerald-50/50 to-green-50/30">
+              <h3 className="text-sm font-bold text-dark mb-2 text-center">🍀 행운 아이템</h3>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 {Object.entries(result.luckyItems).map(([key, val]) => (
-                  <div key={key} className="bg-cream-dark rounded-lg p-2 text-center">
+                  <div key={key} className="bg-white/70 rounded-xl p-2.5 text-center shadow-sm">
                     <p className="text-warm-gray text-xs">
-                      {key === 'color' ? '행운 색' : key === 'number' ? '행운 숫자' : key === 'direction' ? '행운 방향' : '행운 음식'}
+                      {key === 'color' ? '🎨 행운 색' : key === 'number' ? '🔢 행운 숫자' : key === 'direction' ? '🧭 행운 방향' : '🍽️ 행운 음식'}
                     </p>
-                    <p className="font-medium text-dark">{val}</p>
+                    <p className="font-bold text-dark mt-0.5">{val}</p>
                   </div>
                 ))}
               </div>
             </Card>
           )}
-
-          {/* 공유 버튼 */}
-          <Card className="text-center bg-gradient-to-r from-amber-50 to-orange-50 border-brown/10">
-            <p className="text-sm text-warm-gray mb-2">친구에게 사주풀이를 공유해보세요</p>
-            <Button
-              size="lg"
-              onClick={async () => {
-                if (!reading) return;
-                try {
-                  const url = await createShareLink(reading.id);
-                  await navigator.clipboard.writeText(url);
-                  setShareToast('링크가 복사되었어요!');
-                  setTimeout(() => setShareToast(''), 2000);
-                } catch {
-                  setShareToast('공유 링크 생성에 실패했어요');
-                  setTimeout(() => setShareToast(''), 2000);
-                }
-              }}
-            >
-              🔗 공유하기
-            </Button>
-          </Card>
 
           <Recommendations exclude={[reading.service_type as ServiceType]} />
         </div>
@@ -192,9 +214,19 @@ export function ReadingDetail() {
         </Card>
       )}
 
-      {/* 공유 토스트 */}
+      {/* 플로팅 공유 버튼 */}
+      {result && (
+        <button
+          onClick={handleShare}
+          className="fixed bottom-20 right-4 z-40 w-12 h-12 rounded-full bg-brown text-white shadow-lg flex items-center justify-center text-lg hover:bg-brown-dark active:scale-95 transition-all"
+          title="공유하기"
+        >
+          📋
+        </button>
+      )}
+
       {shareToast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-dark text-white text-sm px-5 py-2.5 rounded-full shadow-lg">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-dark text-white text-sm px-5 py-2.5 rounded-full shadow-lg animate-fade-in">
           {shareToast}
         </div>
       )}

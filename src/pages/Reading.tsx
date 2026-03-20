@@ -436,11 +436,29 @@ export function Reading() {
 
         {/* 공유 토스트 */}
         {shareToast && (
-          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-dark text-white text-sm px-5 py-2.5 rounded-full shadow-lg">
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-dark text-white text-sm px-5 py-2.5 rounded-full shadow-lg animate-fade-in">
             {shareToast}
           </div>
         )}
       </div>
+
+      {/* 플로팅 공유 버튼 */}
+      {displayResult && cachedReading?.id && (
+        <button
+          onClick={async () => {
+            try {
+              const url = await createShareLink(cachedReading.id);
+              await navigator.clipboard.writeText(url);
+              setShareToast('링크가 복사되었어요!');
+              setTimeout(() => setShareToast(''), 2000);
+            } catch { setShareToast('공유 실패'); setTimeout(() => setShareToast(''), 2000); }
+          }}
+          className="fixed bottom-20 right-4 z-40 w-12 h-12 rounded-full bg-brown text-white shadow-lg flex items-center justify-center text-lg hover:bg-brown-dark active:scale-95 transition-all"
+          title="공유하기"
+        >
+          📋
+        </button>
+      )}
     </Layout>
   );
 }

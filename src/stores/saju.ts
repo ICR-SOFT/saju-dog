@@ -57,9 +57,13 @@ export const useSajuStore = create<SajuState>((set, get) => ({
   },
 
   addProfile: async (profile) => {
+    // user_id를 Supabase auth에서 자동 설정
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('로그인이 필요합니다');
+
     const { data, error } = await supabase
       .from('saju_profiles')
-      .insert(profile)
+      .insert({ ...profile, user_id: user.id })
       .select()
       .single();
 
