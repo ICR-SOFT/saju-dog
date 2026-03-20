@@ -159,6 +159,52 @@ export function ReadingDetail() {
         <div className="space-y-3 mb-6">
           <FourPillars data={sajuData} />
           <OhaengBar count={sajuData.ohaengCount} />
+
+          {/* 기둥별 신살 & 관계 */}
+          <Card>
+            <h3 className="text-sm font-bold text-dark mb-3 flex items-center gap-1.5">
+              <span className="w-6 h-6 rounded-full bg-brown/10 flex items-center justify-center text-xs">⚡</span>
+              기둥별 신살 & 관계
+            </h3>
+            <div className="grid grid-cols-4 gap-1 text-center">
+              {(['year', 'month', 'day', 'hour'] as const).map(name => (
+                <div key={name} className="space-y-1">
+                  <p className="text-xs font-medium text-dark">{{ year: '년주', month: '월주', day: '일주', hour: '시주' }[name]}</p>
+                  {sajuData.sinsal.pillarSinsal[name].map((s, i) => (
+                    <span key={`s-${i}`} className="block text-[10px] bg-amber-50 text-amber-700 rounded px-1 py-0.5">{s}</span>
+                  ))}
+                  {sajuData.sinsal.pillarRelations[name].map((r, i) => (
+                    <span key={`r-${i}`} className="block text-[10px] bg-blue-50 text-blue-600 rounded px-1 py-0.5">{r}</span>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* 귀인 */}
+          {sajuData.sinsal.guiin.length > 0 && (
+            <Card padding="sm">
+              <h3 className="text-xs font-medium text-warm-gray mb-1.5">귀인</h3>
+              <div className="flex flex-wrap gap-1">
+                {sajuData.sinsal.guiin.map((g, i) => (
+                  <span key={i} className="text-[10px] bg-green-50 text-green-700 rounded-full px-2 py-0.5">{g}</span>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* 전체 신살 */}
+          {sajuData.sinsal.allSinsal.length > 0 && (
+            <Card padding="sm">
+              <h3 className="text-xs font-medium text-warm-gray mb-1.5">전체 신살</h3>
+              <div className="flex flex-wrap gap-1">
+                {sajuData.sinsal.allSinsal.map((s, i) => (
+                  <span key={i} className="text-[10px] bg-red-50 text-red-600 rounded-full px-2 py-0.5">{s}</span>
+                ))}
+              </div>
+            </Card>
+          )}
+
           <DaeunTimeline daeun={sajuData.daeun} />
         </div>
       )}

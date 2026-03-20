@@ -22,7 +22,7 @@ export async function createShareLink(readingId: string): Promise<string> {
 export async function getSharedReading(shareId: string) {
   const { data, error } = await supabase
     .from('readings')
-    .select('*')
+    .select('*, saju_profiles(name, gender, birth_date, calendar_type, calculated_saju)')
     .eq('share_id', shareId)
     .single();
   if (error) throw error;
