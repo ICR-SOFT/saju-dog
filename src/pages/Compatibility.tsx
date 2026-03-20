@@ -64,10 +64,12 @@ export function Compatibility() {
     setPhase('loading');
     setError('');
     try {
-      const reqResult = await requestReading(selectedIds[0], 'compatibility', selectedIds[1]);
+      // 항상 새로 요청 (force=true — 궁합은 매번 새로 볼 수 있어야 함)
+      const reqResult = await requestReading(selectedIds[0], 'compatibility', selectedIds[1], true);
       useCreditStore.getState().fetchCredits();
 
       if (reqResult.cached && reqResult.result) {
+        // 캐시 히트해도 결과가 있으면 바로 보관함에 추가되어 있음
         setPhase('done');
         fetchReadings();
         return;
