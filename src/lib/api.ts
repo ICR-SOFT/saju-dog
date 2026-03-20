@@ -35,11 +35,23 @@ export async function requestReading(
   secondaryProfileId?: string,
   force = false,
 ): Promise<RequestResult> {
+  // 세션 갱신 시도
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    await supabase.auth.refreshSession();
+  }
+
   const { data, error } = await supabase.functions.invoke('saju-request', {
     body: { profileId, serviceType, secondaryProfileId, force },
   });
 
-  if (error) throw new Error(error.message || '요청 실패');
+  if (error) {
+    // 401이면 세션 만료
+    if (error.message?.includes('401') || error.message?.includes('JWT')) {
+      throw new Error('세션이 만료되었습니다. 페이지를 새로고침해주세요.');
+    }
+    throw new Error(error.message || '요청 실패');
+  }
   return data as RequestResult;
 }
 

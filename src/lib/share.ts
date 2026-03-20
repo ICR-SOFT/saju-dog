@@ -4,13 +4,26 @@ export function generateShareId(): string {
   return Math.random().toString(36).substring(2, 10);
 }
 
+async function ensureSession() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    // 세션 갱신 시도
+    const { error } = await supabase.auth.refreshSession();
+    if (error) throw new Error('세션이 만료되었습니다. 다시 로그인해주세요.');
+  }
+}
+
 export async function createShareLink(readingId: string): Promise<string> {
+  await ensureSession();
+
   // 이미 share_id가 있으면 재사용
-  const { data: existing } = await supabase
+  const { data: existing, error: fetchErr } = await supabase
     .from('readings')
     .select('share_id')
     .eq('id', readingId)
     .single();
+
+  if (fetchErr) throw new Error(`조회 실패: ${fetchErr.message}`);
 
   if (existing?.share_id) {
     return `${window.location.origin}/share/${existing.share_id}`;

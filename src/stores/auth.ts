@@ -42,9 +42,9 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
       set({ isLoading: false });
     }
 
-    // 세션 변경 리스너
+    // 세션 변경 리스너 (TOKEN_REFRESHED 포함)
     supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
+      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
         const { data: profile } = await supabase
           .from('users')
           .select('*')
