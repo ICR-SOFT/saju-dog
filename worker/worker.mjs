@@ -374,17 +374,9 @@ async function processReading(reading) {
       tools: [toolSchema],
     };
 
-    // thinking + tool_choice forced는 호환 불가
-    // thinking 활성화 시 → tool_choice auto (thinking이 더 나은 결과)
-    // thinking 비활성화 시 → tool_choice forced (JSON 보장)
-    if (config.use_thinking && config.thinking_type) {
-      const budgetTokens = Math.min(10000, Math.floor(config.max_tokens * 0.4));
-      params.thinking = { type: config.thinking_type, budget_tokens: budgetTokens };
-      params.tool_choice = { type: 'auto' };
-    } else {
-      params.tool_choice = { type: 'tool', name: toolSchema.name };
-    }
-    if (config.temperature !== null && !config.use_thinking) params.temperature = config.temperature;
+    // tool_choice forced → JSON 스키마 100% 보장 (thinking 비활성화 필수)
+    params.tool_choice = { type: 'tool', name: toolSchema.name };
+    if (config.temperature !== null) params.temperature = config.temperature;
     if (config.use_prompt_caching) {
       params.system = [{ type: 'text', text: config.system_prompt, cache_control: { type: 'ephemeral' } }];
     } else {
