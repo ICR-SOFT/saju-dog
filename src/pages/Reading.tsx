@@ -1,3 +1,4 @@
+import DOMPurify from 'dompurify';
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { Layout } from '@/components/layout/Layout.tsx';
@@ -318,7 +319,7 @@ export function Reading() {
                 <ul className="space-y-2">
                   {displayResult.advice.map((a, i) => (
                     <li key={i} className="flex gap-2 text-sm text-dark-light">
-                      <span className="text-brown">•</span><span>{a}</span>
+                      <span className="text-brown">•</span><span dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(a) }} />
                     </li>
                   ))}
                 </ul>

@@ -156,7 +156,8 @@ ${extraProfiles.map((ep, i) => {
 신살: ${fmtArr(es.allSinsal)} / 귀인: ${fmtArr(es.guiin)}`;
 }).join('\n\n')}
 
-궁합을 JSON으로 작성해주세요.`;
+위에 나열된 모든 사람(${2 + extraProfiles.length}명)의 궁합을 JSON으로 작성해주세요.
+반드시 모든 참여자를 챕터에서 언급하고 분석하세요. 2명만 분석하고 나머지를 빠뜨리면 안 됩니다.`;
   }
 
   return `아래는 서버에서 정밀 계산된 사주 데이터입니다. 이 데이터만 기반으로 해설하세요.
