@@ -11,6 +11,7 @@ import { Recommendations } from '@/components/saju/Recommendations.tsx';
 import { PhotoLoading } from '@/components/ui/PhotoLoading.tsx';
 import { Card } from '@/components/ui/Card.tsx';
 import { Button } from '@/components/ui/Button.tsx';
+import { ConfirmModal } from '@/components/ui/ConfirmModal.tsx';
 import { useSajuStore } from '@/stores/saju.ts';
 import { useCreditStore } from '@/stores/credit.ts';
 import { calculateSaju } from '@/core/calculator.ts';
@@ -36,7 +37,8 @@ export function Reading() {
   const [sajuData, setSajuData] = useState<SajuPillars | null>(null);
   const [shareToast, setShareToast] = useState('');
   const [directProfile, setDirectProfile] = useState<SajuProfile | null>(null);
-  const [userQuestion, setUserQuestion] = useState('');
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [isForceReading, setIsForceReading] = useState(false);
 
   const serviceType = (searchParams.get('service') as ServiceType) || 'comprehensive';
 
@@ -137,11 +139,17 @@ export function Reading() {
     return () => clearInterval(interval);
   }, [processingReading, fetchReadings]);
 
-  const handleRequestReading = (force = false) => {
+  const openConfirmModal = (force = false) => {
+    setIsForceReading(force);
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirm = (question: string) => {
     if (!profileId) return;
+    setShowConfirmModal(false);
     setLocalPhase(null);
-    const meta = userQuestion.trim() ? { userQuestion: userQuestion.trim() } : undefined;
-    startReading(profileId, serviceType, force, meta);
+    const meta = question ? { userQuestion: question } : undefined;
+    startReading(profileId, serviceType, isForceReading, meta);
   };
 
   if (!profile) {
@@ -368,7 +376,7 @@ export function Reading() {
             )}
 
             {/* 새로 풀이받기 */}
-            <Button variant="ghost" size="lg" onClick={() => handleRequestReading(true)} className="text-warm-gray">
+            <Button variant="ghost" size="lg" onClick={() => openConfirmModal(true)} className="text-warm-gray">
               다시 풀이받기 (🦴 차감)
             </Button>
 
@@ -377,53 +385,12 @@ export function Reading() {
         ) : activePhase === 'view' || activePhase === 'confirm' ? (
           <Card className="text-center">
             <div className="text-4xl mb-3">🔮</div>
-            <p className="text-dark font-medium mb-1">종합 사주풀이</p>
+            <p className="text-dark font-medium mb-1">{SERVICE_LABELS[serviceType] || '사주풀이'}</p>
             <p className="text-sm text-warm-gray mb-4">
-              복돌이가 사주를 깊이 분석하고<br />12~15개 챕터로 풀어드려요
+              복돌이가 사주를 깊이 분석하고 풀어드려요
             </p>
-
-            <div className="bg-cream-dark rounded-xl p-3 mb-4 text-sm">
-              <div className="flex justify-between mb-1">
-                <span className="text-warm-gray">비용</span>
-                <span className="font-medium text-dark">🦴 3개</span>
-              </div>
-              <div className="flex justify-between mb-1">
-                <span className="text-warm-gray">보유</span>
-                <span className={`font-medium ${(credits?.bones ?? 0) >= 3 ? 'text-green-600' : 'text-red-500'}`}>
-                  🦴 {credits?.bones ?? 0}개
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-warm-gray">예상 소요</span>
-                <span className="text-dark">약 {estimatedWaitSec}초</span>
-              </div>
-            </div>
-
-            {/* 궁금한 점 입력 (선택) */}
-            <div className="mb-3">
-              <input
-                type="text"
-                value={userQuestion}
-                onChange={e => setUserQuestion(e.target.value.slice(0, 80))}
-                placeholder="궁금한 점이 있다면 한 줄로 적어주세요 (선택)"
-                className="w-full rounded-xl border border-warm-gray-light/50 bg-white px-4 py-2.5 text-dark text-sm outline-none focus:border-brown placeholder:text-warm-gray-light"
-                maxLength={80}
-              />
-              {userQuestion && (
-                <p className="text-[10px] text-warm-gray text-right mt-1">{userQuestion.length}/80</p>
-              )}
-            </div>
-
-            {(credits?.bones ?? 0) < 3 ? (
-              <p className="text-sm text-red-500 mb-3">뼈다귀가 부족합니다</p>
-            ) : null}
-
-            <Button
-              size="lg"
-              onClick={() => handleRequestReading(false)}
-              disabled={(credits?.bones ?? 0) < 3}
-            >
-              🦴 3개로 풀이받기
+            <Button size="lg" onClick={() => openConfirmModal(false)}>
+              풀이받기
             </Button>
           </Card>
         ) : activePhase === 'loading' ? (
@@ -451,7 +418,7 @@ export function Reading() {
             {processingInfo?.failure_reason && (
               <p className="text-xs text-warm-gray mb-3">{processingInfo.failure_reason}</p>
             )}
-            <Button variant="secondary" onClick={() => { setLocalPhase(null); handleRequestReading(); }}>
+            <Button variant="secondary" onClick={() => { setLocalPhase(null); openConfirmModal(); }}>
               다시 시도
             </Button>
           </Card>
@@ -482,6 +449,15 @@ export function Reading() {
           📋
         </button>
       )}
+      {/* 확인 모달 */}
+      <ConfirmModal
+        isOpen={showConfirmModal}
+        title={isForceReading ? '다시 풀이받기' : (SERVICE_LABELS[serviceType] || '사주풀이')}
+        cost={3}
+        bones={credits?.bones ?? 0}
+        onConfirm={handleConfirm}
+        onCancel={() => setShowConfirmModal(false)}
+      />
     </Layout>
   );
 }

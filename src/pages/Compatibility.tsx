@@ -8,6 +8,7 @@ import { Recommendations } from '@/components/saju/Recommendations.tsx';
 import { useSajuStore } from '@/stores/saju.ts';
 import { useCreditStore } from '@/stores/credit.ts';
 import { requestReading, pollReadingStatus } from '@/lib/api.ts';
+import { ConfirmModal } from '@/components/ui/ConfirmModal.tsx';
 
 const MAX_PEOPLE = 5;
 
@@ -27,7 +28,7 @@ export function Compatibility() {
   }, [profiles, initialized]);
   const [phase, setPhase] = useState<Phase>('select');
   const [error, setError] = useState('');
-  const [userQuestion, setUserQuestion] = useState('');
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [relationType, setRelationType] = useState('');
   const [isCustomRelation, setIsCustomRelation] = useState(false);
   const [isRoleInput, setIsRoleInput] = useState(false);
@@ -77,16 +78,14 @@ export function Compatibility() {
   const availableProfiles = profiles.filter(p => !selectedIds.includes(p.id));
   const canAddMore = selectedIds.length < MAX_PEOPLE && availableProfiles.length > 0;
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (userQuestion?: string) => {
     if (selectedIds.length < 2) return;
+    setShowConfirmModal(false);
     setPhase('loading');
     setError('');
     try {
-      // 항상 새로 요청 (force=true)
-      // N명 궁합: 모든 프로필 ID를 metadata에 포함
       const meta: Record<string, string> = {};
-
-      // 역할 입력 모드: "라태웅(개발자) 김정민(운영) 동업관계" 형태로 합침
+      if (userQuestion) meta.userQuestion = userQuestion;
       if (isRoleInput) {
         const roleParts = selectedIds.map(id => {
           const name = getProfileName(id);
@@ -100,7 +99,6 @@ export function Compatibility() {
       }
 
       if (selectedIds.length > 2) meta.allProfileIds = JSON.stringify(selectedIds);
-      if (userQuestion.trim()) meta.userQuestion = userQuestion.trim();
 
       const reqResult = await requestReading(
         selectedIds[0], 'compatibility', selectedIds[1], true,
@@ -278,20 +276,10 @@ export function Compatibility() {
               )}
             </div>
 
-            {/* 궁금한 점 (선택) */}
-            <input
-              type="text"
-              value={userQuestion}
-              onChange={e => setUserQuestion(e.target.value.slice(0, 80))}
-              placeholder="궁금한 점이 있다면 한 줄로 적어주세요 (선택)"
-              className="w-full rounded-xl border border-warm-gray-light/50 bg-white px-4 py-2.5 text-dark text-sm outline-none focus:border-brown placeholder:text-warm-gray-light"
-              maxLength={80}
-            />
-
             {error && <p className="text-sm text-red-500 text-center bg-red-50 rounded-xl p-2">{error}</p>}
 
-            <Button size="lg" onClick={handleSubmit} disabled={selectedIds.length < 2}>
-              🦴 3 궁합 보기
+            <Button size="lg" onClick={() => setShowConfirmModal(true)} disabled={selectedIds.length < 2}>
+              궁합 보기
             </Button>
           </div>
         </Card>
@@ -347,6 +335,15 @@ export function Compatibility() {
       )}
 
       <Recommendations exclude={['compatibility']} />
+
+      <ConfirmModal
+        isOpen={showConfirmModal}
+        title="궁합 보기"
+        cost={3}
+        bones={useCreditStore.getState().credits?.bones ?? 0}
+        onConfirm={(q) => handleSubmit(q || undefined)}
+        onCancel={() => setShowConfirmModal(false)}
+      />
     </Layout>
   );
 }
