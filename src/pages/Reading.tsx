@@ -1,5 +1,6 @@
 import DOMPurify from 'dompurify';
 import { useEffect, useState, useMemo } from 'react';
+import { LoadingMessages } from '@/components/ui/LoadingMessages.tsx';
 import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { Layout } from '@/components/layout/Layout.tsx';
 import { FourPillars } from '@/components/saju/FourPillars.tsx';
@@ -412,9 +413,10 @@ export function Reading() {
           <Card className="text-center py-4 gradient-hero">
             <PhotoLoading />
             <div className="mt-2 space-y-1">
-              <p className="text-xs text-warm-gray animate-pulse-warm">
-                {processingStatus === 'requesting' ? '요청을 접수하고 있어요...' : '복돌이가 12~15개 챕터를 작성 중이에요'}
-              </p>
+              {processingStatus === 'requesting'
+                ? <p className="text-xs text-warm-gray animate-pulse-warm">요청을 접수하고 있어요...</p>
+                : <LoadingMessages />
+              }
               <p className="text-xs text-warm-gray-light">
                 {processingStatus === 'requesting' ? '잠시만 기다려주세요' : `예상 약 ${estimatedWaitSec}초 · 페이지를 나가도 보관함에서 확인할 수 있어요`}
               </p>

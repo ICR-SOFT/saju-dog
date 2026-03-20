@@ -424,7 +424,7 @@ async function processReading(reading) {
     for (let attempt = 1; attempt <= MAX_QUALITY_RETRIES; attempt++) {
       // 재시도 시 유저 메시지에 피드백 추가
       if (attempt > 1) {
-        const minChapters = reading.service_type === 'daily' ? 0 : reading.service_type === 'compatibility' ? 6 : 8;
+        const minChapters = reading.service_type === 'daily' ? 0 : 5;
         const retryMsg = `\n\n[중요] 이전 시도에서 챕터가 부족했습니다. 반드시 최소 ${minChapters}개 이상의 완전한 챕터를 생성하세요. 각 챕터의 content는 최소 200자 이상이어야 합니다. 챕터를 절대 생략하지 마세요.`;
         params.messages = [{ role: 'user', content: userMessage + retryMsg }];
       }
@@ -449,7 +449,7 @@ async function processReading(reading) {
 
       // 품질 검증
       const chapters = result.chapters;
-      const minChapters = reading.service_type === 'daily' ? 0 : reading.service_type === 'compatibility' ? 6 : 8;
+      const minChapters = reading.service_type === 'daily' ? 0 : 5;
       const chapterCount = Array.isArray(chapters) ? chapters.length : 0;
       const hasEnoughChapters = minChapters === 0 || chapterCount >= minChapters;
 

@@ -4,18 +4,9 @@ export function generateShareId(): string {
   return Math.random().toString(36).substring(2, 10);
 }
 
-async function ensureSession() {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) {
-    // 세션 갱신 시도
-    const { error } = await supabase.auth.refreshSession();
-    if (error) throw new Error('세션이 만료되었습니다. 다시 로그인해주세요.');
-  }
-}
+// 세션 체크는 supabase 글로벌 fetch에서 자동 처리
 
 export async function createShareLink(readingId: string): Promise<string> {
-  await ensureSession();
-
   // 이미 share_id가 있으면 재사용
   const { data: existing, error: fetchErr } = await supabase
     .from('readings')
