@@ -118,10 +118,12 @@ function buildUserMessage(reading, profile, secondaryProfile, extraProfiles = []
   const fmtArr = (arr) => arr?.length > 0 ? arr.join(', ') : '없음';
   const fmtJJ = (jj) => jj?.map(j => `${j.stem}(${j.sipsin}·${j.type})`).join(', ') || '';
 
-  if ((reading.service_type === 'compatibility' || reading.service_type === 'business') && secondaryProfile?.calculated_saju) {
-    const d2 = secondaryProfile.calculated_saju;
-    const p2 = d2.pillars;
-    const s2 = d2.sinsal || {};
+  if (reading.service_type === 'compatibility' || reading.service_type === 'business') {
+    // 모든 참여자를 allProfileIds에서 가져와서 통합
+    const allParticipants = [profile, secondaryProfile, ...extraProfiles].filter(p => p?.calculated_saju);
+    const totalCount = allParticipants.length;
+
+    if (totalCount < 2) throw new Error('궁합 분석에 최소 2명의 프로필이 필요합니다');
 
     // metadata에서 관계 유형 읽기
     const meta = reading.metadata || {};
@@ -131,33 +133,25 @@ function buildUserMessage(reading, profile, secondaryProfile, extraProfiles = []
       ? `\n## 관계 유형: ${relationType}\n이 관계에 맞게 궁합을 풀어주세요. 연인이면 연애/결혼 중심, 친구면 우정/신뢰 중심, 동업이면 사업/역할분담 중심, 가족이면 소통/갈등해결 중심으로.\n`
       : '';
 
+    const participantBlocks = allParticipants.map((pp, i) => {
+      const pd = pp.calculated_saju;
+      const ppillars = pd.pillars;
+      const ps = pd.sinsal || {};
+      return `## ${i + 1}번째 참여자 (${pd.input?.name || pp.name})
+사주: ${ppillars.year.stem}${ppillars.year.branch} ${ppillars.month.stem}${ppillars.month.branch} ${ppillars.day.stem}${ppillars.day.branch} ${ppillars.hour.stem}${ppillars.hour.branch}
+오행: 목${pd.ohaengCount?.['목']} 화${pd.ohaengCount?.['화']} 토${pd.ohaengCount?.['토']} 금${pd.ohaengCount?.['금']} 수${pd.ohaengCount?.['수']}
+띠: ${pd.ddi?.fullName || '?'} / 별자리: ${pd.zodiac?.name || '?'}
+신살: ${fmtArr(ps.allSinsal)} / 귀인: ${fmtArr(ps.guiin)}`;
+    }).join('\n\n');
+
     return `${relationContext}
-## 첫 번째 (${data.input?.name || profile.name})
-사주: ${p.year.stem}${p.year.branch} ${p.month.stem}${p.month.branch} ${p.day.stem}${p.day.branch} ${p.hour.stem}${p.hour.branch}
-오행: 목${data.ohaengCount?.['목']} 화${data.ohaengCount?.['화']} 토${data.ohaengCount?.['토']} 금${data.ohaengCount?.['금']} 수${data.ohaengCount?.['수']}
-띠: ${data.ddi?.fullName || '?'} / 별자리: ${data.zodiac?.name || '?'}
-신살: ${fmtArr(s.allSinsal)} / 귀인: ${fmtArr(s.guiin)}
+${participantBlocks}
 
-## 두 번째 (${d2.input?.name || secondaryProfile.name})
-사주: ${p2.year.stem}${p2.year.branch} ${p2.month.stem}${p2.month.branch} ${p2.day.stem}${p2.day.branch} ${p2.hour.stem}${p2.hour.branch}
-오행: 목${d2.ohaengCount?.['목']} 화${d2.ohaengCount?.['화']} 토${d2.ohaengCount?.['토']} 금${d2.ohaengCount?.['금']} 수${d2.ohaengCount?.['수']}
-띠: ${d2.ddi?.fullName || '?'} / 별자리: ${d2.zodiac?.name || '?'}
-신살: ${fmtArr(s2.allSinsal)} / 귀인: ${fmtArr(s2.guiin)}
+[중요] 이 궁합에는 총 ${totalCount}명이 참여합니다. 반드시 ${totalCount}명 전원의 관계를 분석하세요.
+각 챕터에서 모든 참여자의 이름을 언급하고, 서로 간의 관계를 비교 분석해야 합니다.
+2명만 분석하고 나머지를 빠뜨리면 실패 처리됩니다.
 
-
-${extraProfiles.map((ep, i) => {
-  const ed = ep.calculated_saju;
-  if (!ed) return '';
-  const ep2 = ed.pillars;
-  const es = ed.sinsal || {};
-  return `## ${i + 3}번째 (${ed.input?.name || ep.name})
-사주: ${ep2.year.stem}${ep2.year.branch} ${ep2.month.stem}${ep2.month.branch} ${ep2.day.stem}${ep2.day.branch} ${ep2.hour.stem}${ep2.hour.branch}
-오행: 목${ed.ohaengCount?.['목']} 화${ed.ohaengCount?.['화']} 토${ed.ohaengCount?.['토']} 금${ed.ohaengCount?.['금']} 수${ed.ohaengCount?.['수']}
-신살: ${fmtArr(es.allSinsal)} / 귀인: ${fmtArr(es.guiin)}`;
-}).join('\n\n')}
-
-위에 나열된 모든 사람(${2 + extraProfiles.length}명)의 궁합을 JSON으로 작성해주세요.
-반드시 모든 참여자를 챕터에서 언급하고 분석하세요. 2명만 분석하고 나머지를 빠뜨리면 안 됩니다.`;
+궁합을 JSON으로 작성해주세요.`;
   }
 
   return `아래는 서버에서 정밀 계산된 사주 데이터입니다. 이 데이터만 기반으로 해설하세요.
