@@ -127,6 +127,7 @@ export function Home() {
   const { profiles, fetchProfiles } = useSajuStore();
   const { fetchCredits } = useCreditStore();
   const [toast, setToast] = useState('');
+  const [selectedProfileIdx, setSelectedProfileIdx] = useState(0);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -162,10 +163,11 @@ export function Home() {
       case 'chat':
         navigate('/chat');
         break;
-      default:
-        // 모든 서비스 → Reading 페이지 (service 쿼리 파라미터)
-        navigate(`/reading/${profiles[0].id}?service=${type}`);
+      default: {
+        const activeProfile = profiles[selectedProfileIdx] || profiles[0];
+        navigate(`/reading/${activeProfile.id}?service=${type}`);
         break;
+      }
     }
   };
 
@@ -227,19 +229,30 @@ export function Home() {
 
       {isAuthenticated && profiles.length > 0 && (
         <Card className="mt-4 mb-2" padding="sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-11 w-11 rounded-full bg-brown/10 flex items-center justify-center text-lg border border-brown/15 shadow-sm">
-                {profiles[0].gender === 'male' ? '👦' : '👧'}
-              </div>
-              <div>
-                <p className="font-medium text-dark text-sm">{profiles[0].name}</p>
-                <p className="text-xs text-warm-gray">{profiles[0].relation}</p>
-              </div>
-            </div>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-medium text-warm-gray">사주를 볼 프로필</p>
             <Button variant="ghost" size="sm" onClick={() => navigate('/add-profile')}>
               +추가
             </Button>
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {profiles.map((p, i) => (
+              <button
+                key={p.id}
+                onClick={() => setSelectedProfileIdx(i)}
+                className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl transition-all ${
+                  i === selectedProfileIdx
+                    ? 'bg-brown text-cream shadow-md ring-2 ring-brown/30'
+                    : 'bg-cream-dark text-dark hover:bg-brown/10'
+                }`}
+              >
+                <span className="text-sm">{p.gender === 'male' ? '👦' : '👧'}</span>
+                <div className="text-left">
+                  <p className={`text-sm font-medium ${i === selectedProfileIdx ? 'text-cream' : 'text-dark'}`}>{p.name}</p>
+                  <p className={`text-[10px] ${i === selectedProfileIdx ? 'text-cream/70' : 'text-warm-gray'}`}>{p.relation}</p>
+                </div>
+              </button>
+            ))}
           </div>
         </Card>
       )}
