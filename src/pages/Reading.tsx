@@ -16,7 +16,7 @@ import { createShareLink } from '@/lib/share.ts';
 import type { SajuPillars, ServiceType } from '@/types/saju.ts';
 import type { SajuProfile } from '@/types/user.ts';
 import { supabase } from '@/lib/supabase.ts';
-import { getZodiacImageUrl } from '@/lib/zodiac-images.ts';
+import { getZodiacImageUrl, getZodiacFallbackUrl } from '@/lib/zodiac-images.ts';
 
 type ReadingPhase = 'view' | 'confirm' | 'loading' | 'result' | 'error';
 
@@ -173,8 +173,12 @@ export function Reading() {
       {/* 띠 이미지 (텍스트 없이 꽉 차게) */}
       <div className="relative -mx-4 -mt-4 rounded-b-3xl overflow-hidden" style={{ height: '240px' }}>
         {sajuData && (
-          <img src={getZodiacImageUrl(sajuData.ddi.animal)} alt={sajuData.ddi.fullName}
-            className="absolute inset-0 w-full h-full object-cover" />
+          <img
+            src={getZodiacImageUrl(sajuData.ddi.animal, sajuData.pillars.year.stem, sajuData.pillars.year.branch, sajuData.zodiac.name)}
+            alt={sajuData.ddi.fullName}
+            className="absolute inset-0 w-full h-full object-cover"
+            onError={(e) => { (e.target as HTMLImageElement).src = getZodiacFallbackUrl(sajuData.ddi.animal); }}
+          />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-cream via-transparent to-transparent" style={{ height: '40%', top: '60%' }} />
       </div>
