@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router';
 import { Layout } from '@/components/layout/Layout.tsx';
 import { Card } from '@/components/ui/Card.tsx';
 import { Button } from '@/components/ui/Button.tsx';
-import { Loading } from '@/components/ui/Loading.tsx';
+import { PhotoLoading } from '@/components/ui/PhotoLoading.tsx';
 import { ChapterAccordion } from '@/components/saju/ChapterAccordion.tsx';
 import { Recommendations } from '@/components/saju/Recommendations.tsx';
 import { useSajuStore } from '@/stores/saju.ts';
-import { getCompatibility } from '@/lib/api.ts';
+import { useCreditStore } from '@/stores/credit.ts';
+import { requestReading, pollReadingStatus } from '@/lib/api.ts';
 import type { SajuApiResponse } from '@/types/saju.ts';
 
 const MAX_PEOPLE = 5;
@@ -53,13 +54,38 @@ export function Compatibility() {
     setIsLoading(true);
     setError('');
     try {
-      const data = await getCompatibility({
-        profileIds: selectedIds,
-      });
-      setResult(data);
+      // Step 1: 큐에 요청 (primaryProfileId + secondaryProfileId)
+      const reqResult = await requestReading(
+        selectedIds[0],
+        'compatibility',
+        selectedIds[1], // secondary
+      );
+
+      if (reqResult.cached && reqResult.result) {
+        setResult(reqResult.result);
+        setIsLoading(false);
+        return;
+      }
+
+      // Step 2: 폴링으로 완료 확인
+      const readingId = reqResult.readingId;
+      useCreditStore.getState().fetchCredits();
+
+      for (let i = 0; i < 60; i++) {
+        await new Promise(r => setTimeout(r, 3000));
+        const status = await pollReadingStatus(readingId);
+        if (status.status === 'completed' && status.result) {
+          setResult(status.result);
+          setIsLoading(false);
+          return;
+        }
+        if (status.status === 'failed') {
+          throw new Error(status.failure_reason || '궁합 분석에 실패했습니다 (크레딧이 환불되었어요)');
+        }
+      }
+      throw new Error('시간이 초과되었습니다. 보관함에서 확인해주세요.');
     } catch (err) {
       setError(err instanceof Error ? err.message : '궁합 분석에 실패했습니다');
-    } finally {
       setIsLoading(false);
     }
   };
@@ -149,7 +175,11 @@ export function Compatibility() {
           </div>
         </Card>
       ) : isLoading ? (
-        <Loading message="복돌이가 인연을 살펴보고 있어요..." />
+        <Card className="text-center py-4 gradient-hero">
+          <PhotoLoading />
+          <p className="text-xs text-warm-gray animate-pulse-warm mt-2">복돌이가 인연을 살펴보고 있어요...</p>
+          <p className="text-xs text-warm-gray-light">페이지를 나가도 보관함에서 확인할 수 있어요</p>
+        </Card>
       ) : (
         <div className="space-y-4">
           {/* 점수 */}
