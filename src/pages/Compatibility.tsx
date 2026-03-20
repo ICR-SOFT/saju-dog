@@ -27,6 +27,7 @@ export function Compatibility() {
   }, [profiles, initialized]);
   const [phase, setPhase] = useState<Phase>('select');
   const [error, setError] = useState('');
+  const [userQuestion, setUserQuestion] = useState('');
   const [relationType, setRelationType] = useState('');
   const [isCustomRelation, setIsCustomRelation] = useState(false);
   const [isRoleInput, setIsRoleInput] = useState(false);
@@ -99,6 +100,7 @@ export function Compatibility() {
       }
 
       if (selectedIds.length > 2) meta.allProfileIds = JSON.stringify(selectedIds);
+      if (userQuestion.trim()) meta.userQuestion = userQuestion.trim();
 
       const reqResult = await requestReading(
         selectedIds[0], 'compatibility', selectedIds[1], true,
@@ -275,6 +277,16 @@ export function Compatibility() {
                 />
               )}
             </div>
+
+            {/* 궁금한 점 (선택) */}
+            <input
+              type="text"
+              value={userQuestion}
+              onChange={e => setUserQuestion(e.target.value.slice(0, 80))}
+              placeholder="궁금한 점이 있다면 한 줄로 적어주세요 (선택)"
+              className="w-full rounded-xl border border-warm-gray-light/50 bg-white px-4 py-2.5 text-dark text-sm outline-none focus:border-brown placeholder:text-warm-gray-light"
+              maxLength={80}
+            />
 
             {error && <p className="text-sm text-red-500 text-center bg-red-50 rounded-xl p-2">{error}</p>}
 

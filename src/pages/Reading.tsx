@@ -36,6 +36,7 @@ export function Reading() {
   const [sajuData, setSajuData] = useState<SajuPillars | null>(null);
   const [shareToast, setShareToast] = useState('');
   const [directProfile, setDirectProfile] = useState<SajuProfile | null>(null);
+  const [userQuestion, setUserQuestion] = useState('');
 
   const serviceType = (searchParams.get('service') as ServiceType) || 'comprehensive';
 
@@ -139,7 +140,8 @@ export function Reading() {
   const handleRequestReading = (force = false) => {
     if (!profileId) return;
     setLocalPhase(null);
-    startReading(profileId, serviceType, force);
+    const meta = userQuestion.trim() ? { userQuestion: userQuestion.trim() } : undefined;
+    startReading(profileId, serviceType, force, meta);
   };
 
   if (!profile) {
@@ -395,6 +397,21 @@ export function Reading() {
                 <span className="text-warm-gray">예상 소요</span>
                 <span className="text-dark">약 {estimatedWaitSec}초</span>
               </div>
+            </div>
+
+            {/* 궁금한 점 입력 (선택) */}
+            <div className="mb-3">
+              <input
+                type="text"
+                value={userQuestion}
+                onChange={e => setUserQuestion(e.target.value.slice(0, 80))}
+                placeholder="궁금한 점이 있다면 한 줄로 적어주세요 (선택)"
+                className="w-full rounded-xl border border-warm-gray-light/50 bg-white px-4 py-2.5 text-dark text-sm outline-none focus:border-brown placeholder:text-warm-gray-light"
+                maxLength={80}
+              />
+              {userQuestion && (
+                <p className="text-[10px] text-warm-gray text-right mt-1">{userQuestion.length}/80</p>
+              )}
             </div>
 
             {(credits?.bones ?? 0) < 3 ? (

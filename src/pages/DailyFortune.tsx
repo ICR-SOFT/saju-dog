@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import DOMPurify from 'dompurify';
 import { Layout } from '@/components/layout/Layout.tsx';
 import { Card } from '@/components/ui/Card.tsx';
 import { Button } from '@/components/ui/Button.tsx';
@@ -39,6 +40,7 @@ export function DailyFortune() {
   const [result, setResult] = useState<DailyResult | null>(null);
   const [phase, setPhase] = useState<'init' | 'idle' | 'loading' | 'done'>('init');
   const [error, setError] = useState('');
+  const [userQuestion, setUserQuestion] = useState('');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const profile = profiles[selectedProfileIdx] || profiles[0];
@@ -119,7 +121,8 @@ export function DailyFortune() {
     setError('');
 
     try {
-      const reqResult = await requestReading(profile.id, 'daily');
+      const meta = userQuestion.trim() ? { userQuestion: userQuestion.trim() } : undefined;
+      const reqResult = await requestReading(profile.id, 'daily', undefined, false, meta);
 
       // 캐시 히트
       if (reqResult.cached && reqResult.result) {
@@ -222,7 +225,7 @@ export function DailyFortune() {
           {/* 조언 */}
           <Card>
             <p className="text-sm text-dark-light leading-relaxed">
-              🐾 {result.advice}
+              🐾 <span dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(result.advice) }} />
             </p>
           </Card>
 
@@ -273,7 +276,15 @@ export function DailyFortune() {
         // idle 상태 — 오늘 결과 없음, 버튼 표시
         <Card className="text-center py-8">
           <p className="text-4xl mb-3">🐕</p>
-          <p className="text-warm-gray mb-4">오늘의 운세를 확인해보세요</p>
+          <p className="text-warm-gray mb-3">오늘의 운세를 확인해보세요</p>
+          <input
+            type="text"
+            value={userQuestion}
+            onChange={e => setUserQuestion(e.target.value.slice(0, 80))}
+            placeholder="오늘 궁금한 점이 있다면? (선택)"
+            className="w-full rounded-xl border border-warm-gray-light/50 bg-white px-4 py-2.5 text-dark text-sm outline-none focus:border-brown placeholder:text-warm-gray-light mb-3"
+            maxLength={80}
+          />
           <Button onClick={fetchDaily}>오늘의 운세 보기</Button>
         </Card>
       )}
