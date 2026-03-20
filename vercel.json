@@ -1,4 +1,9 @@
 {
+  "functions": {
+    "api/**/*.ts": {
+      "runtime": "@vercel/node@3"
+    }
+  },
   "rewrites": [
     { "source": "/share/:shareId", "destination": "/api/share/:shareId" },
     { "source": "/(.*)", "destination": "/index.html" }
