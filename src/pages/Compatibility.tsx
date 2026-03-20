@@ -29,6 +29,8 @@ export function Compatibility() {
   const [error, setError] = useState('');
   const [relationType, setRelationType] = useState('');
   const [isCustomRelation, setIsCustomRelation] = useState(false);
+  const [isRoleInput, setIsRoleInput] = useState(false);
+  const [roles, setRoles] = useState<Record<string, string>>({});
 
   const RELATION_PRESETS = [
     { label: '연인/부부', value: '연인/부부', emoji: '💕' },
@@ -37,6 +39,8 @@ export function Compatibility() {
     { label: '가족', value: '가족', emoji: '👨‍👩‍👧‍👦' },
     { label: '상사/부하', value: '직장 상사와 부하', emoji: '🏢' },
   ];
+
+  const getProfileName = (id: string) => profiles.find(p => p.id === id)?.name || '?';
 
   // 궁합 내역 (completed)
   const compatReadings = readings.filter(r => r.service_type === 'compatibility' && r.processing_status === 'completed');
@@ -80,7 +84,20 @@ export function Compatibility() {
       // 항상 새로 요청 (force=true)
       // N명 궁합: 모든 프로필 ID를 metadata에 포함
       const meta: Record<string, string> = {};
-      if (relationType) meta.relationType = relationType;
+
+      // 역할 입력 모드: "라태웅(개발자) 김정민(운영) 동업관계" 형태로 합침
+      if (isRoleInput) {
+        const roleParts = selectedIds.map(id => {
+          const name = getProfileName(id);
+          const role = roles[id];
+          return role ? `${name}(${role})` : name;
+        });
+        const combined = `${roleParts.join(' ')} ${relationType || ''}`.trim();
+        meta.relationType = combined;
+      } else if (relationType) {
+        meta.relationType = relationType;
+      }
+
       if (selectedIds.length > 2) meta.allProfileIds = JSON.stringify(selectedIds);
 
       const reqResult = await requestReading(
@@ -118,8 +135,6 @@ export function Compatibility() {
       setPhase('select');
     }
   };
-
-  const getProfileName = (id: string) => profiles.find(p => p.id === id)?.name || '?';
 
   if (profiles.length < 2) {
     return (
@@ -164,25 +179,36 @@ export function Compatibility() {
               const otherSelected = selectedIds.filter((_, i) => i !== index);
               const options = profiles.filter(p => !otherSelected.includes(p.id));
               return (
-                <div key={index} className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-200 to-rose-300 flex items-center justify-center text-xs font-bold text-white shrink-0 shadow-sm ring-2 ring-white">
-                    {index + 1}
+                <div key={index} className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-200 to-rose-300 flex items-center justify-center text-xs font-bold text-white shrink-0 shadow-sm ring-2 ring-white">
+                      {index + 1}
+                    </div>
+                    <select
+                      className="flex-1 rounded-xl border border-warm-gray-light/50 bg-white px-4 py-2.5 text-dark outline-none focus:border-brown text-sm"
+                      value={id}
+                      onChange={e => setSelectedIds(prev => { const n = [...prev]; n[index] = e.target.value; return n; })}
+                    >
+                      {options.map(p => (
+                        <option key={p.id} value={p.id}>{p.name} ({p.relation})</option>
+                      ))}
+                    </select>
+                    {isRoleInput && (
+                      <input
+                        type="text"
+                        value={roles[id] || ''}
+                        onChange={e => setRoles(prev => ({ ...prev, [id]: e.target.value }))}
+                        placeholder="역할"
+                        className="w-20 rounded-lg border border-warm-gray-light/50 bg-white px-2 py-2 text-dark text-xs outline-none focus:border-brown shrink-0"
+                      />
+                    )}
+                    {selectedIds.length > 2 && (
+                      <button type="button" onClick={() => setSelectedIds(prev => prev.filter((_, i) => i !== index))}
+                        className="w-7 h-7 rounded-full bg-red-50 text-red-400 hover:bg-red-100 flex items-center justify-center text-sm shrink-0">
+                        &times;
+                      </button>
+                    )}
                   </div>
-                  <select
-                    className="flex-1 rounded-xl border border-warm-gray-light/50 bg-white px-4 py-2.5 text-dark outline-none focus:border-brown text-sm"
-                    value={id}
-                    onChange={e => setSelectedIds(prev => { const n = [...prev]; n[index] = e.target.value; return n; })}
-                  >
-                    {options.map(p => (
-                      <option key={p.id} value={p.id}>{p.name} ({p.relation})</option>
-                    ))}
-                  </select>
-                  {selectedIds.length > 2 && (
-                    <button type="button" onClick={() => setSelectedIds(prev => prev.filter((_, i) => i !== index))}
-                      className="w-7 h-7 rounded-full bg-red-50 text-red-400 hover:bg-red-100 flex items-center justify-center text-sm shrink-0">
-                      &times;
-                    </button>
-                  )}
                 </div>
               );
             })}
@@ -200,9 +226,9 @@ export function Compatibility() {
               <div className="flex flex-wrap gap-1.5 mb-2">
                 {RELATION_PRESETS.map(r => (
                   <button key={r.label} type="button"
-                    onClick={() => { setRelationType(r.value); setIsCustomRelation(false); }}
+                    onClick={() => { setRelationType(r.value); setIsCustomRelation(false); setIsRoleInput(false); }}
                     className={`text-xs px-3 py-1.5 rounded-full transition-all border ${
-                      !isCustomRelation && relationType === r.value
+                      !isCustomRelation && !isRoleInput && relationType === r.value
                         ? 'bg-brown text-cream border-brown'
                         : 'bg-white text-dark border-cream-dark hover:border-brown/30'
                     }`}>
@@ -210,7 +236,16 @@ export function Compatibility() {
                   </button>
                 ))}
                 <button type="button"
-                  onClick={() => { setIsCustomRelation(true); setRelationType(''); }}
+                  onClick={() => { setIsRoleInput(true); setIsCustomRelation(false); setRelationType('동업관계'); }}
+                  className={`text-xs px-3 py-1.5 rounded-full transition-all border ${
+                    isRoleInput
+                      ? 'bg-brown text-cream border-brown'
+                      : 'bg-white text-dark border-cream-dark hover:border-brown/30'
+                  }`}>
+                  🏷️ 역할 입력
+                </button>
+                <button type="button"
+                  onClick={() => { setIsCustomRelation(true); setIsRoleInput(false); setRelationType(''); }}
                   className={`text-xs px-3 py-1.5 rounded-full transition-all border ${
                     isCustomRelation
                       ? 'bg-brown text-cream border-brown'
@@ -219,11 +254,22 @@ export function Compatibility() {
                   ✏️ 직접 입력
                 </button>
               </div>
+              {/* 직접 입력 (전체 관계) */}
               {isCustomRelation && (
                 <input
                   type="text"
                   value={relationType}
                   placeholder="관계를 직접 입력하세요 (예: 룸메이트, 선후배)"
+                  className="w-full rounded-xl border border-warm-gray-light/50 bg-white px-4 py-2 text-dark text-sm outline-none focus:border-brown"
+                  onChange={e => setRelationType(e.target.value)}
+                />
+              )}
+              {/* 역할 입력 모드 — 관계 유형도 입력 가능 */}
+              {isRoleInput && (
+                <input
+                  type="text"
+                  value={relationType}
+                  placeholder="관계를 입력하세요 (예: 동업관계, 팀 프로젝트)"
                   className="w-full rounded-xl border border-warm-gray-light/50 bg-white px-4 py-2 text-dark text-sm outline-none focus:border-brown"
                   onChange={e => setRelationType(e.target.value)}
                 />
