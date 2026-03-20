@@ -172,6 +172,8 @@ ${participantBlocks}
 [중요] 이 궁합에는 총 ${totalCount}명이 참여합니다. 반드시 ${totalCount}명 전원의 관계를 분석하세요.
 각 챕터에서 모든 참여자의 이름을 언급하고, 서로 간의 관계를 비교 분석해야 합니다.
 2명만 분석하고 나머지를 빠뜨리면 실패 처리됩니다.
+
+[이모지 규칙] 각 챕터의 "emoji" 필드에 반드시 이모지 1개를 넣으세요 (예: "🔥"). "title"에는 이모지를 넣지 마세요. 이모지는 오직 "emoji" 필드에만!
 궁합을 JSON으로 작성해주세요.`;
   }
 
@@ -246,6 +248,7 @@ ${(() => {
 `;
 })()}
 [중요 지시] ${serviceInstruction}
+[이모지 규칙] 각 챕터의 "emoji" 필드에 반드시 이모지 1개를 넣으세요 (예: "🔥"). "title"에는 이모지를 넣지 마세요. 이모지는 오직 "emoji" 필드에만!
 위 사주 데이터를 기반으로, 이 분석 유형(${reading.service_type})에 맞는 풀이를 JSON으로 작성하세요.
 종합 사주풀이처럼 일반적인 분석을 하지 말고, 반드시 요청된 분석 유형에 집중하세요.`;
 }
@@ -448,7 +451,11 @@ async function processReading(reading) {
       // 재시도 시 유저 메시지에 피드백 추가
       if (attempt > 1) {
         const minChapters = reading.service_type === 'daily' ? 0 : 5;
-        const retryMsg = `\n\n[중요] 이전 시도에서 챕터가 부족했습니다. 반드시 최소 ${minChapters}개 이상의 완전한 챕터를 생성하세요. 각 챕터의 content는 최소 200자 이상이어야 합니다. 챕터를 절대 생략하지 마세요.`;
+        const retryMsg = `\n\n[중요] 이전 시도에서 품질 문제가 있었습니다. 반드시 다음을 지켜주세요:
+- 최소 ${minChapters}개 이상의 완전한 챕터
+- 각 챕터의 content는 최소 200자 이상
+- 각 챕터의 "emoji" 필드에 반드시 이모지 1개를 넣으세요 (예: "🔥", "💰", "❤️")
+- "title" 필드에는 이모지를 넣지 마세요. 이모지는 오직 "emoji" 필드에만!`;
         params.messages = [{ role: 'user', content: userMessage + retryMsg }];
       }
 
@@ -470,6 +477,28 @@ async function processReading(reading) {
       apiCost = calculateCost(config.model, apiResponse.usage || {});
       totalApiCost += apiCost.cost_usd;
 
+      // 이모지 후처리
+      const emojiRegex = /^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)\s*/u;
+      if (Array.isArray(result.chapters)) {
+        for (const ch of result.chapters) {
+          const titleMatch = ch.title?.match(emojiRegex);
+          if (titleMatch) {
+            // 타이틀 앞에 이모지가 있으면 제거
+            const titleEmoji = titleMatch[1];
+            ch.title = ch.title.replace(emojiRegex, '').trim();
+            // emoji 필드가 비어있으면 타이틀에서 옮기기
+            if (!ch.emoji || !ch.emoji.trim()) {
+              ch.emoji = titleEmoji;
+            }
+          }
+          // emoji 필드도 여러 개면 첫 번째만
+          if (ch.emoji) {
+            const em = ch.emoji.match(/(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)/u);
+            ch.emoji = em ? em[1] : ch.emoji.trim().slice(0, 2);
+          }
+        }
+      }
+
       // 품질 검증
       const chapters = result.chapters;
       const minChapters = reading.service_type === 'daily' ? 0 : 5;
@@ -480,13 +509,16 @@ async function processReading(reading) {
       const truncatedChapters = Array.isArray(chapters) ? chapters.filter(ch => ch.content && ch.content.length < 100) : [];
       const hasTruncated = truncatedChapters.length > 2;
 
-      if (hasEnoughChapters && !hasTruncated) {
+      // 이모지 누락 체크 (daily 제외)
+      const missingEmoji = reading.service_type !== 'daily' && Array.isArray(chapters) && chapters.some(ch => !ch.emoji || !ch.emoji.trim());
+
+      if (hasEnoughChapters && !hasTruncated && !missingEmoji) {
         parsed = result;
         log('info', `[${rid}] Quality OK (attempt ${attempt}): ${chapterCount} chapters, stop=${stopReason}`);
         break;
       }
 
-      log('warn', `[${rid}] Quality FAIL (attempt ${attempt}/${MAX_QUALITY_RETRIES}): chapters=${chapterCount}/${minChapters}, truncated=${truncatedChapters.length}, stop=${stopReason}`);
+      log('warn', `[${rid}] Quality FAIL (attempt ${attempt}/${MAX_QUALITY_RETRIES}): chapters=${chapterCount}/${minChapters}, truncated=${truncatedChapters.length}, missingEmoji=${missingEmoji}, stop=${stopReason}`);
 
       if (attempt === MAX_QUALITY_RETRIES) {
         parsed = result;
