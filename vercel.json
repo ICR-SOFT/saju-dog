@@ -1,6 +1,7 @@
 {
-  "rewrites": [
-    { "source": "/share/:shareId", "destination": "/api/share/:shareId" },
-    { "source": "/(.*)", "destination": "/index.html" }
+  "routes": [
+    { "src": "/share/([^/]+)", "dest": "/api/share/$1" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
