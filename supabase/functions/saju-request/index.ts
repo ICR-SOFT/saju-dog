@@ -65,20 +65,22 @@ serve(async (req) => {
       }
     }
 
-    // 진행 중인 요청 확인
-    const { data: pending } = await supabase
-      .from('readings')
-      .select('id, processing_status')
-      .eq('profile_id', profileId)
-      .eq('service_type', serviceType)
-      .in('processing_status', ['pending', 'processing'])
-      .maybeSingle();
+    // 진행 중인 요청 확인 (force=true면 무시)
+    if (!force) {
+      const { data: pending } = await supabase
+        .from('readings')
+        .select('id, processing_status')
+        .eq('profile_id', profileId)
+        .eq('service_type', serviceType)
+        .in('processing_status', ['pending', 'processing'])
+        .maybeSingle();
 
-    if (pending) {
-      return new Response(JSON.stringify({
-        readingId: pending.id,
-        status: pending.processing_status,
-      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (pending) {
+        return new Response(JSON.stringify({
+          readingId: pending.id,
+          status: pending.processing_status,
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
     }
 
     // 크레딧 차감
