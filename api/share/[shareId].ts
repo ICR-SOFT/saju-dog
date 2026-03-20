@@ -114,11 +114,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   <meta name="twitter:description" content="${escapeHtml(description)}" />
   <meta name="twitter:image" content="${imageUrl}" />
   <link rel="icon" type="image/png" href="${baseUrl}/favicon.png" />
+  <script>window.location.replace("${spaUrl}");</script>
 </head>
 <body>
-  <h1>${escapeHtml(title)}</h1>
-  <p>${escapeHtml(description)}</p>
-  <a href="${baseUrl}/api/share/${shareId}">사주독에서 보기</a>
+  <p>리다이렉트 중... <a href="${spaUrl}">여기를 클릭하세요</a></p>
 </body>
 </html>`;
 
