@@ -50,7 +50,7 @@ export function Login() {
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="test@saju-dog.com"
+              placeholder="이메일을 입력하세요"
               required
             />
             <Input
@@ -72,9 +72,6 @@ export function Login() {
           </form>
         </Card>
 
-        <p className="text-center text-xs text-warm-gray-light mt-4">
-          테스트 계정: test@saju-dog.com / test1234
-        </p>
       </div>
     </div>
   );
