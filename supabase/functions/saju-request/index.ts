@@ -117,7 +117,7 @@ serve(async (req) => {
         service_type: serviceType,
         status: 'completed', // RLS 호환
         processing_status: 'pending',
-        ...(metadata ? { error: JSON.stringify(metadata) } : {}), // metadata를 error 필드에 임시 저장
+        ...(metadata ? { metadata } : {}),
       })
       .select('id')
       .single();

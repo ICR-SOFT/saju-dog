@@ -109,7 +109,7 @@ async function getPromptConfig(serviceType) {
 }
 
 // ===== 유저 메시지 빌드 =====
-function buildUserMessage(reading, profile, secondaryProfile) {
+function buildUserMessage(reading, profile, secondaryProfile, extraProfiles = []) {
   const data = profile.calculated_saju;
   if (!data) throw new Error('calculated_saju 없음');
 
@@ -123,12 +123,9 @@ function buildUserMessage(reading, profile, secondaryProfile) {
     const p2 = d2.pillars;
     const s2 = d2.sinsal || {};
 
-    // metadata에서 관계 유형 읽기 (error 필드에 임시 저장됨)
-    let relationType = '';
-    try {
-      const meta = reading.error ? JSON.parse(reading.error) : {};
-      relationType = meta.relationType || '';
-    } catch {}
+    // metadata에서 관계 유형 읽기
+    const meta = reading.metadata || {};
+    const relationType = meta.relationType || '';
 
     const relationContext = relationType
       ? `\n## 관계 유형: ${relationType}\n이 관계에 맞게 궁합을 풀어주세요. 연인이면 연애/결혼 중심, 친구면 우정/신뢰 중심, 동업이면 사업/역할분담 중심, 가족이면 소통/갈등해결 중심으로.\n`
@@ -146,6 +143,18 @@ function buildUserMessage(reading, profile, secondaryProfile) {
 오행: 목${d2.ohaengCount?.['목']} 화${d2.ohaengCount?.['화']} 토${d2.ohaengCount?.['토']} 금${d2.ohaengCount?.['금']} 수${d2.ohaengCount?.['수']}
 띠: ${d2.ddi?.fullName || '?'} / 별자리: ${d2.zodiac?.name || '?'}
 신살: ${fmtArr(s2.allSinsal)} / 귀인: ${fmtArr(s2.guiin)}
+
+
+${extraProfiles.map((ep, i) => {
+  const ed = ep.calculated_saju;
+  if (!ed) return '';
+  const ep2 = ed.pillars;
+  const es = ed.sinsal || {};
+  return `## ${i + 3}번째 (${ed.input?.name || ep.name})
+사주: ${ep2.year.stem}${ep2.year.branch} ${ep2.month.stem}${ep2.month.branch} ${ep2.day.stem}${ep2.day.branch} ${ep2.hour.stem}${ep2.hour.branch}
+오행: 목${ed.ohaengCount?.['목']} 화${ed.ohaengCount?.['화']} 토${ed.ohaengCount?.['토']} 금${ed.ohaengCount?.['금']} 수${ed.ohaengCount?.['수']}
+신살: ${fmtArr(es.allSinsal)} / 귀인: ${fmtArr(es.guiin)}`;
+}).join('\n\n')}
 
 궁합을 JSON으로 작성해주세요.`;
   }
@@ -348,8 +357,22 @@ async function processReading(reading) {
       secondaryProfile = data;
     }
 
+    // N명 궁합: metadata에서 추가 프로필 로드
+    let extraProfiles = [];
+    const readingMeta = reading.metadata || {};
+    if (readingMeta.allProfileIds) {
+      try {
+        const allIds = JSON.parse(readingMeta.allProfileIds);
+        const extraIds = allIds.filter(id => id !== reading.profile_id && id !== reading.secondary_profile_id);
+        for (const eid of extraIds) {
+          const { data: ep } = await supabase.from('saju_profiles').select('*').eq('id', eid).single();
+          if (ep) extraProfiles.push(ep);
+        }
+      } catch {}
+    }
+
     const config = await getPromptConfig(reading.service_type);
-    const userMessage = buildUserMessage(reading, profile, secondaryProfile);
+    const userMessage = buildUserMessage(reading, profile, secondaryProfile, extraProfiles);
 
     // Structured Outputs — output_config.format (Claude API 네이티브)
     const outputConfig = getOutputConfig(reading.service_type);

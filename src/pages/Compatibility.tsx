@@ -28,6 +28,7 @@ export function Compatibility() {
   const [phase, setPhase] = useState<Phase>('select');
   const [error, setError] = useState('');
   const [relationType, setRelationType] = useState('');
+  const [isCustomRelation, setIsCustomRelation] = useState(false);
 
   const RELATION_PRESETS = [
     { label: '연인/부부', value: '연인/부부', emoji: '💕' },
@@ -35,7 +36,6 @@ export function Compatibility() {
     { label: '동업/사업', value: '동업/사업 파트너', emoji: '💼' },
     { label: '가족', value: '가족', emoji: '👨‍👩‍👧‍👦' },
     { label: '상사/부하', value: '직장 상사와 부하', emoji: '🏢' },
-    { label: '직접 입력', value: '', emoji: '✏️' },
   ];
 
   // 궁합 내역 (completed)
@@ -77,10 +77,15 @@ export function Compatibility() {
     setPhase('loading');
     setError('');
     try {
-      // 항상 새로 요청 (force=true — 궁합은 매번 새로 볼 수 있어야 함)
+      // 항상 새로 요청 (force=true)
+      // N명 궁합: 모든 프로필 ID를 metadata에 포함
+      const meta: Record<string, string> = {};
+      if (relationType) meta.relationType = relationType;
+      if (selectedIds.length > 2) meta.allProfileIds = JSON.stringify(selectedIds);
+
       const reqResult = await requestReading(
         selectedIds[0], 'compatibility', selectedIds[1], true,
-        relationType ? { relationType } : undefined,
+        Object.keys(meta).length > 0 ? meta : undefined,
       );
       useCreditStore.getState().fetchCredits();
 
@@ -195,19 +200,29 @@ export function Compatibility() {
               <div className="flex flex-wrap gap-1.5 mb-2">
                 {RELATION_PRESETS.map(r => (
                   <button key={r.label} type="button"
-                    onClick={() => setRelationType(r.value)}
+                    onClick={() => { setRelationType(r.value); setIsCustomRelation(false); }}
                     className={`text-xs px-3 py-1.5 rounded-full transition-all border ${
-                      relationType === r.value
+                      !isCustomRelation && relationType === r.value
                         ? 'bg-brown text-cream border-brown'
                         : 'bg-white text-dark border-cream-dark hover:border-brown/30'
                     }`}>
                     {r.emoji} {r.label}
                   </button>
                 ))}
+                <button type="button"
+                  onClick={() => { setIsCustomRelation(true); setRelationType(''); }}
+                  className={`text-xs px-3 py-1.5 rounded-full transition-all border ${
+                    isCustomRelation
+                      ? 'bg-brown text-cream border-brown'
+                      : 'bg-white text-dark border-cream-dark hover:border-brown/30'
+                  }`}>
+                  ✏️ 직접 입력
+                </button>
               </div>
-              {relationType === '' && (
+              {isCustomRelation && (
                 <input
                   type="text"
+                  value={relationType}
                   placeholder="관계를 직접 입력하세요 (예: 룸메이트, 선후배)"
                   className="w-full rounded-xl border border-warm-gray-light/50 bg-white px-4 py-2 text-dark text-sm outline-none focus:border-brown"
                   onChange={e => setRelationType(e.target.value)}
