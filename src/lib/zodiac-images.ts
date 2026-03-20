@@ -23,3 +23,7 @@ export function getZodiacImageUrl(animal: string): string {
   if (!file) return '/images/comprehensive.png'; // fallback
   return `/images/zodiac/${file}.png`;
 }
+
+export function getCompatibilityImageUrl(): string {
+  return '/images/zodiac/compatibility.png';
+}

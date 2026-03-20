@@ -170,28 +170,30 @@ export function Reading() {
 
   return (
     <Layout>
-      {/* 프로필 헤더 — 띠 이미지 배경 */}
-      <div className="relative text-center mb-4 -mx-4 -mt-4 rounded-b-3xl overflow-hidden" style={{ minHeight: '220px' }}>
+      {/* 띠 이미지 (텍스트 없이 꽉 차게) */}
+      <div className="relative -mx-4 -mt-4 rounded-b-3xl overflow-hidden" style={{ height: '240px' }}>
         {sajuData && (
           <img src={getZodiacImageUrl(sajuData.ddi.animal)} alt={sajuData.ddi.fullName}
             className="absolute inset-0 w-full h-full object-cover" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/10" />
-        <div className="relative z-10 px-4 pt-16 pb-6">
-          <h2 className="text-xl font-bold text-white font-serif" style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.7)' }}>
-            {profile.name}님의 {serviceType !== 'comprehensive' && SERVICE_LABELS[serviceType] ? SERVICE_LABELS[serviceType] : '사주풀이'}
-          </h2>
-          {sajuData && (
-            <div className="flex flex-wrap gap-2 justify-center mt-2">
-              <span className="text-xs bg-white/80 text-brown rounded-full px-3 py-1 font-medium shadow-sm">
-                {sajuData.ddi.fullName}
-              </span>
-              <span className="text-xs bg-white/80 text-brown rounded-full px-3 py-1 font-medium shadow-sm">
-                {sajuData.zodiac.emoji} {sajuData.zodiac.name}
-              </span>
-            </div>
-          )}
-        </div>
+        <div className="absolute inset-0 bg-gradient-to-t from-cream via-transparent to-transparent" style={{ height: '40%', top: '60%' }} />
+      </div>
+
+      {/* 프로필 정보 (이미지 아래) */}
+      <div className="text-center -mt-6 mb-4 relative z-10">
+        <h2 className="text-xl font-bold text-dark font-serif">
+          {profile.name}님의 {serviceType !== 'comprehensive' && SERVICE_LABELS[serviceType] ? SERVICE_LABELS[serviceType] : '사주풀이'}
+        </h2>
+        {sajuData && (
+          <div className="flex flex-wrap gap-2 justify-center mt-2">
+            <span className="text-xs bg-brown/10 text-brown rounded-full px-3 py-1 font-medium">
+              {sajuData.ddi.fullName}
+            </span>
+            <span className="text-xs bg-brown/10 text-brown rounded-full px-3 py-1 font-medium">
+              {sajuData.zodiac.emoji} {sajuData.zodiac.name}
+            </span>
+          </div>
+        )}
       </div>
 
       {sajuData && (

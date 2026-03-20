@@ -16,7 +16,7 @@ import { createShareLink } from '@/lib/share.ts';
 import { calculateSaju } from '@/core/calculator.ts';
 import type { Reading, SajuProfile } from '@/types/user.ts';
 import type { SajuApiResponse, SajuPillars, ServiceType } from '@/types/saju.ts';
-import { getZodiacImageUrl } from '@/lib/zodiac-images.ts';
+import { getZodiacImageUrl, getCompatibilityImageUrl } from '@/lib/zodiac-images.ts';
 
 interface DailyResult {
   summary: string;
@@ -174,33 +174,39 @@ export function ReadingDetail() {
 
   return (
     <Layout>
-      {/* 헤더 */}
-      <div className="relative text-center mb-5 -mx-4 -mt-4 rounded-b-3xl overflow-hidden" style={{ minHeight: isCompatibility ? '160px' : '220px' }}>
+      {/* 이미지 (텍스트 없이) */}
+      <div className="relative -mx-4 -mt-4 rounded-b-3xl overflow-hidden" style={{ height: isCompatibility ? '200px' : '240px' }}>
         {sajuData && !isCompatibility && (
           <img src={getZodiacImageUrl(sajuData.ddi.animal)} alt="" className="absolute inset-0 w-full h-full object-cover" />
         )}
-        {!sajuData || isCompatibility ? <div className="absolute inset-0 gradient-hero" /> : null}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/10" />
+        {isCompatibility && (
+          <img src={getCompatibilityImageUrl()} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        )}
+        {!sajuData && !isCompatibility && <div className="absolute inset-0 gradient-hero" />}
+        <div className="absolute inset-0 bg-gradient-to-t from-cream via-transparent to-transparent" style={{ height: '40%', top: '60%' }} />
         <button
           onClick={() => navigate('/archive')}
           className="absolute left-4 top-5 z-20 flex items-center gap-1 text-white/80 text-sm hover:text-white"
+          style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.5)' }}
         >
           ← 보관함
         </button>
-        <div className="relative z-10 pt-14 pb-5 px-4">
-          <div className="w-14 h-14 mx-auto mb-2 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30">
-            <span className="text-3xl">{serviceInfo.emoji}</span>
-          </div>
-          <h2 className="text-xl font-bold text-white font-serif" style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.7)' }}>
-            {isCompatibility && allCompatNames
-              ? `${allCompatNames}의 궁합`
-              : `${profileName}님의 ${serviceInfo.label}`}
-          </h2>
-          <p className="text-sm text-white/70 mt-1">
-            {new Date(reading.created_at).toLocaleDateString('ko-KR')}
-            {reading.processing_duration_ms && ` · ${(reading.processing_duration_ms / 1000).toFixed(0)}초`}
-          </p>
+      </div>
+
+      {/* 텍스트 (이미지 아래) */}
+      <div className="text-center -mt-6 mb-4 relative z-10">
+        <div className="w-14 h-14 mx-auto mb-2 rounded-full bg-brown/10 flex items-center justify-center border border-brown/20">
+          <span className="text-3xl">{serviceInfo.emoji}</span>
         </div>
+        <h2 className="text-xl font-bold text-dark font-serif">
+          {isCompatibility && allCompatNames
+            ? `${allCompatNames}의 궁합`
+            : `${profileName}님의 ${serviceInfo.label}`}
+        </h2>
+        <p className="text-sm text-warm-gray mt-1">
+          {new Date(reading.created_at).toLocaleDateString('ko-KR')}
+          {reading.processing_duration_ms && ` · ${(reading.processing_duration_ms / 1000).toFixed(0)}초`}
+        </p>
       </div>
 
       {/* 만세력 정보 (궁합/일간 운세는 개인 사주 데이터 표시 안 함) */}

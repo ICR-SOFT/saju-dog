@@ -12,7 +12,7 @@ import { ScoreRing } from '@/components/ui/ScoreRing.tsx';
 import { getSharedReading } from '@/lib/share.ts';
 import { supabase } from '@/lib/supabase.ts';
 import { calculateSaju } from '@/core/calculator.ts';
-import { getZodiacImageUrl } from '@/lib/zodiac-images.ts';
+import { getZodiacImageUrl, getCompatibilityImageUrl } from '@/lib/zodiac-images.ts';
 import type { Reading } from '@/types/user.ts';
 import type { SajuApiResponse, SajuPillars } from '@/types/saju.ts';
 
@@ -133,38 +133,43 @@ export function SharedReading() {
 
   return (
     <Layout>
-      {/* 브랜딩 헤더 — 띠 이미지 배경 */}
-      <div className="relative text-center mb-5 -mx-4 -mt-4 rounded-b-3xl overflow-hidden" style={{ minHeight: isCompatibility ? '160px' : '220px' }}>
+      {/* 이미지 (텍스트 없이) */}
+      <div className="relative -mx-4 -mt-4 rounded-b-3xl overflow-hidden" style={{ height: isCompatibility ? '200px' : '240px' }}>
         {sajuData && !isCompatibility && (
           <img src={getZodiacImageUrl(sajuData.ddi.animal)} alt="" className="absolute inset-0 w-full h-full object-cover" />
         )}
-        {(!sajuData || isCompatibility) && <div className="absolute inset-0 gradient-hero paw-bg opacity-30" />}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/10" />
-        <div className="relative z-10 pt-6 pb-6 px-4">
-          <div className="flex justify-center items-center gap-2 mb-2">
-            <img src="/images/logo.png" alt="사주독" className="w-10 h-10 rounded-full shadow-sm border border-white/30" />
-          </div>
-          <p className="text-xs text-white/60 mb-2 font-medium">사주독 — 사주로 보는 나의 이야기</p>
-          <span className="text-4xl">{serviceInfo.emoji}</span>
-          <h2 className="text-xl font-bold text-white font-serif mt-2" style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.7)' }}>
-            {isCompatibility && secondaryProfileName
-              ? `${profileName} & ${secondaryProfileName}의 궁합`
-              : profileName ? `${profileName}님의 ${serviceInfo.label}` : serviceInfo.label}
-          </h2>
-          <p className="text-sm text-white/70 mt-1">
-            {new Date(reading.created_at).toLocaleDateString('ko-KR')}
-          </p>
-          {sajuData && !isCompatibility && (
-            <div className="flex flex-wrap gap-2 justify-center mt-2">
-              <span className="text-xs bg-white/80 text-brown rounded-full px-3 py-1 font-medium shadow-sm">
-                {sajuData.ddi.fullName}
-              </span>
-              <span className="text-xs bg-white/80 text-brown rounded-full px-3 py-1 font-medium shadow-sm">
-                {sajuData.zodiac.emoji} {sajuData.zodiac.name}
-              </span>
-            </div>
-          )}
+        {isCompatibility && (
+          <img src={getCompatibilityImageUrl()} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        )}
+        {!sajuData && !isCompatibility && <div className="absolute inset-0 gradient-hero paw-bg opacity-30" />}
+        <div className="absolute inset-0 bg-gradient-to-t from-cream via-transparent to-transparent" style={{ height: '40%', top: '60%' }} />
+        <div className="absolute left-4 top-5 z-20 flex items-center gap-2">
+          <img src="/images/logo.png" alt="사주독" className="w-10 h-10 rounded-full shadow-sm border border-white/30" />
         </div>
+      </div>
+
+      {/* 텍스트 (이미지 아래) */}
+      <div className="text-center -mt-6 mb-4 relative z-10">
+        <p className="text-xs text-warm-gray mb-2 font-medium">사주독 — 사주로 보는 나의 이야기</p>
+        <span className="text-4xl">{serviceInfo.emoji}</span>
+        <h2 className="text-xl font-bold text-dark font-serif mt-2">
+          {isCompatibility && secondaryProfileName
+            ? `${profileName} & ${secondaryProfileName}의 궁합`
+            : profileName ? `${profileName}님의 ${serviceInfo.label}` : serviceInfo.label}
+        </h2>
+        <p className="text-sm text-warm-gray mt-1">
+          {new Date(reading.created_at).toLocaleDateString('ko-KR')}
+        </p>
+        {sajuData && !isCompatibility && (
+          <div className="flex flex-wrap gap-2 justify-center mt-2">
+            <span className="text-xs bg-brown/10 text-brown rounded-full px-3 py-1 font-medium">
+              {sajuData.ddi.fullName}
+            </span>
+            <span className="text-xs bg-brown/10 text-brown rounded-full px-3 py-1 font-medium">
+              {sajuData.zodiac.emoji} {sajuData.zodiac.name}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* 만세력 정보 (궁합/일간 운세는 개인 사주 데이터 표시 안 함) */}
