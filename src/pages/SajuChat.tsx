@@ -10,8 +10,6 @@ import {
   getChatMessages, sendChatMessage, pollChatMessages,
   type ChatSession, type ChatMessageRow,
 } from '@/lib/api.ts';
-import { supabase } from '@/lib/supabase.ts';
-
 const SUGGESTED_QUESTIONS = [
   { text: '올해 운이 어때요?', icon: '🐾' },
   { text: '연애운이 궁금해요', icon: '💘' },
@@ -102,47 +100,19 @@ export function SajuChat() {
     } catch {}
   };
 
-  // 크레딧 차감
-  const deductCredit = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('로그인 필요');
-
-    const currentBones = credits?.bones ?? 0;
-    if (currentBones < 1) throw new Error('뼈다귀가 부족합니다');
-
-    await supabase.from('credits')
-      .update({ bones: currentBones - 1, updated_at: new Date().toISOString() })
-      .eq('user_id', user.id);
-
-    await supabase.from('credit_transactions').insert({
-      user_id: user.id, type: 'usage', bones_delta: -1,
-      description: '사주상담 메시지',
-    });
-
-    fetchCredits();
-  };
-
   // 메시지 전송
   const handleSend = async (text?: string) => {
     const msg = (text || input).trim();
     if (!msg || !activeSession || isWaiting) return;
     setInput('');
     setError('');
-
-    // 크레딧 차감
-    try {
-      await deductCredit();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '크레딧 차감 실패');
-      return;
-    }
-
     setIsWaiting(true);
 
     try {
-      // pending 메시지 insert
+      // Edge Function: 크레딧 차감 + pending 메시지 생성
       const userMsg = await sendChatMessage(activeSession.id, msg);
       setMessages(prev => [...prev, userMsg]);
+      fetchCredits(); // 크레딧 즉시 갱신
 
       // 워커 응답 폴링
       const sentAt = userMsg.created_at;
