@@ -9,6 +9,7 @@ import { Recommendations } from '@/components/saju/Recommendations.tsx';
 import { Loading } from '@/components/ui/Loading.tsx';
 import { Card } from '@/components/ui/Card.tsx';
 import { Button } from '@/components/ui/Button.tsx';
+import { ScoreRing } from '@/components/ui/ScoreRing.tsx';
 import { supabase } from '@/lib/supabase.ts';
 import { useSajuStore } from '@/stores/saju.ts';
 import { createShareLink } from '@/lib/share.ts';
@@ -92,6 +93,12 @@ export function ReadingDetail() {
     ? profiles.find(p => p.id === reading.profile_id)?.name ?? '알 수 없음'
     : '';
 
+  const secondaryProfileName = reading?.secondary_profile_id
+    ? profiles.find(p => p.id === reading.secondary_profile_id)?.name ?? '알 수 없음'
+    : '';
+
+  const isCompatibility = reading?.service_type === 'compatibility';
+
   const serviceInfo = reading
     ? SERVICE_LABELS[reading.service_type] ?? { label: reading.service_type, emoji: '📄' }
     : { label: '', emoji: '' };
@@ -137,12 +144,16 @@ export function ReadingDetail() {
         <div className="w-14 h-14 mx-auto mb-2 rounded-full bg-brown/10 flex items-center justify-center border border-brown/10">
           <span className="text-3xl">{serviceInfo.emoji}</span>
         </div>
-        <h2 className="text-xl font-bold text-dark font-serif">{serviceInfo.label}</h2>
+        <h2 className="text-xl font-bold text-dark font-serif">
+          {isCompatibility && secondaryProfileName
+            ? `${profileName} & ${secondaryProfileName}의 궁합`
+            : serviceInfo.label}
+        </h2>
         <p className="text-sm text-warm-gray mt-1">
-          {profileName} · {new Date(reading.created_at).toLocaleDateString('ko-KR')}
+          {!isCompatibility && `${profileName} · `}{new Date(reading.created_at).toLocaleDateString('ko-KR')}
           {reading.processing_duration_ms && ` · ${(reading.processing_duration_ms / 1000).toFixed(0)}초`}
         </p>
-        {sajuData && (
+        {sajuData && !isCompatibility && (
           <div className="flex flex-wrap gap-2 justify-center mt-2">
             <span className="text-xs bg-brown/10 text-brown rounded-full px-3 py-1 font-medium">
               {sajuData.ddi.fullName}
@@ -154,8 +165,8 @@ export function ReadingDetail() {
         )}
       </div>
 
-      {/* 만세력 정보 */}
-      {sajuData && (
+      {/* 만세력 정보 (궁합은 개인 사주 데이터 표시 안 함) */}
+      {sajuData && !isCompatibility && (
         <div className="space-y-3 mb-6">
           <FourPillars data={sajuData} />
           <OhaengBar count={sajuData.ohaengCount} />
@@ -212,6 +223,12 @@ export function ReadingDetail() {
       {/* 풀이 결과 */}
       {result ? (
         <div className="space-y-4">
+          {isCompatibility && result.overallScore !== undefined && (
+            <Card className="text-center py-6">
+              <ScoreRing score={result.overallScore} size="lg" color="#ec4899" />
+            </Card>
+          )}
+
           {result.summary && (
             <Card className="text-center bg-gradient-to-br from-brown/5 to-amber-50/30">
               <p className="text-lg font-medium text-dark font-serif">"{result.summary}"</p>

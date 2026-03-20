@@ -8,7 +8,9 @@ import { ChapterAccordion } from '@/components/saju/ChapterAccordion.tsx';
 import { Loading } from '@/components/ui/Loading.tsx';
 import { Card } from '@/components/ui/Card.tsx';
 import { Button } from '@/components/ui/Button.tsx';
+import { ScoreRing } from '@/components/ui/ScoreRing.tsx';
 import { getSharedReading } from '@/lib/share.ts';
+import { supabase } from '@/lib/supabase.ts';
 import { calculateSaju } from '@/core/calculator.ts';
 import type { Reading } from '@/types/user.ts';
 import type { SajuApiResponse, SajuPillars } from '@/types/saju.ts';
@@ -36,6 +38,7 @@ export function SharedReading() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [sajuData, setSajuData] = useState<SajuPillars | null>(null);
+  const [secondaryProfileName, setSecondaryProfileName] = useState('');
 
   useEffect(() => {
     if (!shareId) return;
@@ -44,6 +47,16 @@ export function SharedReading() {
       try {
         const data = await getSharedReading(shareId);
         setReading(data as any);
+
+        // 궁합인 경우 secondary profile 이름 조회
+        if (data.service_type === 'compatibility' && data.secondary_profile_id) {
+          const { data: secProfile } = await supabase
+            .from('saju_profiles')
+            .select('name')
+            .eq('id', data.secondary_profile_id)
+            .single();
+          if (secProfile?.name) setSecondaryProfileName(secProfile.name);
+        }
 
         // 프로필 데이터가 있으면 만세력 계산
         const profile = data.saju_profiles;
@@ -76,6 +89,7 @@ export function SharedReading() {
 
   const result = reading?.result as unknown as SajuApiResponse | null;
   const profileName = reading?.saju_profiles?.name || '';
+  const isCompatibility = reading?.service_type === 'compatibility';
 
   if (isLoading) return <Layout><Loading message="풀이를 불러오는 중..." /></Layout>;
 
@@ -106,12 +120,14 @@ export function SharedReading() {
           <p className="text-xs text-warm-gray mb-2 font-medium">사주독 — 사주로 보는 나의 이야기</p>
           <span className="text-4xl">{serviceInfo.emoji}</span>
           <h2 className="text-xl font-bold text-dark font-serif mt-2">
-            {profileName ? `${profileName}님의 ${serviceInfo.label}` : serviceInfo.label}
+            {isCompatibility && secondaryProfileName
+              ? `${profileName} & ${secondaryProfileName}의 궁합`
+              : profileName ? `${profileName}님의 ${serviceInfo.label}` : serviceInfo.label}
           </h2>
           <p className="text-sm text-warm-gray mt-1">
             {new Date(reading.created_at).toLocaleDateString('ko-KR')}
           </p>
-          {sajuData && (
+          {sajuData && !isCompatibility && (
             <div className="flex flex-wrap gap-2 justify-center mt-2">
               <span className="text-xs bg-brown/10 text-brown rounded-full px-3 py-1 font-medium">
                 {sajuData.ddi.fullName}
@@ -124,8 +140,8 @@ export function SharedReading() {
         </div>
       </div>
 
-      {/* 만세력 정보 */}
-      {sajuData && (
+      {/* 만세력 정보 (궁합은 개인 사주 데이터 표시 안 함) */}
+      {sajuData && !isCompatibility && (
         <div className="space-y-3 mb-6">
           <FourPillars data={sajuData} />
           <OhaengBar count={sajuData.ohaengCount} />
@@ -170,16 +186,21 @@ export function SharedReading() {
       {/* 풀이 결과 */}
       {result ? (
         <div className="space-y-4">
-          {result.summary && (
-            <Card className="text-center bg-gradient-to-br from-brown/5 to-amber-50/30">
-              <p className="text-lg font-medium text-dark font-serif">"{result.summary}"</p>
+          {result.overallScore !== undefined && (
+            <Card className="text-center py-6">
+              {isCompatibility
+                ? <ScoreRing score={result.overallScore} size="lg" color="#ec4899" />
+                : <>
+                    <p className="text-5xl font-bold text-brown font-serif">{result.overallScore}</p>
+                    <p className="text-sm text-warm-gray mt-1">점수</p>
+                  </>
+              }
             </Card>
           )}
 
-          {result.overallScore !== undefined && (
-            <Card className="text-center">
-              <p className="text-5xl font-bold text-brown font-serif">{result.overallScore}</p>
-              <p className="text-sm text-warm-gray mt-1">점수</p>
+          {result.summary && (
+            <Card className="text-center bg-gradient-to-br from-brown/5 to-amber-50/30">
+              <p className="text-lg font-medium text-dark font-serif">"{result.summary}"</p>
             </Card>
           )}
 

@@ -95,7 +95,7 @@ export function Archive() {
                       </span>
                     </div>
                     <p className="text-xs text-warm-gray">
-                      {getProfileName(reading.profile_id)} · {date}
+                      {getProfileName(reading.profile_id)}{reading.service_type === 'compatibility' && reading.secondary_profile_id ? ` & ${getProfileName(reading.secondary_profile_id)}` : ''} · {date}
                       {reading.processing_duration_ms && reading.processing_status === 'completed' && (
                         <span> · {(reading.processing_duration_ms / 1000).toFixed(0)}초 소요</span>
                       )}
