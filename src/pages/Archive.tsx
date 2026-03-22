@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { Layout } from '@/components/layout/Layout.tsx';
 import { Card } from '@/components/ui/Card.tsx';
+import { Logo } from '@/components/ui/Logo.tsx';
 import { useSajuStore } from '@/stores/saju.ts';
 
 const SERVICE_LABELS: Record<string, { label: string; emoji: string; borderColor: string }> = {
@@ -63,7 +64,7 @@ export function Archive() {
       {readings.length === 0 ? (
         <Card className="text-center py-12">
           <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-brown/5 flex items-center justify-center">
-            <span className="text-4xl animate-float">🐕</span>
+            <Logo size="lg" animate />
           </div>
           <p className="text-warm-gray font-medium">아직 보관된 풀이가 없어요</p>
           <p className="text-warm-gray text-sm mt-1">사주풀이를 받으면 여기에 저장됩니다</p>

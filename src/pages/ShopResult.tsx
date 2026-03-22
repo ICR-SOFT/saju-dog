@@ -54,7 +54,7 @@ export function ShopSuccess() {
         <Card className="text-center max-w-sm w-full">
           {status === 'loading' && (
             <>
-              <span className="text-5xl animate-bounce inline-block">🐕</span>
+              <img src="/images/logo.png" alt="복돌이" className="w-16 h-16 mx-auto rounded-full animate-bounce" />
               <p className="text-warm-gray mt-3">결제를 확인하고 있어요...</p>
             </>
           )}

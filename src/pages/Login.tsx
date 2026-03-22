@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/auth.ts';
 import { Button } from '@/components/ui/Button.tsx';
 import { Input } from '@/components/ui/Input.tsx';
 import { Card } from '@/components/ui/Card.tsx';
+import { Logo } from '@/components/ui/Logo.tsx';
 
 type Mode = 'login' | 'signup';
 
@@ -62,7 +63,7 @@ export function Login() {
     return (
       <div className="min-h-dvh gradient-warm flex items-center justify-center px-4">
         <Card className="text-center max-w-sm w-full">
-          <span className="text-5xl">🐕</span>
+          <Logo size="lg" className="mx-auto" />
           <h2 className="text-xl font-bold text-dark font-serif mt-3">가입 완료!</h2>
           <p className="text-sm text-warm-gray mt-2">
             이메일로 확인 링크를 보내드렸어요.<br />
@@ -82,9 +83,7 @@ export function Login() {
         {/* 로고 */}
         <div className="text-center mb-6">
           <div className="relative w-24 h-24 mx-auto mb-3">
-            <div className="w-24 h-24 rounded-full bg-brown/10 flex items-center justify-center shadow-md border-2 border-brown/10">
-              <span className="text-6xl animate-float">🐕</span>
-            </div>
+            <Logo size="xl" animate className="w-24 h-24 shadow-md border-2 border-brown/10" />
             <span className="absolute -top-1 -right-1 text-xl animate-sparkle">✨</span>
           </div>
           <h1 className="text-3xl font-bold text-dark font-serif">사주독</h1>

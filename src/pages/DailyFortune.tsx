@@ -291,7 +291,7 @@ export function DailyFortune() {
       ) : (
         // idle 상태 — 오늘 결과 없음
         <Card className="text-center py-8">
-          <p className="text-4xl mb-3">🐕</p>
+          <img src="/images/logo.png" alt="복돌이" className="w-12 h-12 mx-auto mb-3 rounded-full" />
           <p className="text-warm-gray mb-3">오늘의 운세를 확인해보세요</p>
           <Button onClick={() => { setIsReread(false); setShowConfirmModal(true); }}>오늘의 운세 보기</Button>
         </Card>

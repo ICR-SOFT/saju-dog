@@ -156,7 +156,7 @@ export function Reading() {
     return (
       <Layout>
         <Card className="text-center py-12">
-          <p className="text-4xl mb-3">🐕</p>
+          <img src="/images/logo.png" alt="복돌이" className="w-12 h-12 mx-auto mb-3 rounded-full" />
           <p className="text-warm-gray mb-3">프로필을 찾을 수 없습니다</p>
           <Button onClick={() => navigate('/')}>홈으로</Button>
         </Card>
@@ -294,7 +294,7 @@ export function Reading() {
       <div className="mt-4">
         <Card className="bg-gradient-to-br from-amber-50/80 to-orange-50/50 border-brown/10 mb-4">
           <h3 className="text-lg font-bold text-dark font-serif flex items-center gap-2">
-            <span className="w-8 h-8 rounded-full bg-brown/10 flex items-center justify-center text-lg">🐕</span>
+            <span className="w-8 h-8 rounded-full bg-brown/10 flex items-center justify-center text-lg"><img src="/images/logo.png" alt="" className="w-full h-full rounded-full object-cover" /></span>
             복돌이 풀이
           </h3>
         </Card>

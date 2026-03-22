@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button.tsx';
 import { useAuthStore } from '@/stores/auth.ts';
 import { useCreditStore } from '@/stores/credit.ts';
 import { useSajuStore } from '@/stores/saju.ts';
+import { Logo } from '@/components/ui/Logo.tsx';
 import { supabase } from '@/lib/supabase.ts';
 import type { CreditTransaction } from '@/types/user.ts';
 
@@ -63,9 +64,7 @@ export function MyPage() {
     <Layout>
       {/* 헤더 */}
       <div className="text-center mb-5 -mx-4 -mt-4 px-4 pt-6 pb-6 gradient-hero rounded-b-3xl">
-        <div className="w-20 h-20 mx-auto mb-3 rounded-full bg-brown/10 flex items-center justify-center border-2 border-brown/15 shadow-md">
-          <span className="text-4xl">🐕</span>
-        </div>
+        <Logo size="xl" className="mx-auto mb-3 border-2 border-brown/15 shadow-md" />
 
         {editingNickname ? (
           <div className="flex items-center justify-center gap-2 mt-1">

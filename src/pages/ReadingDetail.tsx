@@ -165,7 +165,7 @@ export function ReadingDetail() {
     return (
       <Layout>
         <Card className="text-center py-12">
-          <p className="text-4xl mb-3">🐕</p>
+          <img src="/images/logo.png" alt="복돌이" className="w-12 h-12 mx-auto mb-3 rounded-full" />
           <p className="text-warm-gray mb-3">{error || '풀이를 찾을 수 없습니다'}</p>
           <Button onClick={() => navigate('/archive')}>보관함으로</Button>
         </Card>

@@ -137,7 +137,7 @@ export function SharedReading() {
     return (
       <Layout>
         <Card className="text-center py-12">
-          <p className="text-4xl mb-3">🐕</p>
+          <img src="/images/logo.png" alt="복돌이" className="w-12 h-12 mx-auto mb-3 rounded-full" />
           <p className="text-warm-gray mb-3">{error || '공유된 풀이를 찾을 수 없습니다'}</p>
           <Button onClick={() => navigate('/')}>홈으로 가기</Button>
         </Card>
@@ -385,7 +385,7 @@ export function SharedReading() {
           style={{ background: 'linear-gradient(135deg, #FEF3C7 0%, #FECACA20 50%, #FDE68A40 100%)' }}>
           <div className="absolute inset-0 paw-bg opacity-20" />
           <div className="relative z-10">
-            <span className="text-4xl animate-float inline-block">🐕</span>
+            <img src="/images/logo.png" alt="복돌이" className="w-12 h-12 rounded-full animate-float inline-block" />
             <p className="font-bold text-dark text-lg mt-2 font-serif">나도 사주 보러 가기</p>
             <p className="text-sm text-warm-gray mb-4">사주독에서 나만의 운세를 확인해보세요</p>
             <Button onClick={() => navigate('/')} size="lg">사주독 시작하기</Button>

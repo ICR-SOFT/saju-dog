@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from './Button.tsx';
+import { Logo } from './Logo.tsx';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -25,7 +26,7 @@ export function ConfirmModal({ isOpen, title, cost, bones, onConfirm, onCancel }
       {/* 모달 */}
       <div className="relative bg-white rounded-2xl w-full max-w-sm shadow-xl p-5 space-y-4 animate-fade-in">
         <div className="text-center">
-          <span className="text-3xl">🐕</span>
+          <Logo size="md" className="mx-auto" />
           <h3 className="text-lg font-bold text-dark font-serif mt-2">{title}</h3>
         </div>
 
