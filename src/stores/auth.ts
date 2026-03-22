@@ -9,7 +9,9 @@ interface AuthState {
   isAuthenticated: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, nickname?: string) => Promise<void>;
+  signInWithOAuth: (provider: 'kakao' | 'google') => Promise<void>;
   signOut: () => Promise<void>;
+  updateNickname: (nickname: string) => Promise<void>;
   initialize: () => Promise<void>;
 }
 
@@ -45,11 +47,21 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
     // 세션 변경 리스너 (TOKEN_REFRESHED 포함)
     supabase.auth.onAuthStateChange(async (event, session) => {
       if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
-        const { data: profile } = await supabase
+        let { data: profile } = await supabase
           .from('users')
           .select('*')
           .eq('id', session.user.id)
           .single();
+
+        // OAuth 첫 로그인 시 users 레코드 자동 생성
+        if (!profile && event === 'SIGNED_IN') {
+          const nickname = session.user.user_metadata?.full_name
+            || session.user.user_metadata?.name
+            || '멍멍이';
+          await supabase.from('users').insert({ id: session.user.id, nickname });
+          const { data } = await supabase.from('users').select('*').eq('id', session.user.id).single();
+          profile = data;
+        }
 
         set({
           user: profile,
@@ -83,7 +95,28 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
     }
   },
 
+  signInWithOAuth: async (provider) => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: `${window.location.origin}/`,
+      },
+    });
+    if (error) throw new Error(error.message);
+  },
+
   signOut: async () => {
     await supabase.auth.signOut();
+  },
+
+  updateNickname: async (nickname) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('로그인 필요');
+    const { error } = await supabase
+      .from('users')
+      .update({ nickname, updated_at: new Date().toISOString() })
+      .eq('id', user.id);
+    if (error) throw new Error(error.message);
+    set(state => ({ user: state.user ? { ...state.user, nickname } : null }));
   },
 }));

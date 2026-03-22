@@ -14,6 +14,8 @@ import { DailyFortune } from '@/pages/DailyFortune.tsx';
 import { Compatibility } from '@/pages/Compatibility.tsx';
 import { SajuChat } from '@/pages/SajuChat.tsx';
 import { MyPage } from '@/pages/MyPage.tsx';
+import { Shop } from '@/pages/Shop.tsx';
+import { ShopSuccess, ShopFail } from '@/pages/ShopResult.tsx';
 import { SharedReading } from '@/pages/SharedReading.tsx';
 import { EditProfile } from '@/pages/EditProfile.tsx';
 import './App.css';
@@ -80,6 +82,9 @@ export default function App() {
         <Route path="/compatibility" element={<AuthRequired><Compatibility /></AuthRequired>} />
         <Route path="/chat" element={<AuthRequired><SajuChat /></AuthRequired>} />
         <Route path="/my" element={<AuthRequired><MyPage /></AuthRequired>} />
+        <Route path="/shop" element={<AuthRequired><Shop /></AuthRequired>} />
+        <Route path="/shop/success" element={<AuthRequired><ShopSuccess /></AuthRequired>} />
+        <Route path="/shop/fail" element={<AuthRequired><ShopFail /></AuthRequired>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
