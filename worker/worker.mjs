@@ -115,41 +115,56 @@ async function getPromptConfig(serviceType) {
 function buildLuckySection(data, p, serviceType) {
   const ohaeng = data.ohaengCount || {};
   const STEM_ELEM = { '갑':'목','을':'목','병':'화','정':'화','무':'토','기':'토','경':'금','신':'금','임':'수','계':'수' };
-  const BRANCH_ELEM = { '자':'수','축':'토','인':'목','묘':'목','진':'토','사':'화','오':'화','미':'토','신':'금','유':'금','술':'토','해':'수' };
   const dayStem = p.day.stem;
   const dayElement = STEM_ELEM[dayStem] || '토';
   const monthBranch = p.month.branch;
 
-  // 1. 계절 득령 판단 (월지 기준)
+  // 1. 계절 득령 (월지 기준) — 상생 계절도 부분 가점
   const SEASON_STRONG = { '인':'목','묘':'목','진':'목', '사':'화','오':'화','미':'화', '신':'금','유':'금','술':'금', '해':'수','자':'수','축':'수' };
   const seasonElement = SEASON_STRONG[monthBranch] || '토';
-  const isSeasonSupport = seasonElement === dayElement; // 득령
+  const GEN = { '목':'수','화':'목','토':'화','금':'토','수':'금' };
+  const DRAIN = { '목':'화','화':'토','토':'금','금':'수','수':'목' };
+  const CONTROL = { '목':'금','화':'수','토':'목','금':'화','수':'토' };
 
-  // 2. 통근 판단 (지지에 일간과 같은 오행이 있는지)
-  const branches = [p.year.branch, p.month.branch, p.day.branch, p.hour.branch];
-  const tonggeun = branches.filter(b => BRANCH_ELEM[b] === dayElement).length;
+  let deukryeong = 0;
+  if (seasonElement === dayElement) deukryeong = 2;        // 정득령
+  else if (seasonElement === GEN[dayElement]) deukryeong = 1; // 상생 득령 (인성 계절)
 
-  // 3. 종합 강약 판단
-  const dayOhaengCount = Number(ohaeng[dayElement]) || 0;
-  const totalCount = Object.values(ohaeng).reduce((a, b) => Number(a) + Number(b), 0);
-  const strengthScore = dayOhaengCount + (isSeasonSupport ? 2 : 0) + tonggeun;
-  const isDayStrong = strengthScore >= 4; // 신강 기준
-  const strengthLabel = strengthScore >= 6 ? '극신강' : strengthScore >= 4 ? '신강' : strengthScore >= 2 ? '신약' : '극신약';
+  // 2. 지원 vs 견제 세력 (전통 명리 방식)
+  const genElement = GEN[dayElement];     // 나를 생하는 오행 (인성)
+  const drainElement = DRAIN[dayElement]; // 내가 생하는 오행 (식상)
+  const controlMe = CONTROL[dayElement];  // 나를 극하는 오행 (관살)
+  const controlBy = DRAIN[DRAIN[dayElement]]; // 내가 극하는 오행 (재성)
 
-  // 4. 용신/희신/기신 계산
-  const GEN = { '목':'수','화':'목','토':'화','금':'토','수':'금' }; // 생
-  const DRAIN = { '목':'화','화':'토','토':'금','금':'수','수':'목' }; // 설
-  const CONTROL = { '목':'금','화':'수','토':'목','금':'화','수':'토' }; // 극
+  const support = (Number(ohaeng[dayElement]) || 0) + (Number(ohaeng[genElement]) || 0) + deukryeong;
+  const oppose = (Number(ohaeng[drainElement]) || 0) + (Number(ohaeng[controlBy]) || 0) + (Number(ohaeng[controlMe]) || 0);
 
+  const ratio = support / (support + oppose || 1);
+  const isDayStrong = ratio > 0.5;
+  const strengthLabel = ratio >= 0.7 ? '극신강' : ratio > 0.5 ? '신강' : ratio > 0.3 ? '신약' : '극신약';
+
+  // 3. 용신 — 과다한 오행 기반 선택 (단순 식상/인성 고정 X)
   let yongshin, heeshin, gishin;
   if (isDayStrong) {
-    yongshin = DRAIN[dayElement]; // 식상
-    heeshin = DRAIN[DRAIN[dayElement]]; // 재성 (식상의 식상)
-    gishin = GEN[dayElement]; // 인성 (더 강하게 만드는 것)
+    // 신강: 비겁이 과다하면 식상(설기), 인성이 과다하면 재성(극인)
+    if ((Number(ohaeng[dayElement]) || 0) >= (Number(ohaeng[genElement]) || 0)) {
+      yongshin = drainElement;  // 식상
+      heeshin = controlBy;      // 재성
+    } else {
+      yongshin = controlBy;     // 재성
+      heeshin = drainElement;   // 식상
+    }
+    gishin = genElement; // 인성 (더 강하게 만듦)
   } else {
-    yongshin = GEN[dayElement]; // 인성
-    heeshin = dayElement; // 비겁
-    gishin = CONTROL[dayElement]; // 관살 (더 약하게 만드는 것)
+    // 신약: 관살이 과다하면 인성(화살), 식상이 과다하면 비겁(보강)
+    if ((Number(ohaeng[controlMe]) || 0) >= (Number(ohaeng[drainElement]) || 0)) {
+      yongshin = genElement;    // 인성
+      heeshin = dayElement;     // 비겁
+    } else {
+      yongshin = dayElement;    // 비겁
+      heeshin = genElement;     // 인성
+    }
+    gishin = controlMe; // 관살 (더 약하게 만듦)
   }
 
   // 5. 확정값 (사주 원리상 변하면 안 되는 것)
@@ -205,7 +220,7 @@ function buildLuckySection(data, p, serviceType) {
 ## ★ 사주 기반 분석 데이터
 
 ### 확정 사실 (반드시 일관되게 적용)
-- 일간: ${dayStem}(${dayElement}) / 강약: ${strengthLabel} (득령:${isSeasonSupport?'O':'X'}, 통근:${tonggeun}개)
+- 일간: ${dayStem}(${dayElement}) / 강약: ${strengthLabel} (지원:${support} vs 견제:${oppose}, 득령:${deukryeong > 0 ? (deukryeong === 2 ? '정득령' : '상생득령') : 'X'})
 - 용신: ${yongshin} / 희신: ${heeshin} / 기신: ${gishin}
 - 행운 방위: ${primaryDir} (용신) / 보조 방위: ${secondaryDir} (희신)
 - 피할 방위: ${avoidDir} (기신)
@@ -285,14 +300,17 @@ ${pLucky}`;
 - 이 챕터가 없으면 실패 처리됩니다
 ` : '';
 
-    return `${questionBlock}${relationContext}
+    return `${relationContext}
 ${participantBlocks}
 
 [중요] 이 궁합에는 총 ${totalCount}명이 참여합니다. 반드시 ${totalCount}명 전원의 관계를 분석하세요.
 각 챕터에서 모든 참여자의 이름을 언급하고, 서로 간의 관계를 비교 분석해야 합니다.
 2명만 분석하고 나머지를 빠뜨리면 실패 처리됩니다.
 
-[이모지 규칙] 각 챕터의 "emoji" 필드에 반드시 이모지 1개를 넣으세요 (예: "🔥"). "title"에는 이모지를 넣지 마세요. 이모지는 오직 "emoji" 필드에만!
+[서식 규칙]
+- 각 챕터의 "emoji" 필드에 반드시 이모지 1개를 넣으세요. "title"에는 이모지를 넣지 마세요.
+- **절대 마크다운 문법을 사용하지 마세요** (**, ##, *, _ 등 금지). 강조는 반드시 <strong>태그만 사용하세요.
+${questionBlock}
 궁합을 JSON으로 작성해주세요.`;
   }
 
@@ -370,7 +388,11 @@ ${(() => {
 `;
 })()}
 [중요 지시] ${serviceInstruction}
-[이모지 규칙] 각 챕터의 "emoji" 필드에 반드시 이모지 1개를 넣으세요 (예: "🔥"). "title"에는 이모지를 넣지 마세요. 이모지는 오직 "emoji" 필드에만!
+
+[서식 규칙]
+- 각 챕터의 "emoji" 필드에 반드시 이모지 1개를 넣으세요. "title"에는 이모지를 넣지 마세요.
+- **절대 마크다운 문법을 사용하지 마세요** (**, ##, *, _ 등 금지). 강조는 반드시 <strong>태그만 사용하세요.
+
 위 사주 데이터를 기반으로, 이 분석 유형(${reading.service_type})에 맞는 풀이를 JSON으로 작성하세요.
 종합 사주풀이처럼 일반적인 분석을 하지 말고, 반드시 요청된 분석 유형에 집중하세요.`;
 }
@@ -562,7 +584,8 @@ ${sajuContext}
 - 딱딱한 한문 용어 대신 쉬운 말로 설명하세요
 - 가끔 강아지 이모지(🐾🐕)를 섞어 친근감을 주세요
 - 답변은 300자 이내로 간결하게 하세요
-- <strong>태그로 핵심 키워드를 강조하세요`;
+- <strong>태그로 핵심 키워드를 강조하세요
+- 절대 마크다운(**, ##, *, _)을 사용하지 마세요. HTML 태그만 사용하세요`;
 
     const messages = [
       ...(history || []).map(h => ({ role: h.role, content: h.content })),
@@ -734,6 +757,27 @@ async function processReading(reading) {
       }
       apiCost = calculateCost(config.model, apiResponse.usage || {});
       totalApiCost += apiCost.cost_usd;
+
+      // 마크다운 → HTML 후처리 (**텍스트** → <strong>텍스트</strong>)
+      function cleanMarkdown(text) {
+        if (!text) return text;
+        return text
+          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+          .replace(/\*(.+?)\*/g, '<em>$1</em>')
+          .replace(/^#{1,3}\s+/gm, '');  // ## 헤딩 제거
+      }
+      if (result.summary) result.summary = cleanMarkdown(result.summary);
+      if (Array.isArray(result.chapters)) {
+        for (const ch of result.chapters) {
+          if (ch.content) ch.content = cleanMarkdown(ch.content);
+          if (ch.title) ch.title = cleanMarkdown(ch.title);
+        }
+      }
+      if (Array.isArray(result.advice)) {
+        result.advice = result.advice.map(a => cleanMarkdown(a));
+      } else if (typeof result.advice === 'string') {
+        result.advice = cleanMarkdown(result.advice);
+      }
 
       // 이모지 후처리
       const emojiRegex = /^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)\s*/u;

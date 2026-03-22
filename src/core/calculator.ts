@@ -224,10 +224,12 @@ function calculateDaeun(
   return entries;
 }
 
-function getApproxDaeunStartAge(_gender: Gender, _yearYinYang: string): number {
-  // 실제로는 생일~다음/이전 절기까지의 일수 / 3으로 계산
-  // MVP 근사: 평균적으로 3~5세 시작
-  return 4;
+function getApproxDaeunStartAge(gender: Gender, yearYinYang: string): number {
+  // 양남음녀 순행: 다음 절기까지 → 보통 빠름 (2~4세)
+  // 음남양녀 역행: 이전 절기까지 → 보통 느림 (5~8세)
+  const isForward = (yearYinYang === '양' && gender === 'male') ||
+                    (yearYinYang === '음' && gender === 'female');
+  return isForward ? 3 : 6;
 }
 
 // ===== 특수 관계 찾기 =====
