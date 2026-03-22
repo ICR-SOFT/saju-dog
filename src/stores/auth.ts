@@ -102,6 +102,7 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
       provider,
       options: {
         redirectTo: `${window.location.origin}/`,
+        ...(provider === 'kakao' ? { scopes: '' } : {}),
       },
     });
     if (error) throw new Error(error.message);
