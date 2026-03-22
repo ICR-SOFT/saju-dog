@@ -111,6 +111,140 @@ async function getPromptConfig(serviceType) {
   throw new Error(`Prompt config "${serviceType}" 로드 실패 (5회 시도)`);
 }
 
+// ===== 고도화된 용신 분석 + 개인화 추천 =====
+function buildLuckySection(data, p, serviceType) {
+  const ohaeng = data.ohaengCount || {};
+  const STEM_ELEM = { '갑':'목','을':'목','병':'화','정':'화','무':'토','기':'토','경':'금','신':'금','임':'수','계':'수' };
+  const BRANCH_ELEM = { '자':'수','축':'토','인':'목','묘':'목','진':'토','사':'화','오':'화','미':'토','신':'금','유':'금','술':'토','해':'수' };
+  const dayStem = p.day.stem;
+  const dayElement = STEM_ELEM[dayStem] || '토';
+  const monthBranch = p.month.branch;
+
+  // 1. 계절 득령 판단 (월지 기준)
+  const SEASON_STRONG = { '인':'목','묘':'목','진':'목', '사':'화','오':'화','미':'화', '신':'금','유':'금','술':'금', '해':'수','자':'수','축':'수' };
+  const seasonElement = SEASON_STRONG[monthBranch] || '토';
+  const isSeasonSupport = seasonElement === dayElement; // 득령
+
+  // 2. 통근 판단 (지지에 일간과 같은 오행이 있는지)
+  const branches = [p.year.branch, p.month.branch, p.day.branch, p.hour.branch];
+  const tonggeun = branches.filter(b => BRANCH_ELEM[b] === dayElement).length;
+
+  // 3. 종합 강약 판단
+  const dayOhaengCount = Number(ohaeng[dayElement]) || 0;
+  const totalCount = Object.values(ohaeng).reduce((a, b) => Number(a) + Number(b), 0);
+  const strengthScore = dayOhaengCount + (isSeasonSupport ? 2 : 0) + tonggeun;
+  const isDayStrong = strengthScore >= 4; // 신강 기준
+  const strengthLabel = strengthScore >= 6 ? '극신강' : strengthScore >= 4 ? '신강' : strengthScore >= 2 ? '신약' : '극신약';
+
+  // 4. 용신/희신/기신 계산
+  const GEN = { '목':'수','화':'목','토':'화','금':'토','수':'금' }; // 생
+  const DRAIN = { '목':'화','화':'토','토':'금','금':'수','수':'목' }; // 설
+  const CONTROL = { '목':'금','화':'수','토':'목','금':'화','수':'토' }; // 극
+
+  let yongshin, heeshin, gishin;
+  if (isDayStrong) {
+    yongshin = DRAIN[dayElement]; // 식상
+    heeshin = DRAIN[DRAIN[dayElement]]; // 재성 (식상의 식상)
+    gishin = GEN[dayElement]; // 인성 (더 강하게 만드는 것)
+  } else {
+    yongshin = GEN[dayElement]; // 인성
+    heeshin = dayElement; // 비겁
+    gishin = CONTROL[dayElement]; // 관살 (더 약하게 만드는 것)
+  }
+
+  // 5. 오행별 세부 속성 매핑 (천간별 세분화)
+  const COLOR_MAP = {
+    '목': { '갑': '진초록', '을': '연두색', _default: '초록색' },
+    '화': { '병': '주황색', '정': '분홍색', _default: '빨간색' },
+    '토': { '무': '황토색', '기': '베이지', _default: '노란색' },
+    '금': { '경': '은색', '신': '흰색', _default: '흰색' },
+    '수': { '임': '남색', '계': '검정색', _default: '파란색' },
+  };
+  const DIR_MAP = { '목': '동쪽', '화': '남쪽', '토': '중앙', '금': '서쪽', '수': '북쪽' };
+  const NUM_MAP = { '목': ['3','8'], '화': ['2','7'], '토': ['5','10'], '금': ['4','9'], '수': ['1','6'] };
+
+  // 6. 지지 동물별 음식 (12가지 변주)
+  const BRANCH_FOOD = {
+    '자': ['따뜻한 국물 요리', '호두죽'], '축': ['소고기 장조림', '된장찌개'],
+    '인': ['닭가슴살 샐러드', '청국장'], '묘': ['봄나물 비빔밥', '두부 샐러드'],
+    '진': ['전복죽', '미역국'], '사': ['장어구이', '삼계탕'],
+    '오': ['양고기', '매운탕'], '미': ['보리밥', '잡채'],
+    '신': ['과일 요거트', '견과류'], '유': ['삼겹살', '치킨'],
+    '술': ['감자탕', '수제비'], '해': ['해물파전', '조개탕'],
+  };
+
+  // 7. 신살 기반 추천 수정자
+  const sinsal = data.sinsal?.allSinsal || [];
+  const sinsalMods = [];
+  if (sinsal.includes('역마살')) sinsalMods.push('이동/여행 관련 활동이 길합니다');
+  if (sinsal.includes('화개살')) sinsalMods.push('예술/종교/명상 활동이 특히 좋습니다');
+  if (sinsal.includes('도화살')) sinsalMods.push('사교/만남의 자리가 행운을 부릅니다');
+  if (sinsal.includes('천을귀인') || sinsal.includes('천덕귀인')) sinsalMods.push('윗사람/선배와의 교류에서 행운이 옵니다');
+  if (sinsal.includes('괴강')) sinsalMods.push('독립적 활동/1인 작업이 유리합니다');
+  if (sinsal.includes('장성살')) sinsalMods.push('리더십을 발휘하는 상황에서 운이 트입니다');
+
+  // 8. 대운 기반 시기별 보정
+  const currentDaeun = data.daeun?.find(d => d.isCurrent);
+  const daeunElement = currentDaeun ? STEM_ELEM[currentDaeun.stem] : null;
+  let daeunNote = '';
+  if (daeunElement) {
+    if (daeunElement === yongshin) daeunNote = '현재 대운이 용신과 일치하여 전반적 운세 상승기';
+    else if (daeunElement === gishin) daeunNote = '현재 대운이 기신이므로 신중한 판단이 필요한 시기';
+    else daeunNote = `현재 대운(${currentDaeun.stem}${currentDaeun.branch}) 흐름을 참고하세요`;
+  }
+
+  // 9. 값 조립
+  const yongColor = COLOR_MAP[yongshin]?.[dayStem] || COLOR_MAP[yongshin]?._default || '노란색';
+  const heeColor = COLOR_MAP[heeshin]?._default || '흰색';
+  const gishinColor = COLOR_MAP[gishin]?._default || '검정색';
+  const primaryDir = DIR_MAP[yongshin] || '남쪽';
+  const secondaryDir = DIR_MAP[heeshin] || '동쪽';
+  const avoidDir = DIR_MAP[gishin] || '서쪽';
+  const primaryNums = NUM_MAP[yongshin] || ['5','10'];
+  const secondaryNums = NUM_MAP[heeshin] || ['3','8'];
+
+  // 음식: 일지 동물 + 용신 오행 조합
+  const dayBranch = p.day.branch;
+  const branchFoods = BRANCH_FOOD[dayBranch] || ['나물 비빔밥', '된장찌개'];
+  const yongFoodMap = { '목':'신선한 채소/샐러드', '화':'구이/볶음 요리', '토':'찌개/탕류', '금':'흰 쌀밥/담백한 요리', '수':'국물/생선 요리' };
+  const primaryFood = branchFoods[0];
+  const secondaryFood = yongFoodMap[yongshin] || '한식';
+
+  // 10. lucky 추천값 조립 (짧은 형태)
+  const luckyColor = `${yongColor}`;
+  const luckyNumber = primaryNums[0];
+  const luckyDirection = primaryDir;
+  const luckyFood = primaryFood;
+
+  return `
+## ★ 사주 기반 개인화 분석 (서버 계산 — 반드시 따라야 함)
+- 일간: ${dayStem}(${dayElement}) / 강약: ${strengthLabel} (득령:${isSeasonSupport?'O':'X'}, 통근:${tonggeun}개, 오행비율:${dayOhaengCount}/${totalCount})
+- 용신(用神): ${yongshin} / 희신(喜神): ${heeshin} / 기신(忌神): ${gishin}
+${daeunNote ? `- 대운 참고: ${daeunNote}` : ''}
+${sinsalMods.length > 0 ? `- 신살 특이사항: ${sinsalMods.join(' / ')}` : ''}
+
+### [필수] luckyItems 값 (짧은 단어만, 설명문 금지)
+- color: "${luckyColor}"
+- number: "${luckyNumber}"
+- direction: "${luckyDirection}"
+- food: "${luckyFood}"
+
+### 풀이에 활용할 추가 정보
+- 보조 행운색: ${heeColor} (희신 기반)
+- 피해야 할 색: ${gishinColor} (기신 기반)
+- 보조 방위: ${secondaryDir} / 피할 방위: ${avoidDir}
+- 보조 숫자: ${secondaryNums[0]}
+- 추천 음식 2순위: ${secondaryFood}
+- 행운 음식(일지 기반): ${branchFoods.join(', ')}
+
+### [절대 규칙]
+- luckyItems 4개 필드는 위 "필수" 값을 그대로 사용하세요
+- 방위 추천(이사운/여행운 등)은 "${luckyDirection}" 기준, 피할 방위는 "${avoidDir}"
+- 풀이 본문에서는 보조 색상/방위/음식도 자유롭게 언급 가능
+- luckyItems 각 값은 2~4글자 단어만 (예: "${luckyColor}" O, "${luckyColor} — ${yongshin} 기운 보충" X)
+`;
+}
+
 // ===== 유저 메시지 빌드 =====
 function buildUserMessage(reading, profile, secondaryProfile, extraProfiles = []) {
   const data = profile.calculated_saju;
@@ -185,53 +319,8 @@ ${participantBlocks}
   };
   const serviceInstruction = SERVICE_INSTRUCTIONS[reading.service_type] || SERVICE_INSTRUCTIONS.comprehensive;
 
-  // 오행 기반 용신 분석 (일관된 추천값 도출)
-  const ohaeng = data.ohaengCount || {};
-  const stemElement = { '갑': '목', '을': '목', '병': '화', '정': '화', '무': '토', '기': '토', '경': '금', '신': '금', '임': '수', '계': '수' };
-  const dayElement = stemElement[p.day.stem] || '토';
-
-  // 용신 계산: 일간 오행 기준 부족한 오행 찾기
-  const OHAENG_CYCLE = {
-    // 상생: 나를 생해주는 오행이 용신 후보
-    '목': { needs: '수', avoids: '금', color: '파란색/검정색', direction: '북쪽', number: '1, 6', food: '해산물, 검은콩' },
-    '화': { needs: '목', avoids: '수', color: '초록색', direction: '동쪽', number: '3, 8', food: '푸른 채소, 신맛 음식' },
-    '토': { needs: '화', avoids: '목', color: '빨간색/주황색', direction: '남쪽', number: '2, 7', food: '매운 음식, 양고기' },
-    '금': { needs: '토', avoids: '화', color: '노란색/베이지', direction: '중앙(남서/북동)', number: '5, 10', food: '고구마, 단맛 음식' },
-    '수': { needs: '금', avoids: '토', color: '흰색/은색', direction: '서쪽', number: '4, 9', food: '무, 배, 흰 음식' },
-  };
-  // 일간 강약 판단
-  const dayCount = ohaeng[dayElement] || 0;
-  const totalCount = Object.values(ohaeng).reduce((a, b) => Number(a) + Number(b), 0);
-  const isDayStrong = dayCount >= Math.ceil(totalCount / 3); // 일간이 강한지
-
-  let yongshin, heeshin;
-  if (isDayStrong) {
-    // 신강: 일간을 설기하는 오행이 용신 (식상/재성)
-    const drainMap = { '목': '화', '화': '토', '토': '금', '금': '수', '수': '목' };
-    yongshin = drainMap[dayElement];
-    const drainMap2 = { '목': '토', '화': '금', '토': '수', '금': '목', '수': '화' };
-    heeshin = drainMap2[dayElement];
-  } else {
-    // 신약: 일간을 생해주는 오행이 용신 (인성/비겁)
-    const genMap = { '목': '수', '화': '목', '토': '화', '금': '토', '수': '금' };
-    yongshin = genMap[dayElement];
-    heeshin = dayElement; // 비겁
-  }
-
-  const luckyRef = OHAENG_CYCLE[yongshin] || OHAENG_CYCLE['토'];
-  const luckySection = `
-## ★ 용신 분석 결과 (서버 계산 — 반드시 따라야 함)
-- 일간: ${p.day.stem}(${dayElement}) / 강약: ${isDayStrong ? '신강(身強)' : '신약(身弱)'}
-- 용신: ${yongshin} / 희신: ${heeshin}
-- [필수] luckyItems 값:
-  - color: "${luckyRef.color}"
-  - direction: "${luckyRef.direction}"
-  - number: "${luckyRef.number}"
-  - food: "${luckyRef.food}"
-- [절대 규칙] luckyItems는 위 값을 그대로 사용하세요. 임의로 바꾸지 마세요.
-- [절대 규칙] 방위 추천(이사운 등)도 위 direction 기준으로 하세요.
-- [절대 규칙] luckyItems 각 필드는 짧은 단어로만 (설명문 금지, 예: "빨간색" O, "빨간색 — 화 기운 보충" X)
-`;
+  // ===== 고도화된 용신 분석 + 개인화 추천 (결정적) =====
+  const luckySection = buildLuckySection(data, p, reading.service_type);
 
   return `[분석 유형: ${reading.service_type}]
 아래는 서버에서 정밀 계산된 사주 데이터입니다. 이 데이터만 기반으로 해설하세요.
