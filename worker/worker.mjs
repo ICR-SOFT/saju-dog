@@ -24,7 +24,7 @@ const RETRY_BASE_DELAY = parseInt(process.env.RETRY_BASE_DELAY_MS || '5000');
 const RETRY_MAX_DELAY = 60_000; // 최대 60초 대기
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-const anthropic = new Anthropic({ apiKey: ANTHROPIC_KEY });
+const anthropic = new Anthropic({ apiKey: ANTHROPIC_KEY, timeout: 10 * 60 * 1000 }); // 10분 타임아웃
 
 const CREDIT_COSTS = {
   comprehensive: 3, compatibility: 3, daeun: 2, yearly: 2,
