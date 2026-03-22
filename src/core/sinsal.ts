@@ -1,5 +1,5 @@
 /**
- * 신살(神殺) 계산 엔진 — 30+ 종류
+ * 신살(神殺) 계산 엔진 — 43종류
  * 모든 신살은 규칙 기반 테이블이므로 코드에서 계산.
  * AI에게 맡기지 않는다.
  */
@@ -160,6 +160,92 @@ const CHWIMYEONG: Record<Branch, Branch[]> = {
   '신': ['축', '인'], '유': ['자', '축'],
   '술': ['해', '자'], '해': ['술', '해'],
   '자': ['유', '술'], '축': ['신', '유'],
+};
+
+// ===== 지지삼합 (三合) =====
+// 인오술→화국, 사유축→금국, 신자진→수국, 해묘미→목국
+const SAMHAP_TRIPLES: [Branch, Branch, Branch, string][] = [
+  ['인', '오', '술', '화국'],
+  ['사', '유', '축', '금국'],
+  ['신', '자', '진', '수국'],
+  ['해', '묘', '미', '목국'],
+];
+
+// ===== 지지방합 (方合, 三會) =====
+// 인묘진→봄(목), 사오미→여름(화), 신유술→가을(금), 해자축→겨울(수)
+const BANGHAP_TRIPLES: [Branch, Branch, Branch, string][] = [
+  ['인', '묘', '진', '봄(목)'],
+  ['사', '오', '미', '여름(화)'],
+  ['신', '유', '술', '가을(금)'],
+  ['해', '자', '축', '겨울(수)'],
+];
+
+// ===== 반합 (半合) =====
+// 삼합 중 두 글자만 있는 경우
+const BANHAP_PAIRS: [Branch, Branch, string][] = [
+  ['인', '오', '화'], ['오', '술', '화'], ['인', '술', '화'],
+  ['사', '유', '금'], ['유', '축', '금'], ['사', '축', '금'],
+  ['신', '자', '수'], ['자', '진', '수'], ['신', '진', '수'],
+  ['해', '묘', '목'], ['묘', '미', '목'], ['해', '미', '목'],
+];
+
+// ===== 지지형 (刑) =====
+// 무례지형: 인→사→신→인
+// 무은지형: 축→술→미→축
+// 자형: 진진, 오오, 유유, 해해
+const HYUNG_MURYE: [Branch, Branch][] = [
+  ['인', '사'], ['사', '신'], ['신', '인'],
+];
+const HYUNG_MUEUN: [Branch, Branch][] = [
+  ['축', '술'], ['술', '미'], ['미', '축'],
+];
+const HYUNG_JAHYUNG = new Set<Branch>(['진', '오', '유', '해']);
+
+// ===== 지지파 (破) =====
+const JIJI_PA: [Branch, Branch][] = [
+  ['자', '유'], ['축', '진'], ['인', '해'],
+  ['묘', '오'], ['사', '신'], ['미', '술'],
+];
+
+// ===== 지지해 (害, 穿) =====
+const JIJI_HAE: [Branch, Branch][] = [
+  ['자', '미'], ['축', '오'], ['인', '사'],
+  ['묘', '진'], ['신', '해'], ['유', '술'],
+];
+
+// ===== 양인살 (羊刃殺) — 일간의 제왕지 =====
+const YANGIN: Record<Stem, Branch> = {
+  '갑': '묘', '을': '인', '병': '오', '정': '사',
+  '무': '오', '기': '사', '경': '유', '신': '신',
+  '임': '자', '계': '해',
+};
+
+// ===== 백호살 (白虎殺) — 일지의 충 위치 =====
+const BAEKHO: Record<Branch, Branch> = {
+  '자': '오', '축': '미', '인': '신', '묘': '유',
+  '진': '술', '사': '해', '오': '자', '미': '축',
+  '신': '인', '유': '묘', '술': '진', '해': '사',
+};
+
+// ===== 학당귀인 (學堂貴人) — 일간 기준 =====
+const HAKDANG_GUIIN: Record<Stem, Branch> = {
+  '갑': '해', '을': '오', '병': '인', '정': '유',
+  '무': '인', '기': '유', '경': '사', '신': '자',
+  '임': '신', '계': '묘',
+};
+
+// ===== 문창귀인 (文昌貴人) — 일간 기준 =====
+const MUNCHANG_GUIIN: Record<Stem, Branch> = {
+  '갑': '사', '을': '오', '병': '신', '정': '유',
+  '무': '신', '기': '유', '경': '해', '신': '자',
+  '임': '인', '계': '묘',
+};
+
+// ===== 암록 (暗祿) — 일간 기준 =====
+const AMROK: Record<Stem, Branch> = {
+  '갑': '해', '을': '술', '병': '묘', '정': '인',
+  '무': '묘', '기': '인', '경': '사', '신': '진',
+  '임': '유', '계': '신',
 };
 
 // ===== 천간합 (天干合) =====
@@ -455,6 +541,135 @@ export function calculateSinsal(
     allSinsal.push('취명관');
   }
 
+  // ===== 29. 지지삼합 (三合) =====
+  for (const [a, b, c, result] of SAMHAP_TRIPLES) {
+    const idxA = allBranches.map((br, i) => br === a ? i : -1).filter(i => i >= 0);
+    const idxB = allBranches.map((br, i) => br === b ? i : -1).filter(i => i >= 0);
+    const idxC = allBranches.map((br, i) => br === c ? i : -1).filter(i => i >= 0);
+    if (idxA.length > 0 && idxB.length > 0 && idxC.length > 0) {
+      const desc = `${a}${b}${c}삼합→${result}`;
+      const involved = new Set([...idxA, ...idxB, ...idxC]);
+      for (const idx of involved) {
+        pillarRelations[pillars[idx].name].push(desc);
+      }
+    }
+  }
+
+  // ===== 30. 지지방합 (方合, 三會) =====
+  for (const [a, b, c, result] of BANGHAP_TRIPLES) {
+    const idxA = allBranches.map((br, i) => br === a ? i : -1).filter(i => i >= 0);
+    const idxB = allBranches.map((br, i) => br === b ? i : -1).filter(i => i >= 0);
+    const idxC = allBranches.map((br, i) => br === c ? i : -1).filter(i => i >= 0);
+    if (idxA.length > 0 && idxB.length > 0 && idxC.length > 0) {
+      const desc = `${a}${b}${c}방합→${result}`;
+      const involved = new Set([...idxA, ...idxB, ...idxC]);
+      for (const idx of involved) {
+        pillarRelations[pillars[idx].name].push(desc);
+      }
+    }
+  }
+
+  // ===== 31. 반합 (半合) =====
+  for (let i = 0; i < 4; i++) {
+    for (let j = i + 1; j < 4; j++) {
+      for (const [a, b, result] of BANHAP_PAIRS) {
+        if ((allBranches[i] === a && allBranches[j] === b) ||
+            (allBranches[i] === b && allBranches[j] === a)) {
+          const desc = `${allBranches[i]}${allBranches[j]}반합→${result}`;
+          pillarRelations[pillars[i].name].push(desc);
+          pillarRelations[pillars[j].name].push(desc);
+        }
+      }
+    }
+  }
+
+  // ===== 32. 지지형 (刑) =====
+  // 32a. 무례지형 (인→사→신→인)
+  for (let i = 0; i < 4; i++) {
+    for (let j = i + 1; j < 4; j++) {
+      for (const [a, b] of HYUNG_MURYE) {
+        if ((allBranches[i] === a && allBranches[j] === b) ||
+            (allBranches[i] === b && allBranches[j] === a)) {
+          const desc = `${allBranches[i]}${allBranches[j]}형(무례지형)`;
+          pillarRelations[pillars[i].name].push(desc);
+          pillarRelations[pillars[j].name].push(desc);
+          allSinsal.push('형살');
+        }
+      }
+    }
+  }
+  // 32b. 무은지형 (축→술→미→축)
+  for (let i = 0; i < 4; i++) {
+    for (let j = i + 1; j < 4; j++) {
+      for (const [a, b] of HYUNG_MUEUN) {
+        if ((allBranches[i] === a && allBranches[j] === b) ||
+            (allBranches[i] === b && allBranches[j] === a)) {
+          const desc = `${allBranches[i]}${allBranches[j]}형(무은지형)`;
+          pillarRelations[pillars[i].name].push(desc);
+          pillarRelations[pillars[j].name].push(desc);
+          allSinsal.push('형살');
+        }
+      }
+    }
+  }
+  // 32c. 자형 (진진, 오오, 유유, 해해)
+  for (let i = 0; i < 4; i++) {
+    for (let j = i + 1; j < 4; j++) {
+      if (allBranches[i] === allBranches[j] && HYUNG_JAHYUNG.has(allBranches[i])) {
+        const desc = `${allBranches[i]}${allBranches[j]}형(자형)`;
+        pillarRelations[pillars[i].name].push(desc);
+        pillarRelations[pillars[j].name].push(desc);
+        allSinsal.push('형살');
+      }
+    }
+  }
+
+  // ===== 33. 지지파 (破) =====
+  for (let i = 0; i < 4; i++) {
+    for (let j = i + 1; j < 4; j++) {
+      for (const [a, b] of JIJI_PA) {
+        if ((allBranches[i] === a && allBranches[j] === b) ||
+            (allBranches[i] === b && allBranches[j] === a)) {
+          const desc = `${allBranches[i]}${allBranches[j]}파`;
+          pillarRelations[pillars[i].name].push(desc);
+          pillarRelations[pillars[j].name].push(desc);
+        }
+      }
+    }
+  }
+
+  // ===== 34. 지지해 (害, 穿) =====
+  for (let i = 0; i < 4; i++) {
+    for (let j = i + 1; j < 4; j++) {
+      for (const [a, b] of JIJI_HAE) {
+        if ((allBranches[i] === a && allBranches[j] === b) ||
+            (allBranches[i] === b && allBranches[j] === a)) {
+          const desc = `${allBranches[i]}${allBranches[j]}해`;
+          pillarRelations[pillars[i].name].push(desc);
+          pillarRelations[pillars[j].name].push(desc);
+        }
+      }
+    }
+  }
+
+  // ===== 35. 양인살 (羊刃殺) — 일간 기준 =====
+  const yanginTarget = YANGIN[day.stem];
+  for (const p of pillars) {
+    if (p.branch === yanginTarget) {
+      pillarSinsal[p.name].push('양인살');
+      allSinsal.push('양인살');
+    }
+  }
+
+  // ===== 36. 백호살 (白虎殺) — 일지 기준 =====
+  const baekhoTarget = BAEKHO[day.branch];
+  for (const p of pillars) {
+    if (p.name !== 'day' && p.branch === baekhoTarget) {
+      pillarSinsal[p.name].push('백호살');
+      allSinsal.push('백호살');
+    }
+  }
+
   // ===== 19. 공망 =====
   const gongmang = calculateGongmang(day.stemIndex, day.branchIndex);
 
@@ -569,6 +784,8 @@ export function calculateSinsal(
           const desc = `${pillars[i].branch}${pillars[j].branch}원진`;
           pillarRelations[pillars[i].name].push(desc);
           pillarRelations[pillars[j].name].push(desc);
+          // 37. 원진살을 allSinsal에도 추가
+          allSinsal.push('원진살');
         }
       }
     }
@@ -601,6 +818,52 @@ export function calculateSinsal(
   for (const p of pillars) {
     if (gongmang.includes(p.branch)) {
       pillarRelations[p.name].push(`공망(${p.branch})`);
+    }
+  }
+
+  // ===== 38. 학당귀인 (學堂貴人) — 일간 기준 =====
+  const hakdangTarget = HAKDANG_GUIIN[day.stem];
+  for (const p of pillars) {
+    if (p.branch === hakdangTarget) {
+      guiin.push(`학당귀인(${PILLAR_KOR[p.name]}지)`);
+    }
+  }
+
+  // ===== 39. 문창귀인 (文昌貴人) — 일간 기준 =====
+  const munchangTarget = MUNCHANG_GUIIN[day.stem];
+  for (const p of pillars) {
+    if (p.branch === munchangTarget) {
+      guiin.push(`문창귀인(${PILLAR_KOR[p.name]}지)`);
+    }
+  }
+
+  // ===== 40. 암록 (暗祿) — 일간 기준 =====
+  const amrokTarget = AMROK[day.stem];
+  for (const p of pillars) {
+    if (p.branch === amrokTarget) {
+      guiin.push(`암록(${PILLAR_KOR[p.name]}지)`);
+    }
+  }
+
+  // ===== 41~43. 십신 조합 체크 (천간 기준) =====
+  {
+    const dayStemOhaeng = STEM_OHAENG[day.stem];
+    const dayStemYinYang = STEM_YINYANG[day.stem];
+    const sipsinSet = new Set<string>();
+    for (const s of allStems) {
+      sipsinSet.add(getSipsin(dayStemOhaeng, dayStemYinYang, STEM_OHAENG[s], STEM_YINYANG[s]));
+    }
+    // 41. 관살혼잡 (官殺混雜) — 정관+편관 동시 존재
+    if (sipsinSet.has('정관') && sipsinSet.has('편관')) {
+      allSinsal.push('관살혼잡');
+    }
+    // 42. 상관견관 (傷官見官) — 상관+정관 동시 존재
+    if (sipsinSet.has('상관') && sipsinSet.has('정관')) {
+      allSinsal.push('상관견관');
+    }
+    // 43. 식신제살 (食神制殺) — 식신+편관 동시 존재
+    if (sipsinSet.has('식신') && sipsinSet.has('편관')) {
+      allSinsal.push('식신제살');
     }
   }
 
