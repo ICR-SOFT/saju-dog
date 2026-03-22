@@ -152,96 +152,76 @@ function buildLuckySection(data, p, serviceType) {
     gishin = CONTROL[dayElement]; // 관살 (더 약하게 만드는 것)
   }
 
-  // 5. 오행별 세부 속성 매핑 (천간별 세분화)
-  const COLOR_MAP = {
-    '목': { '갑': '진초록', '을': '연두색', _default: '초록색' },
-    '화': { '병': '주황색', '정': '분홍색', _default: '빨간색' },
-    '토': { '무': '황토색', '기': '베이지', _default: '노란색' },
-    '금': { '경': '은색', '신': '흰색', _default: '흰색' },
-    '수': { '임': '남색', '계': '검정색', _default: '파란색' },
-  };
-  const DIR_MAP = { '목': '동쪽', '화': '남쪽', '토': '중앙', '금': '서쪽', '수': '북쪽' };
-  const NUM_MAP = { '목': ['3','8'], '화': ['2','7'], '토': ['5','10'], '금': ['4','9'], '수': ['1','6'] };
+  // 5. 확정값 (사주 원리상 변하면 안 되는 것)
+  const DIR_MAP = { '목':'동쪽', '화':'남쪽', '토':'중앙', '금':'서쪽', '수':'북쪽' };
+  const primaryDir = DIR_MAP[yongshin] || '남쪽';
+  const secondaryDir = DIR_MAP[heeshin] || '동쪽';
+  const avoidDir = DIR_MAP[gishin] || '서쪽';
 
-  // 6. 지지 동물별 음식 (12가지 변주)
-  const BRANCH_FOOD = {
-    '자': ['따뜻한 국물 요리', '호두죽'], '축': ['소고기 장조림', '된장찌개'],
-    '인': ['닭가슴살 샐러드', '청국장'], '묘': ['봄나물 비빔밥', '두부 샐러드'],
-    '진': ['전복죽', '미역국'], '사': ['장어구이', '삼계탕'],
-    '오': ['양고기', '매운탕'], '미': ['보리밥', '잡채'],
-    '신': ['과일 요거트', '견과류'], '유': ['삼겹살', '치킨'],
-    '술': ['감자탕', '수제비'], '해': ['해물파전', '조개탕'],
+  // 6. 스타일 가이드 (Claude가 범위 내에서 자유롭게 선택)
+  const COLOR_FAMILIES = {
+    '목': '초록 계열 (진초록, 연두, 올리브, 민트, 카키 등)',
+    '화': '빨강 계열 (빨간색, 주황, 코럴, 분홍, 와인색 등)',
+    '토': '황색 계열 (노란색, 황토, 베이지, 카멜, 머스타드 등)',
+    '금': '흰색/금속 계열 (흰색, 은색, 아이보리, 크림, 골드 등)',
+    '수': '파랑/검정 계열 (남색, 파란색, 네이비, 검정, 차콜 등)',
+  };
+  const NUM_POOLS = { '목': [3,8], '화': [2,7], '토': [5,10], '금': [4,9], '수': [1,6] };
+  const FOOD_STYLES = {
+    '목': '신맛/푸른 채소 계열 (샐러드, 나물, 비빔밥, 청국장, 녹즙, 깻잎, 시금치 등에서 하나)',
+    '화': '매운맛/구이 계열 (삼겹살, 양고기, 떡볶이, 매운탕, 불고기, 닭갈비 등에서 하나)',
+    '토': '단맛/곡물 계열 (고구마, 떡, 호박죽, 잡곡밥, 감자탕, 된장찌개 등에서 하나)',
+    '금': '담백/흰색 계열 (배, 무, 두부, 백숙, 흰쌀밥, 콩나물국 등에서 하나)',
+    '수': '짠맛/해산물 계열 (미역국, 조개탕, 생선구이, 해물파전, 검은콩 등에서 하나)',
   };
 
-  // 7. 신살 기반 추천 수정자
+  // 7. 신살 기반 참고사항
   const sinsal = data.sinsal?.allSinsal || [];
-  const sinsalMods = [];
-  if (sinsal.includes('역마살')) sinsalMods.push('이동/여행 관련 활동이 길합니다');
-  if (sinsal.includes('화개살')) sinsalMods.push('예술/종교/명상 활동이 특히 좋습니다');
-  if (sinsal.includes('도화살')) sinsalMods.push('사교/만남의 자리가 행운을 부릅니다');
-  if (sinsal.includes('천을귀인') || sinsal.includes('천덕귀인')) sinsalMods.push('윗사람/선배와의 교류에서 행운이 옵니다');
-  if (sinsal.includes('괴강')) sinsalMods.push('독립적 활동/1인 작업이 유리합니다');
-  if (sinsal.includes('장성살')) sinsalMods.push('리더십을 발휘하는 상황에서 운이 트입니다');
+  const sinsalNotes = [];
+  if (sinsal.includes('역마살')) sinsalNotes.push('역마살 → 이동/여행/변화에 유리');
+  if (sinsal.includes('화개살')) sinsalNotes.push('화개살 → 예술/종교/학문에 유리');
+  if (sinsal.includes('도화살')) sinsalNotes.push('도화살 → 인간관계/매력에 유리');
+  if (sinsal.includes('괴강')) sinsalNotes.push('괴강 → 독립적 추진력, 고집');
+  if (sinsal.includes('장성살')) sinsalNotes.push('장성살 → 리더십/승진에 유리');
+  if (sinsal.includes('천을귀인') || sinsal.includes('천덕귀인')) sinsalNotes.push('귀인 → 윗사람/멘토의 도움');
 
-  // 8. 대운 기반 시기별 보정
+  // 8. 대운 참고
   const currentDaeun = data.daeun?.find(d => d.isCurrent);
   const daeunElement = currentDaeun ? STEM_ELEM[currentDaeun.stem] : null;
   let daeunNote = '';
   if (daeunElement) {
-    if (daeunElement === yongshin) daeunNote = '현재 대운이 용신과 일치하여 전반적 운세 상승기';
-    else if (daeunElement === gishin) daeunNote = '현재 대운이 기신이므로 신중한 판단이 필요한 시기';
-    else daeunNote = `현재 대운(${currentDaeun.stem}${currentDaeun.branch}) 흐름을 참고하세요`;
+    if (daeunElement === yongshin) daeunNote = '현재 대운이 용신과 일치 → 운세 상승기';
+    else if (daeunElement === gishin) daeunNote = '현재 대운이 기신 → 신중함 필요';
   }
 
-  // 9. 값 조립
-  const yongColor = COLOR_MAP[yongshin]?.[dayStem] || COLOR_MAP[yongshin]?._default || '노란색';
-  const heeColor = COLOR_MAP[heeshin]?._default || '흰색';
-  const gishinColor = COLOR_MAP[gishin]?._default || '검정색';
-  const primaryDir = DIR_MAP[yongshin] || '남쪽';
-  const secondaryDir = DIR_MAP[heeshin] || '동쪽';
-  const avoidDir = DIR_MAP[gishin] || '서쪽';
-  const primaryNums = NUM_MAP[yongshin] || ['5','10'];
-  const secondaryNums = NUM_MAP[heeshin] || ['3','8'];
-
-  // 음식: 일지 동물 + 용신 오행 조합
-  const dayBranch = p.day.branch;
-  const branchFoods = BRANCH_FOOD[dayBranch] || ['나물 비빔밥', '된장찌개'];
-  const yongFoodMap = { '목':'신선한 채소/샐러드', '화':'구이/볶음 요리', '토':'찌개/탕류', '금':'흰 쌀밥/담백한 요리', '수':'국물/생선 요리' };
-  const primaryFood = branchFoods[0];
-  const secondaryFood = yongFoodMap[yongshin] || '한식';
-
-  // 10. lucky 추천값 조립 (짧은 형태)
-  const luckyColor = `${yongColor}`;
-  const luckyNumber = primaryNums[0];
-  const luckyDirection = primaryDir;
-  const luckyFood = primaryFood;
-
   return `
-## ★ 사주 기반 개인화 분석 (서버 계산 — 반드시 따라야 함)
-- 일간: ${dayStem}(${dayElement}) / 강약: ${strengthLabel} (득령:${isSeasonSupport?'O':'X'}, 통근:${tonggeun}개, 오행비율:${dayOhaengCount}/${totalCount})
-- 용신(用神): ${yongshin} / 희신(喜神): ${heeshin} / 기신(忌神): ${gishin}
-${daeunNote ? `- 대운 참고: ${daeunNote}` : ''}
-${sinsalMods.length > 0 ? `- 신살 특이사항: ${sinsalMods.join(' / ')}` : ''}
+## ★ 사주 기반 분석 데이터
 
-### [필수] luckyItems 값 (짧은 단어만, 설명문 금지)
-- color: "${luckyColor}"
-- number: "${luckyNumber}"
-- direction: "${luckyDirection}"
-- food: "${luckyFood}"
+### 확정 사실 (반드시 일관되게 적용)
+- 일간: ${dayStem}(${dayElement}) / 강약: ${strengthLabel} (득령:${isSeasonSupport?'O':'X'}, 통근:${tonggeun}개)
+- 용신: ${yongshin} / 희신: ${heeshin} / 기신: ${gishin}
+- 행운 방위: ${primaryDir} (용신) / 보조 방위: ${secondaryDir} (희신)
+- 피할 방위: ${avoidDir} (기신)
+${daeunNote ? `- ${daeunNote}` : ''}
+${sinsalNotes.length > 0 ? `- 신살: ${sinsalNotes.join(', ')}` : ''}
 
-### 풀이에 활용할 추가 정보
-- 보조 행운색: ${heeColor} (희신 기반)
-- 피해야 할 색: ${gishinColor} (기신 기반)
-- 보조 방위: ${secondaryDir} / 피할 방위: ${avoidDir}
-- 보조 숫자: ${secondaryNums[0]}
-- 추천 음식 2순위: ${secondaryFood}
-- 행운 음식(일지 기반): ${branchFoods.join(', ')}
+### luckyItems 가이드 (범위 내에서 자유롭게 선택)
+- color: ${COLOR_FAMILIES[yongshin]} 중 하나를 2~3글자로
+- number: ${NUM_POOLS[yongshin].join(' 또는 ')} 중 하나
+- direction: "${primaryDir}" (이것만 고정)
+- food: ${FOOD_STYLES[yongshin]} — 2~4글자 음식명 하나
 
-### [절대 규칙]
-- luckyItems 4개 필드는 위 "필수" 값을 그대로 사용하세요
-- 방위 추천(이사운/여행운 등)은 "${luckyDirection}" 기준, 피할 방위는 "${avoidDir}"
-- 풀이 본문에서는 보조 색상/방위/음식도 자유롭게 언급 가능
-- luckyItems 각 값은 2~4글자 단어만 (예: "${luckyColor}" O, "${luckyColor} — ${yongshin} 기운 보충" X)
+### 풀이 본문에서 자유롭게 활용
+- 보조 행운색 범위: ${COLOR_FAMILIES[heeshin]}
+- 피해야 할 색 범위: ${COLOR_FAMILIES[gishin]}
+- 보조 숫자: ${NUM_POOLS[heeshin].join(', ')}
+- 기신 음식(피할 음식) 범위: ${FOOD_STYLES[gishin]}
+
+### [규칙]
+- direction은 "${primaryDir}"으로 고정. 이사/여행/방위 관련 조언도 이 방위 기준
+- color, number, food는 위 범위 안에서 매번 다르게 골라도 됨
+- luckyItems 값은 짧은 단어만 (설명문 금지)
+- 풀이 본문에서는 용신/희신/기신 개념을 활용해 자유롭게 해설
 `;
 }
 
