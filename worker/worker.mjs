@@ -10,6 +10,9 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import Anthropic from '@anthropic-ai/sdk';
+import { z } from 'zod';
+import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 
 // ===== 설정 =====
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -21,6 +24,7 @@ const RETRY_BASE_DELAY = parseInt(process.env.RETRY_BASE_DELAY_MS || '5000');
 const RETRY_MAX_DELAY = 60_000; // 최대 60초 대기
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const anthropic = new Anthropic({ apiKey: ANTHROPIC_KEY });
 
 const CREDIT_COSTS = {
   comprehensive: 3, compatibility: 3, daeun: 2, yearly: 2,
@@ -41,51 +45,57 @@ function log(level, msg, data) {
   console.log(`[${ts}] ${prefix} ${msg}`, data ? JSON.stringify(data) : '');
 }
 
-// ===== Claude API 호출 (무한 재시도) =====
-async function callClaude(params) {
+// ===== Claude API 호출 (SDK, 무한 재시도) =====
+async function callClaudeParsed(params, zodSchema) {
   let attempt = 0;
 
   while (true) {
     attempt++;
     try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': ANTHROPIC_KEY,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify(params),
+      const response = await anthropic.messages.parse({
+        ...params,
+        output_config: { format: zodOutputFormat(zodSchema) },
       });
-
-      // 성공
-      if (response.ok) {
-        return response.json();
-      }
-
-      // 레이트리밋 (429) 또는 서버 에러 (5xx) → 무한 재시도
-      if (response.status === 429 || response.status >= 500) {
-        const retryAfter = response.headers.get('retry-after');
-        const delay = retryAfter
-          ? parseInt(retryAfter) * 1000
-          : Math.min(RETRY_BASE_DELAY * Math.pow(2, attempt - 1), RETRY_MAX_DELAY);
-
-        log('warn', `API ${response.status}, attempt ${attempt}, retry in ${(delay / 1000).toFixed(0)}s`);
+      return response;
+    } catch (err) {
+      // 레이트리밋 또는 서버 에러 → 재시도
+      const status = err?.status || err?.error?.status;
+      if (status === 429 || (status && status >= 500)) {
+        const delay = Math.min(RETRY_BASE_DELAY * Math.pow(2, attempt - 1), RETRY_MAX_DELAY);
+        log('warn', `API ${status}, attempt ${attempt}, retry in ${(delay / 1000).toFixed(0)}s`);
         await sleep(delay);
         continue;
       }
 
-      // 4xx (429 제외) → 재시도 불가한 에러
-      const errBody = await response.text();
-      throw new Error(`Claude API ${response.status}: ${errBody}`);
-
-    } catch (err) {
       // 네트워크 에러 → 재시도
-      if (err.message?.includes('Claude API')) throw err; // 4xx는 그대로 throw
+      if (err.message?.includes('fetch') || err.message?.includes('ECONNREFUSED') || err.code === 'ENOTFOUND') {
+        const delay = Math.min(RETRY_BASE_DELAY * Math.pow(2, attempt - 1), RETRY_MAX_DELAY);
+        log('warn', `Network error (attempt ${attempt}): ${err.message}, retry in ${(delay / 1000).toFixed(0)}s`);
+        await sleep(delay);
+        continue;
+      }
 
-      const delay = Math.min(RETRY_BASE_DELAY * Math.pow(2, attempt - 1), RETRY_MAX_DELAY);
-      log('warn', `Network error (attempt ${attempt}): ${err.message}, retry in ${(delay / 1000).toFixed(0)}s`);
-      await sleep(delay);
+      throw err; // 4xx 등 재시도 불가 에러
+    }
+  }
+}
+
+// 채팅용 (Zod 없이 일반 호출)
+async function callClaude(params) {
+  let attempt = 0;
+  while (true) {
+    attempt++;
+    try {
+      return await anthropic.messages.create(params);
+    } catch (err) {
+      const status = err?.status;
+      if (status === 429 || (status && status >= 500) || err.message?.includes('fetch')) {
+        const delay = Math.min(RETRY_BASE_DELAY * Math.pow(2, attempt - 1), RETRY_MAX_DELAY);
+        log('warn', `API ${status || 'network'}, attempt ${attempt}, retry in ${(delay / 1000).toFixed(0)}s`);
+        await sleep(delay);
+        continue;
+      }
+      throw err;
     }
   }
 }
@@ -397,110 +407,60 @@ ${(() => {
 종합 사주풀이처럼 일반적인 분석을 하지 말고, 반드시 요청된 분석 유형에 집중하세요.`;
 }
 
-// ===== Structured Outputs 스키마 (response_format: json_schema) =====
-// https://platform.claude.com/docs/en/build-with-claude/structured-outputs
+// ===== Zod 스키마 (Anthropic SDK zodOutputFormat) =====
 
-const READING_SCHEMA = {
-  type: 'object',
-  required: ['summary', 'chapters', 'advice', 'luckyItems'],
-  additionalProperties: false,
-  properties: {
-    summary: { type: 'string' },
-    chapters: {
-      type: 'array',
-      items: {
-        type: 'object',
-        required: ['id', 'title', 'emoji', 'content'],
-        additionalProperties: false,
-        properties: {
-          id: { type: 'string' },
-          title: { type: 'string' },
-          emoji: { type: 'string' },
-          content: { type: 'string' },
-        },
-      },
-    },
-    advice: { type: 'array', items: { type: 'string' } },
-    luckyItems: {
-      type: 'object',
-      additionalProperties: false,
-      required: ['color', 'number', 'direction', 'food'],
-      properties: {
-        color: { type: 'string' },
-        number: { type: 'string' },
-        direction: { type: 'string' },
-        food: { type: 'string' },
-      },
-    },
-  },
-};
+const ChapterSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  emoji: z.string(),
+  content: z.string(),
+});
 
-const COMPATIBILITY_SCHEMA = {
-  type: 'object',
-  required: ['summary', 'overallScore', 'chapters', 'advice'],
-  additionalProperties: false,
-  properties: {
-    summary: { type: 'string' },
-    overallScore: { type: 'number' },
-    chapters: {
-      type: 'array',
-      items: {
-        type: 'object',
-        required: ['id', 'title', 'emoji', 'content'],
-        additionalProperties: false,
-        properties: {
-          id: { type: 'string' },
-          title: { type: 'string' },
-          emoji: { type: 'string' },
-          content: { type: 'string' },
-        },
-      },
-    },
-    advice: { type: 'array', items: { type: 'string' } },
-  },
-};
+const ReadingSchema = z.object({
+  summary: z.string(),
+  chapters: z.array(ChapterSchema),
+  advice: z.array(z.string()),
+  luckyItems: z.object({
+    color: z.string(),
+    number: z.string(),
+    direction: z.string(),
+    food: z.string(),
+  }),
+});
 
-const DAILY_SCHEMA = {
-  type: 'object',
-  required: ['summary', 'overallLuck', 'categories', 'advice', 'luckyItems'],
-  additionalProperties: false,
-  properties: {
-    summary: { type: 'string' },
-    overallLuck: { type: 'number' },
-    categories: {
-      type: 'object',
-      additionalProperties: false,
-      required: ['love', 'money', 'work', 'health'],
-      properties: {
-        love: { type: 'object', additionalProperties: false, required: ['score', 'message'], properties: { score: { type: 'number' }, message: { type: 'string' } } },
-        money: { type: 'object', additionalProperties: false, required: ['score', 'message'], properties: { score: { type: 'number' }, message: { type: 'string' } } },
-        work: { type: 'object', additionalProperties: false, required: ['score', 'message'], properties: { score: { type: 'number' }, message: { type: 'string' } } },
-        health: { type: 'object', additionalProperties: false, required: ['score', 'message'], properties: { score: { type: 'number' }, message: { type: 'string' } } },
-      },
-    },
-    advice: { type: 'string' },
-    luckyItems: {
-      type: 'object',
-      additionalProperties: false,
-      required: ['color', 'number', 'food'],
-      properties: { color: { type: 'string' }, number: { type: 'string' }, food: { type: 'string' } },
-    },
-  },
-};
+const CategorySchema = z.object({
+  score: z.number(),
+  message: z.string(),
+});
 
-function getOutputConfig(serviceType) {
-  let schema;
-  if (serviceType === 'compatibility') schema = COMPATIBILITY_SCHEMA;
-  else if (serviceType === 'daily') schema = DAILY_SCHEMA;
-  else schema = READING_SCHEMA;
+const CompatibilitySchema = z.object({
+  summary: z.string(),
+  overallScore: z.number(),
+  chapters: z.array(ChapterSchema),
+  advice: z.array(z.string()),
+});
 
-  // Claude API: output_config.format (not response_format)
-  return {
-    format: {
-      type: 'json_schema',
-      schema,
-    },
-  };
+const DailySchema = z.object({
+  summary: z.string(),
+  overallLuck: z.number(),
+  categories: z.object({
+    love: CategorySchema,
+    money: CategorySchema,
+    work: CategorySchema,
+    health: CategorySchema,
+  }),
+  advice: z.string(),
+  luckyItems: z.object({
+    color: z.string(),
+    number: z.string(),
+    food: z.string(),
+  }),
+});
+
+function getZodSchema(serviceType) {
+  if (serviceType === 'compatibility' || serviceType === 'business') return CompatibilitySchema;
+  if (serviceType === 'daily') return DailySchema;
+  return ReadingSchema;
 }
 
 // ===== 비용 계산 =====
@@ -696,22 +656,18 @@ async function processReading(reading) {
     const config = await getPromptConfig(reading.service_type);
     const userMessage = buildUserMessage(reading, profile, secondaryProfile, extraProfiles);
 
-    // Structured Outputs — output_config.format (Claude API 네이티브)
-    const outputConfig = getOutputConfig(reading.service_type);
+    // SDK + Zod 기반 Structured Outputs
+    const zodSchema = getZodSchema(reading.service_type);
 
-    const params = {
+    const baseParams = {
       model: config.model,
       max_tokens: config.max_tokens,
       messages: [{ role: 'user', content: userMessage }],
-      output_config: outputConfig,
+      system: config.use_prompt_caching
+        ? [{ type: 'text', text: config.system_prompt, cache_control: { type: 'ephemeral' } }]
+        : config.system_prompt,
     };
-
-    if (config.temperature !== null) params.temperature = config.temperature;
-    if (config.use_prompt_caching) {
-      params.system = [{ type: 'text', text: config.system_prompt, cache_control: { type: 'ephemeral' } }];
-    } else {
-      params.system = config.system_prompt;
-    }
+    if (config.temperature !== null) baseParams.temperature = config.temperature;
 
     // 품질 검증 포함 재시도 루프
     const MAX_QUALITY_RETRIES = 5;
@@ -720,6 +676,8 @@ async function processReading(reading) {
     let totalApiCost = 0;
 
     for (let attempt = 1; attempt <= MAX_QUALITY_RETRIES; attempt++) {
+      const params = { ...baseParams };
+
       // 재시도 시 유저 메시지에 피드백 추가
       if (attempt > 1) {
         const minChapters = reading.service_type === 'daily' ? 0 : 5;
@@ -731,7 +689,7 @@ async function processReading(reading) {
         params.messages = [{ role: 'user', content: userMessage + retryMsg }];
       }
 
-      const apiResponse = await callClaude(params);
+      const apiResponse = await callClaudeParsed(params, zodSchema);
 
       // stop_reason 체크
       const stopReason = apiResponse.stop_reason;
@@ -739,40 +697,14 @@ async function processReading(reading) {
         log('warn', `[${rid}] Hit max_tokens (attempt ${attempt}), output truncated`);
       }
 
-      const text = apiResponse.content.filter(b => b.type === 'text').map(b => b.text).join('');
-      let result;
-      try {
-        result = JSON.parse(text);
-      } catch (e) {
-        // JSON 복구 시도: content 필드 내 이스케이프 안 된 따옴표 수정
-        try {
-          const fixed = text.replace(/"content"\s*:\s*"((?:[^"\\]|\\.)*)(?="(?:\s*[,}]))/gs, (match) => {
-            return match;
-          });
-          // 더 공격적인 복구: 잘린 JSON 닫기
-          let repaired = text;
-          if (!repaired.trim().endsWith('}')) {
-            // 마지막 완전한 객체까지 자르기
-            const lastBrace = repaired.lastIndexOf('}');
-            if (lastBrace > 0) {
-              repaired = repaired.slice(0, lastBrace + 1);
-              // 배열/객체 닫기
-              const opens = (repaired.match(/\[/g) || []).length;
-              const closes = (repaired.match(/\]/g) || []).length;
-              for (let j = 0; j < opens - closes; j++) repaired += ']';
-              const openBraces = (repaired.match(/\{/g) || []).length;
-              const closeBraces = (repaired.match(/\}/g) || []).length;
-              for (let j = 0; j < openBraces - closeBraces; j++) repaired += '}';
-            }
-          }
-          result = JSON.parse(repaired);
-          log('info', `[${rid}] JSON repaired successfully (attempt ${attempt})`);
-        } catch {
-          log('warn', `[${rid}] JSON parse failed (attempt ${attempt}): ${e.message}`);
-          if (attempt === MAX_QUALITY_RETRIES) throw e;
-          continue;
-        }
+      // SDK가 자동 파싱 + Zod 검증 완료
+      let result = apiResponse.parsed_output;
+      if (!result) {
+        log('warn', `[${rid}] parsed_output null (attempt ${attempt}), stop=${stopReason}`);
+        if (attempt === MAX_QUALITY_RETRIES) throw new Error('parsed_output null after max retries');
+        continue;
       }
+
       apiCost = calculateCost(config.model, apiResponse.usage || {});
       totalApiCost += apiCost.cost_usd;
 
