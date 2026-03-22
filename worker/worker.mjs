@@ -183,7 +183,14 @@ function buildLuckySection(data, p, serviceType) {
   if (sinsal.includes('도화살')) sinsalNotes.push('도화살 → 인간관계/매력에 유리');
   if (sinsal.includes('괴강')) sinsalNotes.push('괴강 → 독립적 추진력, 고집');
   if (sinsal.includes('장성살')) sinsalNotes.push('장성살 → 리더십/승진에 유리');
-  if (sinsal.includes('천을귀인') || sinsal.includes('천덕귀인')) sinsalNotes.push('귀인 → 윗사람/멘토의 도움');
+  if (sinsal.includes('양인살')) sinsalNotes.push('양인살 → 결단력/추진력 강하나 과격 주의');
+  if (sinsal.includes('백호살')) sinsalNotes.push('백호살 → 수술/사고 주의, 급변 가능');
+  if (sinsal.includes('원진살')) sinsalNotes.push('원진살 → 가까운 관계 갈등 소지');
+  if (sinsal.includes('형살')) sinsalNotes.push('형살 → 법적/관계 마찰 주의');
+  if (sinsal.includes('관살혼잡')) sinsalNotes.push('관살혼잡 → 직업 변동 많음, 한 우물 파기 필요');
+  if (sinsal.includes('상관견관')) sinsalNotes.push('상관견관 → 윗사람과 충돌 소지, 자유업 유리');
+  if (sinsal.includes('식신제살')) sinsalNotes.push('식신제살 → 위기를 기회로 바꾸는 능력');
+  if (sinsal.includes('효신살')) sinsalNotes.push('효신살 → 편인 작용, 변덕/모성 부족 주의');
 
   // 8. 대운 참고
   const currentDaeun = data.daeun?.find(d => d.isCurrent);
@@ -256,9 +263,13 @@ function buildUserMessage(reading, profile, secondaryProfile, extraProfiles = []
       const ps = pd.sinsal || {};
       return `## ${i + 1}번째 참여자 (${pd.input?.name || pp.name})
 사주: ${ppillars.year.stem}${ppillars.year.branch} ${ppillars.month.stem}${ppillars.month.branch} ${ppillars.day.stem}${ppillars.day.branch} ${ppillars.hour.stem}${ppillars.hour.branch}
+십신: ${ppillars.year.stemSipsin}/${ppillars.month.stemSipsin}/일주/${ppillars.hour.stemSipsin}
 오행: 목${pd.ohaengCount?.['목']} 화${pd.ohaengCount?.['화']} 토${pd.ohaengCount?.['토']} 금${pd.ohaengCount?.['금']} 수${pd.ohaengCount?.['수']}
 띠: ${pd.ddi?.fullName || '?'} / 별자리: ${pd.zodiac?.name || '?'}
-신살: ${fmtArr(ps.allSinsal)} / 귀인: ${fmtArr(ps.guiin)}`;
+신살: ${fmtArr(ps.allSinsal)}
+귀인: ${fmtArr(ps.guiin)}
+기둥관계: 년${fmtArr(ps.pillarRelations?.year)} / 월${fmtArr(ps.pillarRelations?.month)} / 일${fmtArr(ps.pillarRelations?.day)} / 시${fmtArr(ps.pillarRelations?.hour)}
+공망: ${fmtArr(ps.gongmang)}`;
     }).join('\n\n');
 
     const userQ = (reading.metadata || {}).userQuestion;
@@ -517,18 +528,25 @@ async function processChatMessage(msg) {
       .order('created_at', { ascending: true })
       .limit(20);
 
-    // 사주 데이터 요약
+    // 사주 데이터 (풀이와 동일한 수준으로 제공)
     const data = profile.calculated_saju;
     const p = data.pillars;
     const s = data.sinsal || {};
     const fmtArr = (arr) => arr?.length > 0 ? arr.join(', ') : '없음';
 
+    const luckyInfo = buildLuckySection(data, p, 'chat');
+
     const sajuContext = `사주 정보 (${data.input?.name || profile.name}, ${data.input?.gender === 'male' ? '남' : '여'}):
 사주: ${p.year.stem}${p.year.branch} ${p.month.stem}${p.month.branch} ${p.day.stem}${p.day.branch} ${p.hour.stem}${p.hour.branch}
+십신: ${p.year.stemSipsin}/${p.month.stemSipsin}/일주/${p.hour.stemSipsin}
 오행: 목${data.ohaengCount?.['목']} 화${data.ohaengCount?.['화']} 토${data.ohaengCount?.['토']} 금${data.ohaengCount?.['금']} 수${data.ohaengCount?.['수']}
 띠: ${data.ddi?.fullName || '?'} / 별자리: ${data.zodiac?.name || '?'}
-신살: ${fmtArr(s.allSinsal)} / 귀인: ${fmtArr(s.guiin)}
-현재 대운: ${data.daeun?.find(d => d.isCurrent)?.stem || '?'}${data.daeun?.find(d => d.isCurrent)?.branch || '?'}`;
+신살: ${fmtArr(s.allSinsal)}
+귀인: ${fmtArr(s.guiin)}
+기둥별 관계: 년${fmtArr(s.pillarRelations?.year)} / 월${fmtArr(s.pillarRelations?.month)} / 일${fmtArr(s.pillarRelations?.day)} / 시${fmtArr(s.pillarRelations?.hour)}
+공망: ${fmtArr(s.gongmang)}
+현재 대운: ${data.daeun?.find(d => d.isCurrent)?.stem || '?'}${data.daeun?.find(d => d.isCurrent)?.branch || '?'}
+${luckyInfo}`;
 
     const systemPrompt = `당신은 '복돌이'라는 이름의 사주 상담 골든 리트리버입니다.
 사용자의 사주 데이터를 기반으로 친근하고 따뜻하게 상담합니다.
