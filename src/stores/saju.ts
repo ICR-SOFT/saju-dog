@@ -52,9 +52,12 @@ export const useSajuStore = create<SajuState>((set, get) => ({
   readingCache: {},
 
   fetchProfiles: async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
     const { data, error } = await supabase
       .from('saju_profiles')
       .select('*')
+      .eq('user_id', user.id)
       .order('created_at', { ascending: true });
 
     if (error) throw new Error(error.message);
