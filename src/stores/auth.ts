@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase.ts';
+import { useSajuStore } from './saju.ts';
+import { useCreditStore } from './credit.ts';
 import type { User } from '@/types/user.ts';
 
 interface AuthState {
@@ -107,6 +109,9 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
 
   signOut: async () => {
     await supabase.auth.signOut();
+    // 다른 스토어 초기화
+    useSajuStore.setState({ profiles: [], readings: [], currentReading: null, selectedProfileIdx: 0 });
+    useCreditStore.setState({ credits: null });
   },
 
   updateNickname: async (nickname) => {
