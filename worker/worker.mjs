@@ -758,6 +758,23 @@ async function processReading(reading) {
       apiCost = calculateCost(config.model, apiResponse.usage || {});
       totalApiCost += apiCost.cost_usd;
 
+      // luckyItems.direction 강제 덮어쓰기 (Claude가 무시할 수 있으므로)
+      if (result.luckyItems && reading.service_type !== 'compatibility') {
+        const luckyData = buildLuckySection(profile.calculated_saju, profile.calculated_saju.pillars, reading.service_type);
+        // direction은 서버 계산값으로 무조건 덮어쓰기
+        const dirMatch = luckyData.match(/행운 방위: (.+?) \(용신\)/);
+        if (dirMatch) {
+          result.luckyItems.direction = dirMatch[1];
+        }
+        // 설명문이 포함된 값 정리 (예: "남서쪽 (토 기운의 방위)" → "서쪽")
+        for (const key of ['color', 'number', 'food', 'direction']) {
+          if (result.luckyItems[key] && result.luckyItems[key].length > 10) {
+            // 괄호 앞까지만 또는 첫 단어만
+            result.luckyItems[key] = result.luckyItems[key].split(/[(\s—,]/)[0].trim();
+          }
+        }
+      }
+
       // 마크다운 → HTML 후처리 (**텍스트** → <strong>텍스트</strong>)
       function cleanMarkdown(text) {
         if (!text) return text;
