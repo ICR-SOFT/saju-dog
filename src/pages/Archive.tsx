@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
 import { Layout } from '@/components/layout/Layout.tsx';
 import { Card } from '@/components/ui/Card.tsx';
 import { useSajuStore } from '@/stores/saju.ts';
@@ -30,14 +30,14 @@ const STATUS_BADGE: Record<string, { label: string; className: string }> = {
 
 export function Archive() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { readings, fetchReadings, profiles } = useSajuStore();
 
   useEffect(() => {
     fetchReadings();
-    // 풀이 중인 게 있으면 5초마다 갱신
     const interval = setInterval(fetchReadings, 5000);
     return () => clearInterval(interval);
-  }, [fetchReadings]);
+  }, [fetchReadings, location.key]);
 
   const getProfileName = (profileId: string) => {
     return profiles.find(p => p.id === profileId)?.name || '알 수 없음';

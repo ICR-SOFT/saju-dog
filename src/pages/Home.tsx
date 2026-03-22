@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
 import { Layout } from '@/components/layout/Layout.tsx';
 import { Card } from '@/components/ui/Card.tsx';
 import { Button } from '@/components/ui/Button.tsx';
@@ -123,6 +123,7 @@ const MORE_SERVICES: typeof MAIN_SERVICES = [
 
 export function Home() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAuthenticated } = useAuthStore();
   const { profiles, selectedProfileIdx, selectProfile, fetchProfiles, deleteProfile } = useSajuStore();
   const { fetchCredits } = useCreditStore();
@@ -133,7 +134,7 @@ export function Home() {
       fetchProfiles();
       fetchCredits();
     }
-  }, [isAuthenticated, fetchProfiles, fetchCredits]);
+  }, [isAuthenticated, fetchProfiles, fetchCredits, location.key]);
 
   const showToast = (msg: string) => {
     setToast(msg);

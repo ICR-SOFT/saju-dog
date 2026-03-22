@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { useLocation } from 'react-router';
 import DOMPurify from 'dompurify';
 import { Layout } from '@/components/layout/Layout.tsx';
 import { Card } from '@/components/ui/Card.tsx';
@@ -39,6 +40,7 @@ function getTodayStr() {
 
 export function DailyFortune() {
   const { profiles, selectedProfileIdx, fetchReadings } = useSajuStore();
+  const location = useLocation();
   const [result, setResult] = useState<DailyResult | null>(null);
   const [phase, setPhase] = useState<'init' | 'idle' | 'loading' | 'done'>('init');
   const [error, setError] = useState('');
@@ -116,7 +118,7 @@ export function DailyFortune() {
       stopPolling();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile?.id]);
+  }, [profile?.id, location.key]);
 
   const fetchDaily = async (question?: string, force = false) => {
     if (!profile) return;

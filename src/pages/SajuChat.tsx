@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router';
 import { Layout } from '@/components/layout/Layout.tsx';
 import { Card } from '@/components/ui/Card.tsx';
 import { Button } from '@/components/ui/Button.tsx';
@@ -25,6 +26,7 @@ type View = 'list' | 'chat';
 export function SajuChat() {
   const { profiles, selectedProfileIdx } = useSajuStore();
   const { credits, fetchCredits } = useCreditStore();
+  const location = useLocation();
   const profile = profiles[selectedProfileIdx] || profiles[0];
 
   const [view, setView] = useState<View>('list');
@@ -48,7 +50,7 @@ export function SajuChat() {
   useEffect(() => {
     loadSessions();
     fetchCredits();
-  }, [loadSessions, fetchCredits]);
+  }, [loadSessions, fetchCredits, location.key]);
 
   // 스크롤
   useEffect(() => {
