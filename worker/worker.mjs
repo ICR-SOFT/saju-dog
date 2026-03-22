@@ -558,19 +558,35 @@ async function processChatMessage(msg) {
     const s = data.sinsal || {};
     const fmtArr = (arr) => arr?.length > 0 ? arr.join(', ') : '없음';
 
-    const luckyInfo = buildLuckySection(data, p, 'chat');
+    // 채팅용 용신 요약 (JSON 출력 유발하는 luckySection 대신 핵심만)
+    const STEM_ELEM = { '갑':'목','을':'목','병':'화','정':'화','무':'토','기':'토','경':'금','신':'금','임':'수','계':'수' };
+    const chatDayEl = STEM_ELEM[p.day.stem] || '토';
+    const DIR_MAP = { '목':'동쪽','화':'남쪽','토':'중앙','금':'서쪽','수':'북쪽' };
+    const GEN_MAP = { '목':'수','화':'목','토':'화','금':'토','수':'금' };
+    const DRAIN_MAP = { '목':'화','화':'토','토':'금','금':'수','수':'목' };
+    const CTRL_MAP = { '목':'금','화':'수','토':'목','금':'화','수':'토' };
+    const chatGenEl = GEN_MAP[chatDayEl];
+    const chatDrainEl = DRAIN_MAP[chatDayEl];
+    const chatCtrlMe = CTRL_MAP[chatDayEl];
+    const chatSupport = (Number(data.ohaengCount?.[chatDayEl]) || 0) + (Number(data.ohaengCount?.[chatGenEl]) || 0);
+    const chatOppose = (Number(data.ohaengCount?.[chatDrainEl]) || 0) + (Number(data.ohaengCount?.[DRAIN_MAP[DRAIN_MAP[chatDayEl]]]) || 0) + (Number(data.ohaengCount?.[chatCtrlMe]) || 0);
+    const chatStrong = chatSupport > chatOppose;
+    const chatYong = chatStrong
+      ? ((Number(data.ohaengCount?.[chatDayEl])||0) >= (Number(data.ohaengCount?.[chatGenEl])||0) ? chatDrainEl : DRAIN_MAP[DRAIN_MAP[chatDayEl]])
+      : ((Number(data.ohaengCount?.[chatCtrlMe])||0) >= (Number(data.ohaengCount?.[chatDrainEl])||0) ? chatGenEl : chatDayEl);
+    const chatGishin = chatStrong ? chatGenEl : chatCtrlMe;
 
     const sajuContext = `사주 정보 (${data.input?.name || profile.name}, ${data.input?.gender === 'male' ? '남' : '여'}):
 사주: ${p.year.stem}${p.year.branch} ${p.month.stem}${p.month.branch} ${p.day.stem}${p.day.branch} ${p.hour.stem}${p.hour.branch}
+일간: ${p.day.stem}(${chatDayEl}) / ${chatStrong ? '신강' : '신약'}
 십신: ${p.year.stemSipsin}/${p.month.stemSipsin}/일주/${p.hour.stemSipsin}
 오행: 목${data.ohaengCount?.['목']} 화${data.ohaengCount?.['화']} 토${data.ohaengCount?.['토']} 금${data.ohaengCount?.['금']} 수${data.ohaengCount?.['수']}
+용신: ${chatYong}(${DIR_MAP[chatYong]}) / 기신: ${chatGishin}(${DIR_MAP[chatGishin]})
 띠: ${data.ddi?.fullName || '?'} / 별자리: ${data.zodiac?.name || '?'}
 신살: ${fmtArr(s.allSinsal)}
 귀인: ${fmtArr(s.guiin)}
-기둥별 관계: 년${fmtArr(s.pillarRelations?.year)} / 월${fmtArr(s.pillarRelations?.month)} / 일${fmtArr(s.pillarRelations?.day)} / 시${fmtArr(s.pillarRelations?.hour)}
 공망: ${fmtArr(s.gongmang)}
-현재 대운: ${data.daeun?.find(d => d.isCurrent)?.stem || '?'}${data.daeun?.find(d => d.isCurrent)?.branch || '?'}
-${luckyInfo}`;
+현재 대운: ${data.daeun?.find(d => d.isCurrent)?.stem || '?'}${data.daeun?.find(d => d.isCurrent)?.branch || '?'}`;
 
     const systemPrompt = `당신은 '복돌이'라는 이름의 사주 상담 골든 리트리버입니다.
 사용자의 사주 데이터를 기반으로 친근하고 따뜻하게 상담합니다.
@@ -581,11 +597,13 @@ ${sajuContext}
 - 한국어로 답변하세요
 - 반말이 아닌 존댓말을 사용하세요
 - 사주 데이터를 근거로 구체적으로 답변하세요
+- 방위 추천 시 용신 방위(${DIR_MAP[chatYong]})를 기준으로 하세요
 - 딱딱한 한문 용어 대신 쉬운 말로 설명하세요
 - 가끔 강아지 이모지(🐾🐕)를 섞어 친근감을 주세요
 - 답변은 300자 이내로 간결하게 하세요
 - <strong>태그로 핵심 키워드를 강조하세요
-- 절대 마크다운(**, ##, *, _)을 사용하지 마세요. HTML 태그만 사용하세요`;
+- 절대 마크다운(**, ##, *, _)을 사용하지 마세요
+- 절대 JSON, 코드블록(\`\`\`), 데이터 구조를 출력하지 마세요. 자연스러운 대화체로만 답변하세요`;
 
     const messages = [
       ...(history || []).map(h => ({ role: h.role, content: h.content })),
