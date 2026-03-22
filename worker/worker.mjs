@@ -92,8 +92,8 @@ async function callClaude(params) {
 
 // ===== 프롬프트 설정 로드 =====
 async function getPromptConfig(serviceType) {
-  // 해당 서비스 타입으로 조회 (최대 3회 재시도)
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  // 해당 서비스 타입으로 조회 (최대 5회 재시도, fallback 없음)
+  for (let attempt = 1; attempt <= 5; attempt++) {
     const { data, error } = await supabase
       .from('prompt_configs').select('*')
       .eq('service_type', serviceType).eq('is_active', true).single();
@@ -103,20 +103,12 @@ async function getPromptConfig(serviceType) {
       return data;
     }
 
-    if (attempt < 3) {
-      log('warn', `Prompt config query failed for "${serviceType}" (attempt ${attempt}/3): ${error?.message || 'no data'}`);
-      await sleep(1000);
-    }
+    log('warn', `Prompt config query failed for "${serviceType}" (attempt ${attempt}/5): ${error?.message || 'no data'}`);
+    if (attempt < 5) await sleep(2000 * attempt); // 2s, 4s, 6s, 8s
   }
 
-  // 3회 실패 → comprehensive fallback (경고 로그)
-  log('error', `⚠️ FALLBACK: "${serviceType}" prompt not found after 3 attempts, using comprehensive`);
-  const { data, error } = await supabase
-    .from('prompt_configs').select('*')
-    .eq('service_type', 'comprehensive').eq('is_active', true).single();
-
-  if (error || !data) throw new Error(`No prompt config: ${serviceType} (and no comprehensive fallback)`);
-  return data;
+  // 5회 전부 실패 → 에러 throw → reading 재시도로 처리
+  throw new Error(`Prompt config "${serviceType}" 로드 실패 (5회 시도)`);
 }
 
 // ===== 유저 메시지 빌드 =====
