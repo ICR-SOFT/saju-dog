@@ -185,9 +185,57 @@ ${participantBlocks}
   };
   const serviceInstruction = SERVICE_INSTRUCTIONS[reading.service_type] || SERVICE_INSTRUCTIONS.comprehensive;
 
+  // 오행 기반 용신 분석 (일관된 추천값 도출)
+  const ohaeng = data.ohaengCount || {};
+  const stemElement = { '갑': '목', '을': '목', '병': '화', '정': '화', '무': '토', '기': '토', '경': '금', '신': '금', '임': '수', '계': '수' };
+  const dayElement = stemElement[p.day.stem] || '토';
+
+  // 용신 계산: 일간 오행 기준 부족한 오행 찾기
+  const OHAENG_CYCLE = {
+    // 상생: 나를 생해주는 오행이 용신 후보
+    '목': { needs: '수', avoids: '금', color: '파란색/검정색', direction: '북쪽', number: '1, 6', food: '해산물, 검은콩' },
+    '화': { needs: '목', avoids: '수', color: '초록색', direction: '동쪽', number: '3, 8', food: '푸른 채소, 신맛 음식' },
+    '토': { needs: '화', avoids: '목', color: '빨간색/주황색', direction: '남쪽', number: '2, 7', food: '매운 음식, 양고기' },
+    '금': { needs: '토', avoids: '화', color: '노란색/베이지', direction: '중앙(남서/북동)', number: '5, 10', food: '고구마, 단맛 음식' },
+    '수': { needs: '금', avoids: '토', color: '흰색/은색', direction: '서쪽', number: '4, 9', food: '무, 배, 흰 음식' },
+  };
+  // 일간 강약 판단
+  const dayCount = ohaeng[dayElement] || 0;
+  const totalCount = Object.values(ohaeng).reduce((a, b) => Number(a) + Number(b), 0);
+  const isDayStrong = dayCount >= Math.ceil(totalCount / 3); // 일간이 강한지
+
+  let yongshin, heeshin;
+  if (isDayStrong) {
+    // 신강: 일간을 설기하는 오행이 용신 (식상/재성)
+    const drainMap = { '목': '화', '화': '토', '토': '금', '금': '수', '수': '목' };
+    yongshin = drainMap[dayElement];
+    const drainMap2 = { '목': '토', '화': '금', '토': '수', '금': '목', '수': '화' };
+    heeshin = drainMap2[dayElement];
+  } else {
+    // 신약: 일간을 생해주는 오행이 용신 (인성/비겁)
+    const genMap = { '목': '수', '화': '목', '토': '화', '금': '토', '수': '금' };
+    yongshin = genMap[dayElement];
+    heeshin = dayElement; // 비겁
+  }
+
+  const luckyRef = OHAENG_CYCLE[yongshin] || OHAENG_CYCLE['토'];
+  const luckySection = `
+## ★ 용신 분석 결과 (서버 계산 — 반드시 따라야 함)
+- 일간: ${p.day.stem}(${dayElement}) / 강약: ${isDayStrong ? '신강(身強)' : '신약(身弱)'}
+- 용신: ${yongshin} / 희신: ${heeshin}
+- [필수] luckyItems 값:
+  - color: "${luckyRef.color}"
+  - direction: "${luckyRef.direction}"
+  - number: "${luckyRef.number}"
+  - food: "${luckyRef.food}"
+- [절대 규칙] luckyItems는 위 값을 그대로 사용하세요. 임의로 바꾸지 마세요.
+- [절대 규칙] 방위 추천(이사운 등)도 위 direction 기준으로 하세요.
+- [절대 규칙] luckyItems 각 필드는 짧은 단어로만 (설명문 금지, 예: "빨간색" O, "빨간색 — 화 기운 보충" X)
+`;
+
   return `[분석 유형: ${reading.service_type}]
 아래는 서버에서 정밀 계산된 사주 데이터입니다. 이 데이터만 기반으로 해설하세요.
-
+${luckySection}
 ## 기본 정보
 - 이름: ${data.input?.name || profile.name} / 성별: ${data.input?.gender === 'male' ? '남성' : '여성'}
 - 띠: ${data.ddi?.fullName || '?'} / 별자리: ${data.zodiac?.name || '?'}
