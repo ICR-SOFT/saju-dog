@@ -261,6 +261,7 @@ function buildUserMessage(reading, profile, secondaryProfile, extraProfiles = []
       const pd = pp.calculated_saju;
       const ppillars = pd.pillars;
       const ps = pd.sinsal || {};
+      const pLucky = buildLuckySection(pd, ppillars, reading.service_type);
       return `## ${i + 1}번째 참여자 (${pd.input?.name || pp.name})
 사주: ${ppillars.year.stem}${ppillars.year.branch} ${ppillars.month.stem}${ppillars.month.branch} ${ppillars.day.stem}${ppillars.day.branch} ${ppillars.hour.stem}${ppillars.hour.branch}
 십신: ${ppillars.year.stemSipsin}/${ppillars.month.stemSipsin}/일주/${ppillars.hour.stemSipsin}
@@ -269,7 +270,8 @@ function buildUserMessage(reading, profile, secondaryProfile, extraProfiles = []
 신살: ${fmtArr(ps.allSinsal)}
 귀인: ${fmtArr(ps.guiin)}
 기둥관계: 년${fmtArr(ps.pillarRelations?.year)} / 월${fmtArr(ps.pillarRelations?.month)} / 일${fmtArr(ps.pillarRelations?.day)} / 시${fmtArr(ps.pillarRelations?.hour)}
-공망: ${fmtArr(ps.gongmang)}`;
+공망: ${fmtArr(ps.gongmang)}
+${pLucky}`;
     }).join('\n\n');
 
     const userQ = (reading.metadata || {}).userQuestion;
