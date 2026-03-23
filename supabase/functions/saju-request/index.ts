@@ -45,15 +45,23 @@ serve(async (req) => {
 
     // 캐시 확인 (force=true면 캐시 무시하고 새로 풀이)
     if (!force) {
-      const { data: cached } = await supabase
+      let query = supabase
         .from('readings')
         .select('id, result, processing_status')
         .eq('profile_id', profileId)
         .eq('service_type', serviceType)
         .eq('processing_status', 'completed')
         .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(1);
+
+      // daily는 오늘 날짜만 캐시 (어제 운세를 오늘 반환하면 안 됨)
+      if (serviceType === 'daily') {
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        query = query.gte('created_at', todayStart.toISOString());
+      }
+
+      const { data: cached } = await query.maybeSingle();
 
       if (cached?.result) {
         return new Response(JSON.stringify({
@@ -67,13 +75,20 @@ serve(async (req) => {
 
     // 진행 중인 요청 확인 (force=true면 무시)
     if (!force) {
-      const { data: pending } = await supabase
+      let pendingQuery = supabase
         .from('readings')
         .select('id, processing_status')
         .eq('profile_id', profileId)
         .eq('service_type', serviceType)
-        .in('processing_status', ['pending', 'processing'])
-        .maybeSingle();
+        .in('processing_status', ['pending', 'processing']);
+
+      if (serviceType === 'daily') {
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        pendingQuery = pendingQuery.gte('created_at', todayStart.toISOString());
+      }
+
+      const { data: pending } = await pendingQuery.maybeSingle();
 
       if (pending) {
         return new Response(JSON.stringify({
