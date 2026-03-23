@@ -955,4 +955,16 @@ async function resetStuckOnStartup() {
   }
 }
 
+// Edge Function 콜드스타트 방지 (5분마다 warm-up 핑)
+const EDGE_FUNCTIONS = ['saju-request', 'chat-send', 'payment-confirm'];
+async function warmUpEdgeFunctions() {
+  for (const fn of EDGE_FUNCTIONS) {
+    try {
+      await fetch(`${SUPABASE_URL}/functions/v1/${fn}`, { method: 'OPTIONS' });
+    } catch {}
+  }
+}
+warmUpEdgeFunctions(); // 시작 시 즉시 실행
+setInterval(warmUpEdgeFunctions, 5 * 60_000); // 5분마다
+
 resetStuckOnStartup().then(() => pollLoop());
