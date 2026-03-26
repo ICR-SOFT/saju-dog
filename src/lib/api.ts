@@ -1,6 +1,23 @@
 import { supabase } from './supabase.ts';
 import type { SajuApiResponse } from '@/types/saju.ts';
 
+// ===== Edge Function 호출 래퍼 (인증 실패 시 세션 갱신 후 1회 재시도) =====
+
+async function invokeEdgeFunction(name: string, body: Record<string, unknown>) {
+  let { data, error } = await supabase.functions.invoke(name, { body });
+
+  if (error && (error.message?.includes('401') || error.message?.includes('JWT') || error.message?.includes('인증'))) {
+    const { error: refreshError } = await supabase.auth.refreshSession();
+    if (!refreshError) {
+      ({ data, error } = await supabase.functions.invoke(name, { body }));
+    }
+  }
+
+  if (error) throw new Error(error.message || '요청 실패');
+  if (data?.error) throw new Error(data.error);
+  return data;
+}
+
 // ===== 큐 기반 API (크레딧 관련은 Edge Function으로 보호) =====
 
 export interface RequestResult {
@@ -22,17 +39,9 @@ export async function requestReading(
   force = false,
   metadata?: Record<string, string>,
 ): Promise<RequestResult> {
-  const { data, error } = await supabase.functions.invoke('saju-request', {
-    body: { profileId, serviceType, secondaryProfileId, force, metadata },
+  const data = await invokeEdgeFunction('saju-request', {
+    profileId, serviceType, secondaryProfileId, force, metadata,
   });
-
-  if (error) {
-    if (error.message?.includes('401') || error.message?.includes('JWT')) {
-      throw new Error('세션이 만료되었습니다. 페이지를 새로고침해주세요.');
-    }
-    throw new Error(error.message || '요청 실패');
-  }
-  if (data?.error) throw new Error(data.error);
   return data as RequestResult;
 }
 
@@ -123,17 +132,7 @@ export async function getChatMessages(sessionId: string): Promise<ChatMessageRow
 
 /** 메시지 전송 (Edge Function: 크레딧 차감 + pending 메시지 생성) */
 export async function sendChatMessage(sessionId: string, content: string): Promise<ChatMessageRow> {
-  const { data, error } = await supabase.functions.invoke('chat-send', {
-    body: { sessionId, content },
-  });
-
-  if (error) {
-    if (error.message?.includes('401') || error.message?.includes('JWT')) {
-      throw new Error('세션이 만료되었습니다. 페이지를 새로고침해주세요.');
-    }
-    throw new Error(error.message || '전송 실패');
-  }
-  if (data?.error) throw new Error(data.error);
+  const data = await invokeEdgeFunction('chat-send', { sessionId, content });
   return data as ChatMessageRow;
 }
 
