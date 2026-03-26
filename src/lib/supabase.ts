@@ -51,3 +51,13 @@ supabase.auth.onAuthStateChange((event) => {
     console.log('[Auth] Signed out');
   }
 });
+
+// 모바일 백그라운드 복귀 시 세션 복구 (Supabase 공식 권장 패턴)
+// 탭 동결 시 auto-refresh 타이머가 멈추므로 수동으로 재시작 필요
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    supabase.auth.startAutoRefresh();
+  } else {
+    supabase.auth.stopAutoRefresh();
+  }
+});

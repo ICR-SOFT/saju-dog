@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router';
 import { useAuthStore } from '@/stores/auth.ts';
-import { supabase } from '@/lib/supabase.ts';
 import { useSajuStore } from '@/stores/saju.ts';
 import { useCreditStore } from '@/stores/credit.ts';
 import { Loading } from '@/components/ui/Loading.tsx';
@@ -64,16 +63,6 @@ export default function App() {
     initialize();
   }, [initialize]);
 
-  // 모바일 앱 전환 후 복귀 시 토큰 선제 갱신
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        supabase.auth.getSession();
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, []);
 
   return (
     <BrowserRouter>
