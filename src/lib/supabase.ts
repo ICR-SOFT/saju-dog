@@ -16,30 +16,6 @@ export const supabase = createClient(
       persistSession: true,
       detectSessionInUrl: true,
     },
-    global: {
-      fetch: async (url, options) => {
-        // 요청 전 세션 확인 + 자동 갱신
-        const response = await fetch(url, options);
-
-        // 401 응답 시 세션 갱신 후 재시도
-        if (response.status === 401) {
-          const { error } = await supabase.auth.refreshSession();
-          if (!error) {
-            // 새 토큰으로 재시도
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-              const newOptions = { ...options };
-              const headers = new Headers(newOptions.headers);
-              headers.set('Authorization', `Bearer ${session.access_token}`);
-              (newOptions as any).headers = headers;
-              return fetch(url, newOptions);
-            }
-          }
-        }
-
-        return response;
-      },
-    },
   },
 );
 
