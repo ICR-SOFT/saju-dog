@@ -16,6 +16,7 @@ import { useSajuStore } from '@/stores/saju.ts';
 import { useCreditStore } from '@/stores/credit.ts';
 import { calculateSaju } from '@/core/calculator.ts';
 import { createShareLink } from '@/lib/share.ts';
+import { ProfileInfoBadges } from '@/components/saju/ProfileInfoBadges.tsx';
 import type { SajuPillars, ServiceType } from '@/types/saju.ts';
 import type { SajuProfile } from '@/types/user.ts';
 import { supabase } from '@/lib/supabase.ts';
@@ -209,6 +210,14 @@ export function Reading() {
               {sajuData.zodiac.emoji} {sajuData.zodiac.name}
             </span>
           </div>
+        )}
+        {profile && (
+          <ProfileInfoBadges
+            birthDate={profile.birth_date}
+            calendarType={profile.calendar_type}
+            gender={profile.gender}
+            className="mt-2"
+          />
         )}
       </div>
 

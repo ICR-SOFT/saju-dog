@@ -15,6 +15,7 @@ import { supabase } from '@/lib/supabase.ts';
 import { useSajuStore } from '@/stores/saju.ts';
 import { createShareLink } from '@/lib/share.ts';
 import { calculateSaju } from '@/core/calculator.ts';
+import { ProfileInfoBadges } from '@/components/saju/ProfileInfoBadges.tsx';
 import type { Reading, SajuProfile } from '@/types/user.ts';
 import type { SajuApiResponse, SajuPillars, ServiceType } from '@/types/saju.ts';
 import { getZodiacImageUrl, getCompatibilityImageUrl } from '@/lib/zodiac-images.ts';
@@ -66,6 +67,7 @@ export function ReadingDetail() {
   const [error, setError] = useState('');
   const [shareToast, setShareToast] = useState('');
   const [sajuData, setSajuData] = useState<SajuPillars | null>(null);
+  const [profileData, setProfileData] = useState<SajuProfile | null>(null);
 
   useEffect(() => {
     if (!readingId) return;
@@ -77,8 +79,13 @@ export function ReadingDetail() {
         setReading(data);
 
         // 프로필에서 만세력 계산
-        const profile = profiles.find(p => p.id === data.profile_id);
+        let profile = profiles.find(p => p.id === data.profile_id) ?? null;
+        if (!profile && data.profile_id) {
+          const { data: pData } = await supabase.from('saju_profiles').select('*').eq('id', data.profile_id).single();
+          if (pData) profile = pData as SajuProfile;
+        }
         if (profile) {
+          setProfileData(profile);
           const saju = calculateSaju({
             name: profile.name,
             birthDate: new Date(profile.birth_date),
@@ -88,21 +95,6 @@ export function ReadingDetail() {
             longitude: profile.longitude,
           });
           setSajuData(saju);
-        } else if (data.profile_id) {
-          // 프로필이 스토어에 없으면 직접 조회
-          const { data: pData } = await supabase.from('saju_profiles').select('*').eq('id', data.profile_id).single();
-          if (pData) {
-            const p = pData as SajuProfile;
-            const saju = calculateSaju({
-              name: p.name,
-              birthDate: new Date(p.birth_date),
-              gender: p.gender as 'male' | 'female',
-              calendarType: p.calendar_type as 'solar' | 'lunar' | 'lunar_leap',
-              useTrueSolar: p.use_true_solar,
-              longitude: p.longitude,
-            });
-            setSajuData(saju);
-          }
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : '풀이를 불러올 수 없습니다');
@@ -208,6 +200,14 @@ export function ReadingDetail() {
           {new Date(reading.created_at).toLocaleDateString('ko-KR')}
           {reading.processing_duration_ms && ` · ${(reading.processing_duration_ms / 1000).toFixed(0)}초`}
         </p>
+        {profileData && !isCompatibility && (
+          <ProfileInfoBadges
+            birthDate={profileData.birth_date}
+            calendarType={profileData.calendar_type}
+            gender={profileData.gender}
+            className="mt-2"
+          />
+        )}
       </div>
 
       {/* 만세력 정보 (궁합/일간 운세는 개인 사주 데이터 표시 안 함) */}

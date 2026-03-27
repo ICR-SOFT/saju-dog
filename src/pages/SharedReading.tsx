@@ -13,6 +13,7 @@ import { ScoreRing } from '@/components/ui/ScoreRing.tsx';
 import { getSharedReading } from '@/lib/share.ts';
 import { supabase } from '@/lib/supabase.ts';
 import { calculateSaju } from '@/core/calculator.ts';
+import { ProfileInfoBadges } from '@/components/saju/ProfileInfoBadges.tsx';
 import { getZodiacImageUrl, getCompatibilityImageUrl } from '@/lib/zodiac-images.ts';
 import type { Reading } from '@/types/user.ts';
 import type { SajuApiResponse, SajuPillars } from '@/types/saju.ts';
@@ -186,6 +187,14 @@ export function SharedReading() {
               {sajuData.zodiac.emoji} {sajuData.zodiac.name}
             </span>
           </div>
+        )}
+        {reading?.saju_profiles?.birth_date && !isCompatibility && (
+          <ProfileInfoBadges
+            birthDate={reading.saju_profiles.birth_date}
+            calendarType={reading.saju_profiles.calendar_type || 'solar'}
+            gender={reading.saju_profiles.gender || 'male'}
+            className="mt-2"
+          />
         )}
       </div>
 
