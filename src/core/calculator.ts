@@ -429,17 +429,22 @@ function getCurrentYearPillar(dayStemIndex: number) {
 export function calculateSaju(input: SajuInput): SajuPillars {
   const originalDate = input.birthDate;
 
-  // 년/월/일주는 원래 생년월일 사용 (시간 보정 영향 없음)
-  const year = originalDate.getFullYear();
-  const month = originalDate.getMonth() + 1;
-  const day = originalDate.getDate();
-
-  // 시주만 지방시 보정 적용
+  // 시주: 지방시 보정 적용
   let hourDate = originalDate;
   if (input.useTrueSolar) {
     hourDate = toTrueSolarTime(originalDate, input.longitude ?? 126.978);
   }
   const hour = hourDate.getHours();
+
+  // 정자시(正子時): 23시 이후는 다음날로 취급 (일주/월주/연주 모두)
+  let calcDate = originalDate;
+  if (hour >= 23) {
+    calcDate = new Date(originalDate.getFullYear(), originalDate.getMonth(), originalDate.getDate() + 1);
+  }
+
+  const year = calcDate.getFullYear();
+  const month = calcDate.getMonth() + 1;
+  const day = calcDate.getDate();
 
   // 사주 년도 (입춘 기준)
   const sajuYear = getSajuYear(year, month, day);
@@ -451,12 +456,7 @@ export function calculateSaju(input: SajuInput): SajuPillars {
   const yearIndices = getYearPillarIndices(sajuYear);
   const monthIndices = getMonthPillarIndices(yearIndices.stemIndex, sajuMonth);
   const dayIndices = getDayPillarIndices(year, month, day);
-
-  // 야자시 처리: 23시 이후는 다음날 일간으로 시주 천간 계산
-  const dayIndexForHour = hour >= 23
-    ? (dayIndices.stemIndex + 1) % 10
-    : dayIndices.stemIndex;
-  const hourIndices = getHourPillarIndices(dayIndexForHour, hour);
+  const hourIndices = getHourPillarIndices(dayIndices.stemIndex, hour);
 
   // Pillar 객체 생성 (일간 기준으로 십신 계산)
   const yearPillar = buildPillar(yearIndices.stemIndex, yearIndices.branchIndex, dayIndices.stemIndex, 'year');

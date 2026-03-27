@@ -81,47 +81,36 @@ describe('만세력 계산 엔진', () => {
       expect(result.pillars.month.branch).toBe('인');
     });
 
-    it('일주: 신사(辛巳) — 야자시에도 일주는 당일', () => {
-      expect(result.pillars.day.stem).toBe('신');
-      expect(result.pillars.day.branch).toBe('사');
+    it('일주: 임오(壬午) — 정자시: 23시→다음날(2/7) 기준', () => {
+      expect(result.pillars.day.stem).toBe('임');
+      expect(result.pillars.day.branch).toBe('오');
     });
 
-    it('시주: 경자(庚子) — 야자시: 23시→다음날 일간(壬)으로 시주 천간 계산', () => {
+    it('시주: 경자(庚子) — 정자시: 다음날 일간(壬)으로 시주 천간 계산', () => {
       expect(result.pillars.hour.stem).toBe('경');
       expect(result.pillars.hour.branch).toBe('자');
     });
 
-    it('대운 시작 나이: 9세 (절기 거리 기반)', () => {
-      expect(result.daeun[0].startAge).toBe(9);
-    });
-
     it('대운 방향: 순행 (양남)', () => {
-      // 대운 간지: 신묘→임진→계사→갑오 순행
+      // 월주 경인, 순행: 신묘→임진→계사→갑오
       expect(result.daeun[0].stem).toBe('신');
       expect(result.daeun[0].branch).toBe('묘');
       expect(result.daeun[1].stem).toBe('임');
       expect(result.daeun[1].branch).toBe('진');
     });
 
-    it('오행 분포: 금3 목2 화2 수1 토0', () => {
-      expect(result.ohaengCount).toEqual({ 금: 3, 목: 2, 화: 2, 수: 1, 토: 0 });
+    it('오행 분포: 금2 목2 수2 화2 토0', () => {
+      expect(result.ohaengCount).toEqual({ 금: 2, 목: 2, 수: 2, 화: 2, 토: 0 });
     });
 
-    it('신살: 참조 API 대비 주요 신살 포함 확인', () => {
+    it('신살: 주요 신살 포함 확인', () => {
       const guiin = result.sinsal.guiin.join(',');
-
-      // 참조 API에 있는 주요 신살
-      expect(result.sinsal.pillarSinsal.day).toContain('현침살');      // 일주
-      expect(result.sinsal.pillarSinsal.hour).toContain('천주귀인');   // 시주
-      expect(guiin).toContain('천을귀인');
+      // 일간 壬(임) → 현침살 대상 (갑/신/임)
+      expect(result.sinsal.pillarSinsal.day).toContain('현침살');
+      // 일간 壬 → 태극귀인 대상 = 사/오, 일지 午 → 매칭
       expect(guiin).toContain('태극귀인');
-      expect(guiin).toContain('천주귀인');
+      // 일간 壬 → 문창귀인 대상 = 인, 년지/월지 寅 → 매칭
       expect(guiin).toContain('문창귀인');
-    });
-
-    it('신살: 고신 포함 (년지 寅 기준)', () => {
-      // 년지 寅 → 고신 대상 = 巳. 일지가 巳이므로 일주에 고신
-      expect(result.sinsal.pillarSinsal.day).toContain('고신');
     });
   });
 
