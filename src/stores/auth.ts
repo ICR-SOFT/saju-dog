@@ -116,8 +116,9 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
   },
 
   updateNickname: async (nickname) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('로그인 필요');
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error('로그인 필요');
+    const user = session.user;
     const { error } = await supabase
       .from('users')
       .update({ nickname, updated_at: new Date().toISOString() })

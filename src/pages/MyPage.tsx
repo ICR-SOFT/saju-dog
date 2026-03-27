@@ -38,10 +38,10 @@ export function MyPage() {
     loadTransactions();
 
     // 인증 정보
-    supabase.auth.getUser().then(({ data: { user: authUser } }) => {
-      if (authUser) {
-        setAuthEmail(authUser.email || '');
-        setAuthProvider(authUser.app_metadata?.provider || 'email');
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setAuthEmail(session.user.email || '');
+        setAuthProvider(session.user.app_metadata?.provider || 'email');
       }
     });
   }, [fetchCredits, loadTransactions, location.key]);
