@@ -30,16 +30,16 @@ export function OhaengBar({ count }: OhaengBarProps) {
               <span className="text-xs font-medium text-dark">{label}</span>
             </div>
             <div className="flex-1 h-6 bg-cream-dark rounded-full overflow-hidden">
-              <div
-                className={`h-full ${color} rounded-full transition-all duration-500 flex items-center justify-end pr-1.5`}
-                style={{ width: count[key] === 0 ? '0%' : `${Math.max((count[key] / total) * 100, 8)}%` }}
-              >
-                {count[key] > 0 && (
+              {count[key] > 0 && (
+                <div
+                  className={`h-full ${color} rounded-full transition-all duration-500 flex items-center justify-end pr-1.5`}
+                  style={{ width: `${Math.max((count[key] / total) * 100, 8)}%` }}
+                >
                   <span className="text-[10px] font-bold text-white" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
                     {count[key]}
                   </span>
-                )}
-              </div>
+                </div>
+              )}
             </div>
             <span className="text-xs font-bold w-5 text-right text-dark">{count[key]}</span>
           </div>
