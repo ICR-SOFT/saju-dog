@@ -31,6 +31,7 @@ interface SajuState {
   startReading: (profileId: string, serviceType: string, force?: boolean, metadata?: Record<string, string>) => Promise<void>;
   fetchReadings: () => Promise<void>;
   clearCurrentReading: () => void;
+  resetStaleProcessing: () => void;
 }
 
 const POLL_INTERVAL = 3000; // 3초마다 폴링
