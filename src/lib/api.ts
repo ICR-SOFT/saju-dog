@@ -1,15 +1,27 @@
 import { supabase } from './supabase.ts';
 import type { SajuApiResponse } from '@/types/saju.ts';
 
-// ===== Edge Function 호출 래퍼 (인증 실패 시 세션 갱신 후 1회 재시도) =====
+// ===== Edge Function 호출 래퍼 =====
+// 세션 토큰을 명시적으로 전달 — functions.invoke() 내부 토큰 동기화가
+// 백그라운드 복귀 후 깨지는 문제 방지. 실패 시 세션 갱신 후 1회 재시도.
 
 async function invokeEdgeFunction(name: string, body: Record<string, unknown>) {
-  let { data, error } = await supabase.functions.invoke(name, { body });
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('로그인이 필요합니다');
 
-  if (error && (error.message?.includes('401') || error.message?.includes('JWT') || error.message?.includes('인증'))) {
-    const { error: refreshError } = await supabase.auth.refreshSession();
-    if (!refreshError) {
-      ({ data, error } = await supabase.functions.invoke(name, { body }));
+  let { data, error } = await supabase.functions.invoke(name, {
+    body,
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  });
+
+  // 실패 시 토큰 갱신 후 1회 재시도
+  if (error) {
+    const { data: refreshData } = await supabase.auth.refreshSession();
+    if (refreshData.session) {
+      ({ data, error } = await supabase.functions.invoke(name, {
+        body,
+        headers: { Authorization: `Bearer ${refreshData.session.access_token}` },
+      }));
     }
   }
 
