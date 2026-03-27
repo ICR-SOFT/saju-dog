@@ -106,6 +106,23 @@ describe('만세력 계산 엔진', () => {
     it('오행 분포: 금3 목2 화2 수1 토0', () => {
       expect(result.ohaengCount).toEqual({ 금: 3, 목: 2, 화: 2, 수: 1, 토: 0 });
     });
+
+    it('신살: 참조 API 대비 주요 신살 포함 확인', () => {
+      const guiin = result.sinsal.guiin.join(',');
+
+      // 참조 API에 있는 주요 신살
+      expect(result.sinsal.pillarSinsal.day).toContain('현침살');      // 일주
+      expect(result.sinsal.pillarSinsal.hour).toContain('천주귀인');   // 시주
+      expect(guiin).toContain('천을귀인');
+      expect(guiin).toContain('태극귀인');
+      expect(guiin).toContain('천주귀인');
+      expect(guiin).toContain('문창귀인');
+    });
+
+    it('신살: 고신 포함 (년지 寅 기준)', () => {
+      // 년지 寅 → 고신 대상 = 巳. 일지가 巳이므로 일주에 고신
+      expect(result.sinsal.pillarSinsal.day).toContain('고신');
+    });
   });
 
   describe('라태웅 — 진태양시 미적용 (표준시)', () => {

@@ -248,6 +248,50 @@ const AMROK: Record<Stem, Branch> = {
   '임': '유', '계': '신',
 };
 
+// ===== 홍염살 (紅艶殺) — 일간 기준 =====
+const HONGYEOM: Record<Stem, Branch> = {
+  '갑': '오', '을': '신', '병': '인', '정': '미',
+  '무': '진', '기': '진', '경': '술', '신': '유',
+  '임': '자', '계': '신',
+};
+
+// ===== 고신 (孤辰) — 년지 기준 =====
+const GOSHIN: Record<Branch, Branch> = {
+  '인': '사', '묘': '사', '진': '사',
+  '사': '신', '오': '신', '미': '신',
+  '신': '해', '유': '해', '술': '해',
+  '해': '인', '자': '인', '축': '인',
+};
+
+// ===== 과숙 (寡宿) — 년지 기준 =====
+const GWASUK: Record<Branch, Branch> = {
+  '인': '축', '묘': '축', '진': '축',
+  '사': '진', '오': '진', '미': '진',
+  '신': '미', '유': '미', '술': '미',
+  '해': '술', '자': '술', '축': '술',
+};
+
+// ===== 천복귀인 (天福貴人) — 일간 기준 =====
+const CHEONBOK_GUIIN: Record<Stem, Branch> = {
+  '갑': '해', '을': '자', '병': '축', '정': '인',
+  '무': '묘', '기': '사', '경': '오', '신': '미',
+  '임': '신', '계': '유',
+};
+
+// ===== 천주귀인 (天廚貴人) — 일간 기준 =====
+const CHEONJU_GUIIN: Record<Stem, Branch> = {
+  '갑': '사', '을': '오', '병': '사', '정': '신',
+  '무': '사', '기': '오', '경': '해', '신': '자',
+  '임': '해', '계': '자',
+};
+
+// ===== 천관귀인 (天官貴人) — 일간 기준 =====
+const CHEONGWAN_GUIIN: Record<Stem, Branch> = {
+  '갑': '미', '을': '진', '병': '사', '정': '인',
+  '무': '사', '기': '인', '경': '해', '신': '신',
+  '임': '인', '계': '해',
+};
+
 // ===== 천간합 (天干合) =====
 // 갑기→토, 을경→금, 병신→수, 정임→목, 무계→화
 const CHEONGAN_HAP: [number, number, string][] = [
@@ -818,6 +862,60 @@ export function calculateSinsal(
   for (const p of pillars) {
     if (gongmang.includes(p.branch)) {
       pillarRelations[p.name].push(`공망(${p.branch})`);
+    }
+  }
+
+  // ===== 44. 홍염살 (紅艶殺) — 일간 기준 =====
+  const hongyeomTarget = HONGYEOM[day.stem];
+  for (const p of pillars) {
+    if (p.branch === hongyeomTarget) {
+      pillarSinsal[p.name].push('홍염살');
+      allSinsal.push('홍염살');
+    }
+  }
+
+  // ===== 45. 고신 (孤辰) — 년지 기준 =====
+  const goshinTarget = GOSHIN[year.branch];
+  for (const p of pillars) {
+    if (p.branch === goshinTarget) {
+      pillarSinsal[p.name].push('고신');
+      allSinsal.push('고신');
+    }
+  }
+
+  // ===== 46. 과숙 (寡宿) — 년지 기준 =====
+  const gwasukTarget = GWASUK[year.branch];
+  for (const p of pillars) {
+    if (p.branch === gwasukTarget) {
+      pillarSinsal[p.name].push('과숙');
+      allSinsal.push('과숙');
+    }
+  }
+
+  // ===== 47. 천복귀인 (天福貴人) — 일간 기준 =====
+  const cheonbokTarget = CHEONBOK_GUIIN[day.stem];
+  for (const p of pillars) {
+    if (p.branch === cheonbokTarget) {
+      guiin.push(`천복귀인(${PILLAR_KOR[p.name]}지)`);
+      pillarSinsal[p.name].push('천복귀인');
+    }
+  }
+
+  // ===== 48. 천주귀인 (天廚貴人) — 일간 기준 =====
+  const cheonjuTarget = CHEONJU_GUIIN[day.stem];
+  for (const p of pillars) {
+    if (p.branch === cheonjuTarget) {
+      guiin.push(`천주귀인(${PILLAR_KOR[p.name]}지)`);
+      pillarSinsal[p.name].push('천주귀인');
+    }
+  }
+
+  // ===== 49. 천관귀인 (天官貴人) — 일간 기준 =====
+  const cheongwanTarget = CHEONGWAN_GUIIN[day.stem];
+  for (const p of pillars) {
+    if (p.branch === cheongwanTarget) {
+      guiin.push(`천관귀인(${PILLAR_KOR[p.name]}지)`);
+      pillarSinsal[p.name].push('천관귀인');
     }
   }
 
