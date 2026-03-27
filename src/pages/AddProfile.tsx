@@ -60,10 +60,10 @@ export function AddProfile() {
         longitude: 126.978,
       });
 
-      // 프로필 저장 (calculated_saju 포함, 한 번의 INSERT)
-      // addProfile에서 user_id 자동 설정됨
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('로그인이 필요합니다');
+      // 세션 확인 후 프로필 저장
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('로그인이 필요합니다');
+      const user = session.user;
 
       const { error: insertError } = await supabase
         .from('saju_profiles')

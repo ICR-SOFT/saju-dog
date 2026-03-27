@@ -52,8 +52,9 @@ export const useSajuStore = create<SajuState>((set, get) => ({
   readingCache: {},
 
   fetchProfiles: async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    const user = session.user;
     const { data, error } = await supabase
       .from('saju_profiles')
       .select('*')
@@ -65,9 +66,9 @@ export const useSajuStore = create<SajuState>((set, get) => ({
   },
 
   addProfile: async (profile) => {
-    // user_id를 Supabase auth에서 자동 설정
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('로그인이 필요합니다');
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error('로그인이 필요합니다');
+    const user = session.user;
 
     const { data, error } = await supabase
       .from('saju_profiles')
@@ -214,4 +215,24 @@ export const useSajuStore = create<SajuState>((set, get) => ({
     error: null,
     processingInfo: null,
   }),
+
+  /** 잠긴 처리 상태 강제 리셋 (탭 복귀 시 호출) */
+  resetStaleProcessing: () => {
+    const { processingStatus } = get();
+    if (processingStatus === 'requesting' || processingStatus === 'processing') {
+      set({
+        isLoading: false,
+        processingStatus: 'idle',
+        pendingReadingId: null,
+        pendingProfileId: null,
+      });
+    }
+  },
 }));
+
+// 탭 복귀 시 잠긴 처리 상태 자동 리셋
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    useSajuStore.getState().resetStaleProcessing();
+  }
+});
