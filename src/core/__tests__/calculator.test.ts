@@ -34,7 +34,7 @@ describe('만세력 계산 엔진', () => {
       expect(result.pillars.day.branch).toBe('술');
     });
 
-    it('시주: 병진(丙辰) — 진태양시로 9:17→약8:48 → 진시', () => {
+    it('시주: 병진(丙辰) — 지방시 보정으로 9:17→약8:45 → 진시', () => {
       expect(result.pillars.hour.stem).toBe('병');
       expect(result.pillars.hour.branch).toBe('진');
     });
@@ -56,6 +56,55 @@ describe('만세력 계산 엔진', () => {
 
     it('신살: 괴강 (무술 일주)', () => {
       expect(result.sinsal.allSinsal).toContain('괴강');
+    });
+  });
+
+  describe('이준성 — 참조 API 기준 검증 (야자시 처리)', () => {
+    const sajuInput: SajuInput = {
+      name: '이준성',
+      birthDate: new Date(1986, 1, 6, 23, 35), // 1986-02-06 23:35
+      gender: 'male',
+      calendarType: 'solar',
+      useTrueSolar: true,
+      longitude: 126.978,
+    };
+
+    const result = calculateSaju(sajuInput);
+
+    it('년주: 병인(丙寅)', () => {
+      expect(result.pillars.year.stem).toBe('병');
+      expect(result.pillars.year.branch).toBe('인');
+    });
+
+    it('월주: 경인(庚寅)', () => {
+      expect(result.pillars.month.stem).toBe('경');
+      expect(result.pillars.month.branch).toBe('인');
+    });
+
+    it('일주: 신사(辛巳) — 야자시에도 일주는 당일', () => {
+      expect(result.pillars.day.stem).toBe('신');
+      expect(result.pillars.day.branch).toBe('사');
+    });
+
+    it('시주: 경자(庚子) — 야자시: 23시→다음날 일간(壬)으로 시주 천간 계산', () => {
+      expect(result.pillars.hour.stem).toBe('경');
+      expect(result.pillars.hour.branch).toBe('자');
+    });
+
+    it('대운 시작 나이: 9세 (절기 거리 기반)', () => {
+      expect(result.daeun[0].startAge).toBe(9);
+    });
+
+    it('대운 방향: 순행 (양남)', () => {
+      // 대운 간지: 신묘→임진→계사→갑오 순행
+      expect(result.daeun[0].stem).toBe('신');
+      expect(result.daeun[0].branch).toBe('묘');
+      expect(result.daeun[1].stem).toBe('임');
+      expect(result.daeun[1].branch).toBe('진');
+    });
+
+    it('오행 분포: 금3 목2 화2 수1 토0', () => {
+      expect(result.ohaengCount).toEqual({ 금: 3, 목: 2, 화: 2, 수: 1, 토: 0 });
     });
   });
 

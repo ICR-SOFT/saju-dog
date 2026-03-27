@@ -23,21 +23,15 @@ import {
   HYUNG_PAIRS, PA_PAIRS, HAE_PAIRS, WONJIN_PAIRS,
 } from './tables.ts';
 
-import { getSajuMonth, getSajuYear } from './solar-terms.ts';
+import { getSajuMonth, getSajuYear, getAdjacentTermDates } from './solar-terms.ts';
 
-// ===== 진태양시 보정 =====
-
-function getDayOfYear(date: Date): number {
-  const start = new Date(date.getFullYear(), 0, 0);
-  const diff = date.getTime() - start.getTime();
-  return Math.floor(diff / (1000 * 60 * 60 * 24));
-}
+// ===== 지방시 보정 (경도 기반) =====
+// KST 기준 경선(135°E)과의 경도 차이만 보정
+// 대부분의 만세력 서비스가 사용하는 표준 방식
 
 export function toTrueSolarTime(date: Date, longitude = 126.978): Date {
-  const lonCorr = (longitude - 135) * 4; // KST 기준 경선 135°E와의 차이 (분)
-  const B = ((360 / 365) * (getDayOfYear(date) - 81)) * (Math.PI / 180);
-  const eot = 9.87 * Math.sin(2 * B) - 7.53 * Math.cos(B) - 1.5 * Math.sin(B);
-  return new Date(date.getTime() + (lonCorr + eot) * 60000);
+  const lonCorr = (longitude - 135) * 4; // 경도 1° = 4분
+  return new Date(date.getTime() + lonCorr * 60000);
 }
 
 // ===== 율리우스 적일 (Julian Day Number) =====
@@ -177,6 +171,8 @@ function calculateDaeun(
   dayStemIndex: number,
   gender: Gender,
   birthYear: number,
+  birthMonth: number,
+  birthDay: number,
 ): DaeunEntry[] {
   // 순행/역행 판단: 년간 양/음과 성별에 따라
   // 양남음녀 → 순행, 음남양녀 → 역행
@@ -188,9 +184,8 @@ function calculateDaeun(
   const entries: DaeunEntry[] = [];
   const currentAge = new Date().getFullYear() - birthYear;
 
-  // 대운 시작 나이 (간략 계산: 보통 2~8세 사이)
-  // 정밀 계산은 생일~절기 거리로 하지만, MVP에서는 근사값 사용
-  const startAge = getApproxDaeunStartAge(gender, yearYinYang);
+  // 대운 시작 나이: 생일~절기 거리(일수) / 3 반올림
+  const startAge = getDaeunStartAge(birthYear, birthMonth, birthDay, isForward);
 
   for (let i = 0; i < 10; i++) {
     const stemIdx = ((monthStemIndex + direction * (i + 1)) % 10 + 10) % 10;
@@ -224,12 +219,26 @@ function calculateDaeun(
   return entries;
 }
 
-function getApproxDaeunStartAge(gender: Gender, yearYinYang: string): number {
-  // 양남음녀 순행: 다음 절기까지 → 보통 빠름 (2~4세)
-  // 음남양녀 역행: 이전 절기까지 → 보통 느림 (5~8세)
-  const isForward = (yearYinYang === '양' && gender === 'male') ||
-                    (yearYinYang === '음' && gender === 'female');
-  return isForward ? 3 : 6;
+/**
+ * 대운 시작 나이 = 생일~절기 거리(일수) ÷ 3 (반올림)
+ * 순행: 생일 → 다음 절기
+ * 역행: 이전 절기 → 생일
+ */
+function getDaeunStartAge(year: number, month: number, day: number, isForward: boolean): number {
+  const { prevTerm, nextTerm } = getAdjacentTermDates(year, month, day);
+
+  const birthDate = new Date(year, month - 1, day);
+  let days: number;
+
+  if (isForward) {
+    // 다음 절기까지 일수
+    days = Math.round((nextTerm.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24));
+  } else {
+    // 이전 절기부터 일수
+    days = Math.round((birthDate.getTime() - prevTerm.getTime()) / (1000 * 60 * 60 * 24));
+  }
+
+  return Math.round(days / 3);
 }
 
 // ===== 특수 관계 찾기 =====
@@ -418,17 +427,19 @@ function getCurrentYearPillar(dayStemIndex: number) {
 // ===== 메인 계산 함수 =====
 
 export function calculateSaju(input: SajuInput): SajuPillars {
-  let date = input.birthDate;
+  const originalDate = input.birthDate;
 
-  // 진태양시 보정
+  // 년/월/일주는 원래 생년월일 사용 (시간 보정 영향 없음)
+  const year = originalDate.getFullYear();
+  const month = originalDate.getMonth() + 1;
+  const day = originalDate.getDate();
+
+  // 시주만 지방시 보정 적용
+  let hourDate = originalDate;
   if (input.useTrueSolar) {
-    date = toTrueSolarTime(date, input.longitude ?? 126.978);
+    hourDate = toTrueSolarTime(originalDate, input.longitude ?? 126.978);
   }
-
-  const year = date.getFullYear();
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  const hour = date.getHours();
+  const hour = hourDate.getHours();
 
   // 사주 년도 (입춘 기준)
   const sajuYear = getSajuYear(year, month, day);
@@ -440,7 +451,12 @@ export function calculateSaju(input: SajuInput): SajuPillars {
   const yearIndices = getYearPillarIndices(sajuYear);
   const monthIndices = getMonthPillarIndices(yearIndices.stemIndex, sajuMonth);
   const dayIndices = getDayPillarIndices(year, month, day);
-  const hourIndices = getHourPillarIndices(dayIndices.stemIndex, hour);
+
+  // 야자시 처리: 23시 이후는 다음날 일간으로 시주 천간 계산
+  const dayIndexForHour = hour >= 23
+    ? (dayIndices.stemIndex + 1) % 10
+    : dayIndices.stemIndex;
+  const hourIndices = getHourPillarIndices(dayIndexForHour, hour);
 
   // Pillar 객체 생성 (일간 기준으로 십신 계산)
   const yearPillar = buildPillar(yearIndices.stemIndex, yearIndices.branchIndex, dayIndices.stemIndex, 'year');
@@ -461,6 +477,8 @@ export function calculateSaju(input: SajuInput): SajuPillars {
     dayIndices.stemIndex,
     input.gender,
     sajuYear,
+    month,
+    day,
   );
 
   // 현재 대운
