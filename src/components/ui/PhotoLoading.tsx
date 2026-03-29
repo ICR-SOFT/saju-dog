@@ -1,29 +1,47 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 const LOADING_IMAGES = [
   '/images/comprehensive.png',
   '/images/compatibility.png',
   '/images/daily.png',
   '/images/chat.png',
+  '/images/daeun.png',
+  '/images/yearly.png',
+  '/images/luckyday.png',
+  '/images/love.png',
+  '/images/wealth.png',
+  '/images/health.png',
+  '/images/career.png',
+  '/images/business.png',
+  '/images/pastlife.png',
+  '/images/moving.png',
 ];
 
+// 이미지 프리로드 캐시 (컴포넌트 밖에서 1회만 실행)
+const imageCache: HTMLImageElement[] = [];
+if (imageCache.length === 0) {
+  for (const src of LOADING_IMAGES) {
+    const img = new Image();
+    img.src = src;
+    imageCache.push(img);
+  }
+}
+
 export function PhotoLoading() {
-  // Each slot cycles through images at different offsets
   const [indices, setIndices] = useState([0, 1, 2, 3]);
   const [fade, setFade] = useState([true, true, true, true]);
+  const intervalsRef = useRef<ReturnType<typeof setInterval>[]>([]);
 
   useEffect(() => {
-    const intervals = indices.map((_, slotIndex) => {
-      const delay = 300 + slotIndex * 150; // staggered timing
+    intervalsRef.current = indices.map((_, slotIndex) => {
+      const delay = 300 + slotIndex * 150;
       return setInterval(() => {
-        // Trigger fade-out
         setFade(prev => {
           const next = [...prev];
           next[slotIndex] = false;
           return next;
         });
 
-        // After fade-out, change image and fade-in
         setTimeout(() => {
           setIndices(prev => {
             const next = [...prev];
@@ -39,7 +57,7 @@ export function PhotoLoading() {
       }, delay + 400);
     });
 
-    return () => intervals.forEach(clearInterval);
+    return () => intervalsRef.current.forEach(clearInterval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -54,7 +54,10 @@ export const useSajuStore = create<SajuState>((set, get) => ({
 
   fetchProfiles: async () => {
     const session = await getValidSession();
-    if (!session) return;
+    if (!session) {
+      console.warn('[saju] fetchProfiles: 유효한 세션 없음 — 스킵');
+      return;
+    }
     const user = session.user;
     const { data, error } = await supabase
       .from('saju_profiles')
@@ -200,13 +203,22 @@ export const useSajuStore = create<SajuState>((set, get) => ({
   },
 
   fetchReadings: async () => {
+    const session = await getValidSession();
+    if (!session) {
+      console.warn('[saju] fetchReadings: 유효한 세션 없음 — 스킵');
+      return;
+    }
+
     const { data, error } = await supabase
       .from('readings')
       .select('*')
       .in('processing_status', ['completed', 'pending', 'processing', 'failed'])
       .order('created_at', { ascending: false });
 
-    if (error) return;
+    if (error) {
+      console.warn('[saju] fetchReadings 실패:', error.message);
+      return;
+    }
     set({ readings: data || [] });
   },
 

@@ -6,8 +6,12 @@ import type { SajuApiResponse } from '@/types/saju.ts';
 // 백그라운드 복귀 후 깨지는 문제 방지. 실패 시 세션 갱신 후 1회 재시도.
 
 async function invokeEdgeFunction(name: string, body: Record<string, unknown>) {
+  console.log(`[api] invokeEdgeFunction: ${name}`);
   const session = await getValidSession();
-  if (!session) throw new Error('로그인이 필요합니다');
+  if (!session) {
+    console.warn(`[api] invokeEdgeFunction(${name}): 세션 없음 — 중단`);
+    throw new Error('로그인이 필요합니다');
+  }
 
   let { data, error } = await supabase.functions.invoke(name, {
     body,
@@ -16,6 +20,7 @@ async function invokeEdgeFunction(name: string, body: Record<string, unknown>) {
 
   // 실패 시 토큰 갱신 후 1회 재시도
   if (error) {
+    console.warn(`[api] invokeEdgeFunction(${name}) 실패, 토큰 갱신 후 재시도:`, error.message);
     const { data: refreshData } = await supabase.auth.refreshSession();
     if (refreshData.session) {
       ({ data, error } = await supabase.functions.invoke(name, {
