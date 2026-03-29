@@ -62,62 +62,84 @@ supabase.auth.onAuthStateChange((event, session) => {
  * 5초 타임아웃: Supabase GoTrue lock 교착 방지
  */
 export async function getValidSession(): Promise<Session | null> {
-  try {
-    const { data: { session } } = await withTimeout(
-      supabase.auth.getSession(),
-      5000,
-      'getSession',
-    );
+  const maxRetries = 3;
 
-    if (!session) {
-      if (DEBUG) authLog('getValidSession: 세션 없음');
-      return null;
-    }
-
-    const now = Math.floor(Date.now() / 1000);
-    const expiresAt = session.expires_at ?? 0;
-    const remainSec = expiresAt - now;
-
-    if (DEBUG) authLog(`getValidSession: 토큰 만료까지 ${remainSec}초`);
-
-    // 만료 60초 전부터 선제 갱신
-    if (now >= expiresAt - 60) {
-      authLog(`토큰 갱신 시도 (잔여 ${remainSec}초)`);
-
-      const { data, error } = await withTimeout(
-        supabase.auth.refreshSession(),
-        10000,
-        'refreshSession',
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const { data: { session } } = await withTimeout(
+        supabase.auth.getSession(),
+        5000,
+        'getSession',
       );
 
-      if (error || !data.session) {
-        authLog('토큰 갱신 실패 → 로그아웃', error?.message);
-        await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+      if (!session) {
+        if (DEBUG) authLog('getValidSession: 세션 없음');
         return null;
       }
 
-      authLog('토큰 갱신 성공', {
-        newExpiresAt: new Date((data.session.expires_at ?? 0) * 1000).toLocaleTimeString('ko-KR'),
-      });
-      return data.session;
-    }
+      const now = Math.floor(Date.now() / 1000);
+      const expiresAt = session.expires_at ?? 0;
+      const remainSec = expiresAt - now;
 
-    return session;
-  } catch (err) {
-    // 타임아웃 또는 기타 에러
-    authLog('getValidSession 실패 → 로그아웃', err instanceof Error ? err.message : err);
-    await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
-    return null;
+      if (DEBUG) authLog(`getValidSession: 토큰 만료까지 ${remainSec}초`);
+
+      // 만료 60초 전부터 선제 갱신
+      if (now >= expiresAt - 60) {
+        authLog(`토큰 갱신 시도 (잔여 ${remainSec}초)`);
+
+        const { data, error } = await withTimeout(
+          supabase.auth.refreshSession(),
+          10000,
+          'refreshSession',
+        );
+
+        if (error || !data.session) {
+          authLog('토큰 갱신 실패 → 로그아웃', error?.message);
+          await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+          return null;
+        }
+
+        authLog('토큰 갱신 성공', {
+          newExpiresAt: new Date((data.session.expires_at ?? 0) * 1000).toLocaleTimeString('ko-KR'),
+        });
+        return data.session;
+      }
+
+      return session;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const isTimeout = msg.includes('타임아웃');
+
+      if (isTimeout && attempt < maxRetries) {
+        // 타임아웃 → GoTrue lock 대기 중일 수 있음, 재시도
+        authLog(`getValidSession 타임아웃, ${attempt}/${maxRetries} 재시도 (2초 대기)`);
+        await new Promise(r => setTimeout(r, 2000));
+        continue;
+      }
+
+      // 최종 실패
+      authLog(`getValidSession 최종 실패 (${attempt}/${maxRetries}) → 로그아웃`, msg);
+      await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+      return null;
+    }
   }
+
+  return null;
 }
 
 // ===== 탭 복귀 시 세션 복구 =====
+// startAutoRefresh()가 내부 lock을 잡고 갱신하므로, 즉시 getSession() 호출하면
+// lock 대기 → 타임아웃 → 잘못된 로그아웃이 발생할 수 있음.
+// 해결: auto-refresh가 완료될 시간(3초)을 준 후 세션 검증
 document.addEventListener('visibilitychange', async () => {
   if (document.visibilityState === 'visible') {
-    authLog('탭 복귀 — 세션 검증 시작');
+    authLog('탭 복귀 — autoRefresh 재시작');
     supabase.auth.startAutoRefresh();
 
-    // getValidSession이 타임아웃 보호 + 갱신 + 로그아웃까지 처리
+    // auto-refresh가 lock 잡고 토큰 갱신할 시간을 줌
+    await new Promise(r => setTimeout(r, 3000));
+
+    authLog('탭 복귀 — 세션 검증 시작');
     const session = await getValidSession();
     authLog('탭 복귀 — 세션 검증 완료', { hasSession: !!session });
   } else {
