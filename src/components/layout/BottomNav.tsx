@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
 const NAV_ITEMS = [
-  { path: '/', label: '홈', icon: '🏠', isCenter: false },
-  { path: '/add-profile', label: '사주추가', icon: '👤', isCenter: false },
-  { path: '/daily', label: '무료운세', icon: '🔮', isCenter: true },
-  { path: '/chat', label: '사주상담', icon: '💬', isCenter: false },
-  { path: '/archive', label: '보관함', icon: '📚', isCenter: false },
+  { path: '/', label: '홈', icon: '/icons/nav-home.png', isCenter: false },
+  { path: '/add-profile', label: '사주추가', icon: '/icons/nav-profile.png', isCenter: false },
+  { path: '/daily', label: '무료운세', icon: '/icons/nav-fortune.png', isCenter: true },
+  { path: '/chat', label: '사주상담', icon: '/icons/nav-chat.png', isCenter: false },
+  { path: '/archive', label: '보관함', icon: '/icons/nav-archive.png', isCenter: false },
 ] as const;
 
 export function BottomNav() {
@@ -15,7 +15,7 @@ export function BottomNav() {
   const [logoError, setLogoError] = useState(false);
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-cream-dark safe-area-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-cream-dark border-t border-warm-gray-light/15 safe-area-bottom">
       <div className="mx-auto max-w-lg flex items-end relative">
         {NAV_ITEMS.map(item => {
           const isActive = item.path === '/'
@@ -30,7 +30,7 @@ export function BottomNav() {
                 className="flex-1 flex flex-col items-center -mt-5 relative z-10"
               >
                 <div
-                  className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg ring-4 ring-white transition-transform active:scale-95 overflow-hidden ${
+                  className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg ring-4 ring-cream-dark transition-transform active:scale-95 overflow-hidden ${
                     isActive ? 'bg-brown' : 'bg-brown-light'
                   }`}
                 >
@@ -42,7 +42,11 @@ export function BottomNav() {
                       onError={() => setLogoError(true)}
                     />
                   ) : (
-                    <span className="text-2xl">{item.icon}</span>
+                    <img
+                      src={item.icon}
+                      alt={item.label}
+                      className="w-8 h-8 object-contain"
+                    />
                   )}
                 </div>
                 <span className={`text-[10px] mt-0.5 ${isActive ? 'text-brown font-medium' : 'text-warm-gray'}`}>
@@ -65,7 +69,13 @@ export function BottomNav() {
                   isActive ? 'bg-brown/10 scale-110' : ''
                 }`}
               >
-                <span className="text-xl">{item.icon}</span>
+                <img
+                  src={item.icon}
+                  alt={item.label}
+                  className={`w-6 h-6 object-contain transition-opacity ${
+                    isActive ? 'opacity-100' : 'opacity-50'
+                  }`}
+                />
               </div>
               <span>{item.label}</span>
               {isActive && (

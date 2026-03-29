@@ -378,8 +378,8 @@ ${luckySection}
 ## 귀인: ${fmtArr(s.guiin)}
 ## 공망: ${fmtArr(s.gongmang)}
 
-## 대운
-${data.daeun?.map(d => `- ${d.startAge}~${d.endAge}세: ${d.stem}${d.branch} [${d.stemSipsin}/${d.branchSipsin}]${d.isCurrent ? ' ★현재' : ''}`).join('\n') || '없음'}
+## 대운 (★현재 표시된 대운이 현재 대운입니다. 나이 범위와 현재 대운을 반드시 아래 데이터 그대로 사용하세요. 절대 직접 계산하거나 수정하지 마세요.)
+${data.daeun?.map(d => `- ${d.startAge}~${d.endAge}세: ${d.stem}${d.branch} [${d.stemSipsin}/${d.branchSipsin}]${d.isCurrent ? ' ★현재 대운' : ''}`).join('\n') || '없음'}
 
 ## ${data.currentYear?.year || new Date().getFullYear()}년 세운
 - ${data.currentYear?.stem || '?'}${data.currentYear?.branch || '?'}년
@@ -548,7 +548,7 @@ async function processChatMessage(msg) {
 공망: ${fmtArr(s.gongmang)}
 현재 대운: ${data.daeun?.find(d => d.isCurrent)?.stem || '?'}${data.daeun?.find(d => d.isCurrent)?.branch || '?'}`;
 
-    const systemPrompt = `당신은 '복돌이'라는 이름의 사주 상담 골든 리트리버입니다.
+    const systemPrompt = `당신은 '멍도령'이라는 이름의 사주 상담 골든 리트리버입니다.
 사용자의 사주 데이터를 기반으로 친근하고 따뜻하게 상담합니다.
 
 ${sajuContext}
@@ -927,7 +927,7 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 // ===== 시작 =====
 console.log(`
 ╔═══════════════════════════════════════════╗
-║  🐕 사주독 워커                            ║
+║  🐕 운명전쟁 워커                            ║
 ║  Poll: ${POLL_INTERVAL}ms | Concurrent: ${MAX_CONCURRENT}            ║
 ║  Retry: 무한 (지수 백오프, max 60s)        ║
 ║  ${new Date().toISOString()}          ║

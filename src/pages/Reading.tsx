@@ -157,7 +157,7 @@ export function Reading() {
     return (
       <Layout>
         <Card className="text-center py-12">
-          <img src="/images/logo.png" alt="복돌이" className="w-12 h-12 mx-auto mb-3 rounded-full" />
+          <img src="/images/logo.png" alt="멍도령" className="w-12 h-12 mx-auto mb-3 rounded-full" />
           <p className="text-warm-gray mb-3">프로필을 찾을 수 없습니다</p>
           <Button onClick={() => navigate('/')}>홈으로</Button>
         </Card>
@@ -193,7 +193,7 @@ export function Reading() {
             onError={(e) => { (e.target as HTMLImageElement).src = getZodiacFallbackUrl(sajuData.ddi.animal); }}
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-cream via-transparent to-transparent" style={{ height: '40%', top: '60%' }} />
+        <div className="absolute inset-0 bg-gradient-to-t from-cream via-cream/50 to-transparent" style={{ height: '40%', top: '60%' }} />
       </div>
 
       {/* 프로필 정보 (이미지 아래) */}
@@ -236,13 +236,13 @@ export function Reading() {
                   <p className="text-xs font-medium text-dark">{pillarLabels[name]}</p>
                   {/* 신살 */}
                   {sajuData.sinsal.pillarSinsal[name].map((s, i) => (
-                    <span key={`s-${i}`} className="block text-[10px] bg-amber-50 text-amber-700 rounded px-1 py-0.5">
+                    <span key={`s-${i}`} className="block text-[10px] bg-amber-900/30 text-amber-300 rounded px-1 py-0.5">
                       {s}
                     </span>
                   ))}
                   {/* 관계 */}
                   {sajuData.sinsal.pillarRelations[name].map((r, i) => (
-                    <span key={`r-${i}`} className="block text-[10px] bg-blue-50 text-blue-600 rounded px-1 py-0.5">
+                    <span key={`r-${i}`} className="block text-[10px] bg-blue-900/30 text-blue-300 rounded px-1 py-0.5">
                       {r}
                     </span>
                   ))}
@@ -257,7 +257,7 @@ export function Reading() {
               <h3 className="text-xs font-medium text-warm-gray mb-1.5">귀인</h3>
               <div className="flex flex-wrap gap-1">
                 {sajuData.sinsal.guiin.map((g, i) => (
-                  <span key={i} className="text-[10px] bg-green-50 text-green-700 rounded-full px-2 py-0.5">
+                  <span key={i} className="text-[10px] bg-green-900/30 text-green-300 rounded-full px-2 py-0.5">
                     {g}
                   </span>
                 ))}
@@ -271,7 +271,7 @@ export function Reading() {
               <h3 className="text-xs font-medium text-warm-gray mb-1.5">전체 신살</h3>
               <div className="flex flex-wrap gap-1">
                 {sajuData.sinsal.allSinsal.map((s, i) => (
-                  <span key={i} className="text-[10px] bg-red-50 text-red-600 rounded-full px-2 py-0.5">
+                  <span key={i} className="text-[10px] bg-red-900/30 text-red-400 rounded-full px-2 py-0.5">
                     {s}
                   </span>
                 ))}
@@ -299,12 +299,12 @@ export function Reading() {
         </div>
       )}
 
-      {/* 복돌이 풀이 섹션 */}
+      {/* 멍도령 풀이 섹션 */}
       <div className="mt-4">
-        <Card className="bg-gradient-to-br from-amber-50/80 to-orange-50/50 border-brown/10 mb-4">
+        <Card className="bg-gradient-to-br from-amber-900/20 to-orange-900/10 border-brown/15 mb-4">
           <h3 className="text-lg font-bold text-dark font-serif flex items-center gap-2">
             <span className="w-8 h-8 rounded-full bg-brown/10 flex items-center justify-center text-lg"><img src="/images/logo.png" alt="" className="w-full h-full rounded-full object-cover" /></span>
-            복돌이 풀이
+            멍도령 풀이
           </h3>
         </Card>
 
@@ -312,7 +312,7 @@ export function Reading() {
         {displayResult && (activePhase === 'view' || activePhase === 'result') ? (
           <div className="space-y-4">
             {/* 요약 */}
-            <Card className="text-center bg-gradient-to-br from-brown/5 to-amber-50/30">
+            <Card className="text-center bg-gradient-to-br from-brown/10 to-amber-900/20">
               <p className="text-lg font-medium text-dark font-serif">
                 " <span dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(displayResult.summary) }} /> "
               </p>
@@ -334,7 +334,7 @@ export function Reading() {
               <Card>
                 <h3 className="font-bold text-dark mb-2 flex items-center gap-2">
                   <span className="w-7 h-7 rounded-full bg-brown/10 flex items-center justify-center text-sm">🐾</span>
-                  복돌이의 조언
+                  멍도령의 조언
                 </h3>
                 <ul className="space-y-2">
                   {displayResult.advice.map((a, i) => (
@@ -348,11 +348,11 @@ export function Reading() {
 
             {/* 행운 아이템 */}
             {displayResult.luckyItems && (
-              <Card className="bg-gradient-to-br from-emerald-50/50 to-green-50/30">
+              <Card className="bg-gradient-to-br from-emerald-900/20 to-green-900/15">
                 <h3 className="text-sm font-bold text-dark mb-2 text-center">🍀 행운 아이템</h3>
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   {Object.entries(displayResult.luckyItems).map(([key, val]) => (
-                    <div key={key} className="bg-white/70 rounded-xl p-2.5 text-center shadow-sm">
+                    <div key={key} className="bg-cream/70 rounded-xl p-2.5 text-center shadow-sm">
                       <p className="text-warm-gray text-xs">
                         {key === 'color' ? '🎨 행운 색' : key === 'number' ? '🔢 행운 숫자' : key === 'direction' ? '🧭 행운 방향' : '🍽️ 행운 음식'}
                       </p>
@@ -365,7 +365,7 @@ export function Reading() {
 
             {/* 공유 */}
             {cachedReading?.id && (
-              <Card className="text-center bg-gradient-to-br from-sky-50/50 to-blue-50/30">
+              <Card className="text-center bg-gradient-to-br from-sky-900/20 to-blue-900/15">
                 <p className="text-sm text-dark mb-2">이 풀이를 친구에게 공유해보세요!</p>
                 <Button
                   variant="secondary"
@@ -396,7 +396,7 @@ export function Reading() {
             <div className="text-4xl mb-3">🔮</div>
             <p className="text-dark font-medium mb-1">{SERVICE_LABELS[serviceType] || '사주풀이'}</p>
             <p className="text-sm text-warm-gray mb-4">
-              복돌이가 사주를 깊이 분석하고 풀어드려요
+              멍도령이 사주를 깊이 분석하고 풀어드려요
             </p>
             <Button size="lg" onClick={() => openConfirmModal(false)}>
               풀이받기
@@ -413,7 +413,7 @@ export function Reading() {
               <p className="text-xs text-warm-gray-light">
                 {processingStatus === 'requesting'
                   ? '요청이 접수될 때까지 잠시만 기다려주세요'
-                  : `복돌이가 열심히 풀이 중이에요! 예상 약 ${estimatedWaitSec}초`}
+                  : `멍도령이 열심히 풀이 중이에요! 예상 약 ${estimatedWaitSec}초`}
               </p>
               {processingStatus === 'processing' && (
                 <p className="text-xs text-warm-gray-light mt-1">페이지를 나가도 완료되면 보관함에서 확인할 수 있어요</p>
@@ -421,8 +421,8 @@ export function Reading() {
             </div>
           </Card>
         ) : activePhase === 'error' ? (
-          <Card className="text-center bg-gradient-to-br from-red-50/50 to-orange-50/30 border-red-200/50">
-            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-red-100 flex items-center justify-center">
+          <Card className="text-center bg-gradient-to-br from-red-900/20 to-orange-900/15 border-red-500/20">
+            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-red-900/30 flex items-center justify-center">
               <span className="text-2xl">😢</span>
             </div>
             <p className="text-red-500 mb-3 text-sm font-medium">{error || '풀이를 불러올 수 없습니다'}</p>

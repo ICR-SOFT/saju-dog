@@ -1,11 +1,11 @@
 import type { Pillar } from '@/types/saju.ts';
 
 const OHAENG_COLORS: Record<string, string> = {
-  '목': 'bg-green-100 text-green-700 border-green-300',
-  '화': 'bg-red-100 text-red-700 border-red-300',
-  '토': 'bg-yellow-100 text-yellow-700 border-yellow-300',
-  '금': 'bg-gray-100 text-gray-700 border-gray-300',
-  '수': 'bg-blue-100 text-blue-700 border-blue-300',
+  '목': 'bg-green-900/40 text-green-300 border-green-700/50',
+  '화': 'bg-red-900/40 text-red-300 border-red-700/50',
+  '토': 'bg-yellow-900/40 text-yellow-300 border-yellow-700/50',
+  '금': 'bg-gray-700/40 text-gray-300 border-gray-600/50',
+  '수': 'bg-blue-900/40 text-blue-300 border-blue-700/50',
 };
 
 interface PillarCardProps {

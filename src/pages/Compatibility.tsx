@@ -164,7 +164,7 @@ export function Compatibility() {
       {phase === 'loading' && (
         <Card className="text-center py-4 gradient-hero mb-4">
           <PhotoLoading />
-          <p className="text-xs text-warm-gray animate-pulse-warm mt-2">복돌이가 인연을 살펴보고 있어요...</p>
+          <p className="text-xs text-warm-gray animate-pulse-warm mt-2">멍도령이 인연을 살펴보고 있어요...</p>
           <p className="text-xs text-warm-gray-light mt-1">풀이가 완료되면 보관함에서도 확인할 수 있어요</p>
           <p className="text-[10px] text-warm-gray-light/70 mt-0.5">완료 전까지 잠시만 기다려주세요</p>
         </Card>
@@ -182,11 +182,11 @@ export function Compatibility() {
               return (
                 <div key={index} className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-200 to-rose-300 flex items-center justify-center text-xs font-bold text-white shrink-0 shadow-sm ring-2 ring-white">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-700 to-rose-600 flex items-center justify-center text-xs font-bold text-white shrink-0 shadow-sm ring-2 ring-cream-dark">
                       {index + 1}
                     </div>
                     <select
-                      className="flex-1 rounded-xl border border-warm-gray-light/50 bg-white px-4 py-2.5 text-dark outline-none focus:border-brown text-sm"
+                      className="flex-1 rounded-xl border border-warm-gray-light/50 bg-cream px-4 py-2.5 text-dark outline-none focus:border-brown text-sm"
                       value={id}
                       onChange={e => setSelectedIds(prev => { const n = [...prev]; n[index] = e.target.value; return n; })}
                     >
@@ -200,12 +200,12 @@ export function Compatibility() {
                         value={roles[id] || ''}
                         onChange={e => setRoles(prev => ({ ...prev, [id]: e.target.value }))}
                         placeholder="역할"
-                        className="w-20 rounded-lg border border-warm-gray-light/50 bg-white px-2 py-2 text-dark text-xs outline-none focus:border-brown shrink-0"
+                        className="w-20 rounded-lg border border-warm-gray-light/50 bg-cream px-2 py-2 text-dark text-xs outline-none focus:border-brown shrink-0"
                       />
                     )}
                     {selectedIds.length > 2 && (
                       <button type="button" onClick={() => setSelectedIds(prev => prev.filter((_, i) => i !== index))}
-                        className="w-7 h-7 rounded-full bg-red-50 text-red-400 hover:bg-red-100 flex items-center justify-center text-sm shrink-0">
+                        className="w-7 h-7 rounded-full bg-red-900/20 text-red-400 hover:bg-red-900/30 flex items-center justify-center text-sm shrink-0">
                         &times;
                       </button>
                     )}
@@ -231,7 +231,7 @@ export function Compatibility() {
                     className={`text-xs px-3 py-1.5 rounded-full transition-all border ${
                       !isCustomRelation && !isRoleInput && relationType === r.value
                         ? 'bg-brown text-cream border-brown'
-                        : 'bg-white text-dark border-cream-dark hover:border-brown/30'
+                        : 'bg-cream text-dark border-warm-gray-light/20 hover:border-brown/30'
                     }`}>
                     {r.emoji} {r.label}
                   </button>
@@ -241,7 +241,7 @@ export function Compatibility() {
                   className={`text-xs px-3 py-1.5 rounded-full transition-all border ${
                     isRoleInput
                       ? 'bg-brown text-cream border-brown'
-                      : 'bg-white text-dark border-cream-dark hover:border-brown/30'
+                      : 'bg-cream text-dark border-warm-gray-light/20 hover:border-brown/30'
                   }`}>
                   🏷️ 역할 입력
                 </button>
@@ -250,7 +250,7 @@ export function Compatibility() {
                   className={`text-xs px-3 py-1.5 rounded-full transition-all border ${
                     isCustomRelation
                       ? 'bg-brown text-cream border-brown'
-                      : 'bg-white text-dark border-cream-dark hover:border-brown/30'
+                      : 'bg-cream text-dark border-warm-gray-light/20 hover:border-brown/30'
                   }`}>
                   ✏️ 직접 입력
                 </button>
@@ -261,7 +261,7 @@ export function Compatibility() {
                   type="text"
                   value={relationType}
                   placeholder="관계를 직접 입력하세요 (예: 룸메이트, 선후배)"
-                  className="w-full rounded-xl border border-warm-gray-light/50 bg-white px-4 py-2 text-dark text-sm outline-none focus:border-brown"
+                  className="w-full rounded-xl border border-warm-gray-light/50 bg-cream px-4 py-2 text-dark text-sm outline-none focus:border-brown"
                   onChange={e => setRelationType(e.target.value)}
                 />
               )}
@@ -271,13 +271,13 @@ export function Compatibility() {
                   type="text"
                   value={relationType}
                   placeholder="관계를 입력하세요 (예: 동업관계, 팀 프로젝트)"
-                  className="w-full rounded-xl border border-warm-gray-light/50 bg-white px-4 py-2 text-dark text-sm outline-none focus:border-brown"
+                  className="w-full rounded-xl border border-warm-gray-light/50 bg-cream px-4 py-2 text-dark text-sm outline-none focus:border-brown"
                   onChange={e => setRelationType(e.target.value)}
                 />
               )}
             </div>
 
-            {error && <p className="text-sm text-red-500 text-center bg-red-50 rounded-xl p-2">{error}</p>}
+            {error && <p className="text-sm text-red-500 text-center bg-red-900/20 rounded-xl p-2">{error}</p>}
 
             <Button size="lg" onClick={() => setShowConfirmModal(true)} disabled={selectedIds.length < 2}>
               궁합 보기
@@ -290,7 +290,7 @@ export function Compatibility() {
       {compatReadings.length > 0 && (
         <div className="mb-4">
           <h3 className="text-sm font-bold text-dark mb-2 flex items-center gap-1.5">
-            <span className="w-6 h-6 rounded-full bg-pink-100 flex items-center justify-center text-xs">💕</span>
+            <span className="w-6 h-6 rounded-full bg-pink-900/30 flex items-center justify-center text-xs">💕</span>
             궁합 내역
           </h3>
           <div className="space-y-2">
@@ -299,7 +299,7 @@ export function Compatibility() {
                 className="cursor-pointer hover:shadow-md active:scale-[0.99] transition-all"
                 onClick={() => navigate(`/archive/${r.id}`)}>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-100 to-rose-100 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-900/30 to-rose-900/30 flex items-center justify-center">
                     <span>💕</span>
                   </div>
                   <div className="flex-1">

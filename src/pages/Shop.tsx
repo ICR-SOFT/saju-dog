@@ -48,7 +48,7 @@ export function Shop() {
         amount: { currency: 'KRW', value: selected.price },
         orderId,
         orderName: `뼈다귀 ${selected.bones}개`,
-        customerName: '사주독 사용자',
+        customerName: '운명전쟁 사용자',
         successUrl: `${window.location.origin}/shop/success`,
         failUrl: `${window.location.origin}/shop/fail`,
       });

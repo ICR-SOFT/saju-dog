@@ -125,7 +125,7 @@ export function AddProfile() {
           <div>
             <label className="text-sm font-medium text-dark-light block mb-1.5">관계</label>
             <select
-              className="w-full rounded-xl border border-warm-gray-light/50 bg-white px-4 py-2.5 text-dark outline-none focus:border-brown focus:ring-1 focus:ring-brown/20 text-sm transition-all"
+              className="w-full rounded-xl border border-warm-gray-light/50 bg-cream px-4 py-2.5 text-dark outline-none focus:border-brown focus:ring-1 focus:ring-brown/20 text-sm transition-all"
               value={form.relation}
               onChange={e => updateField('relation', e.target.value)}
             >
@@ -149,7 +149,7 @@ export function AddProfile() {
                   className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all border-2 ${
                     form.gender === g
                       ? 'bg-brown text-cream border-brown shadow-md'
-                      : 'bg-white text-warm-gray border-cream-dark hover:border-brown/30'
+                      : 'bg-cream text-warm-gray border-warm-gray-light/20 hover:border-brown/30'
                   }`}
                 >
                   {g === 'male' ? '👦 남성' : '👧 여성'}
@@ -222,7 +222,7 @@ export function AddProfile() {
                   className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all border-2 ${
                     form.calendarType === cal.value
                       ? 'bg-brown text-cream border-brown shadow-md'
-                      : 'bg-white text-warm-gray border-cream-dark hover:border-brown/30'
+                      : 'bg-cream text-warm-gray border-warm-gray-light/20 hover:border-brown/30'
                   }`}
                 >
                   {cal.label}
@@ -232,7 +232,7 @@ export function AddProfile() {
           </div>
 
           {error && (
-            <p className="text-sm text-red-500 text-center bg-red-50 rounded-xl p-2">{error}</p>
+            <p className="text-sm text-red-500 text-center bg-red-900/20 rounded-xl p-2">{error}</p>
           )}
 
           <Button type="submit" size="lg" isLoading={isLoading}>
@@ -242,7 +242,7 @@ export function AddProfile() {
       </Card>
 
       {/* 도움말 카드 */}
-      <Card className="mt-4 bg-gradient-to-br from-amber-50/50 to-yellow-50/30 border-amber-100/50" padding="sm">
+      <Card className="mt-4 bg-gradient-to-br from-amber-900/20 to-yellow-900/15 border-amber-500/20" padding="sm">
         <div className="flex items-start gap-2">
           <span className="text-lg">💡</span>
           <div>

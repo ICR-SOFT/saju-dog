@@ -11,7 +11,7 @@ const SERVICE_LABELS: Record<string, { label: string; emoji: string; borderColor
   daily: { label: '오늘의 운세', emoji: '🌅', borderColor: 'border-l-orange-400' },
   daeun: { label: '대운 분석', emoji: '🌊', borderColor: 'border-l-teal-400' },
   yearly: { label: '연간 운세', emoji: '📅', borderColor: 'border-l-violet-400' },
-  chat: { label: '복돌이 상담', emoji: '💬', borderColor: 'border-l-sky-400' },
+  chat: { label: '멍도령 상담', emoji: '💬', borderColor: 'border-l-sky-400' },
   business: { label: '동업 궁합', emoji: '🤝', borderColor: 'border-l-slate-400' },
   luckyday: { label: '택일/길일', emoji: '🗓️', borderColor: 'border-l-yellow-400' },
   love: { label: '연애 시기', emoji: '💘', borderColor: 'border-l-rose-400' },
@@ -23,10 +23,10 @@ const SERVICE_LABELS: Record<string, { label: string; emoji: string; borderColor
 };
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  completed: { label: '완료', className: 'bg-green-100 text-green-700' },
-  pending: { label: '대기 중', className: 'bg-yellow-100 text-yellow-700 animate-pulse' },
-  processing: { label: '풀이 중...', className: 'bg-blue-100 text-blue-700 animate-pulse' },
-  failed: { label: '실패 (환불됨)', className: 'bg-red-100 text-red-600' },
+  completed: { label: '완료', className: 'bg-green-900/30 text-green-300' },
+  pending: { label: '대기 중', className: 'bg-yellow-900/30 text-yellow-300 animate-pulse' },
+  processing: { label: '풀이 중...', className: 'bg-blue-900/30 text-blue-300 animate-pulse' },
+  failed: { label: '실패 (환불됨)', className: 'bg-red-900/30 text-red-400' },
 };
 
 export function Archive() {

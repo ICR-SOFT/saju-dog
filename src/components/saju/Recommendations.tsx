@@ -17,7 +17,7 @@ const RECOMMENDATIONS: Recommendation[] = [
     subtitle: 'SNS에서 소문난 궁합 맛집',
     emoji: '💕',
     cost: '🦴 3',
-    gradient: 'from-pink-50 to-rose-50',
+    gradient: 'from-pink-900/30 to-rose-900/30',
   },
   {
     type: 'daeun',
@@ -25,7 +25,7 @@ const RECOMMENDATIONS: Recommendation[] = [
     subtitle: '언제 물 들어오는지 한번 확인해보자구요',
     emoji: '🌊',
     cost: '🦴 2',
-    gradient: 'from-teal-50 to-cyan-50',
+    gradient: 'from-teal-900/30 to-cyan-900/30',
   },
   {
     type: 'yearly',
@@ -33,7 +33,7 @@ const RECOMMENDATIONS: Recommendation[] = [
     subtitle: '내후년 운세는 어떨까?',
     emoji: '📅',
     cost: '🦴 2',
-    gradient: 'from-violet-50 to-purple-50',
+    gradient: 'from-violet-900/30 to-purple-900/30',
   },
   {
     type: 'daily',
@@ -41,7 +41,7 @@ const RECOMMENDATIONS: Recommendation[] = [
     subtitle: '간단한 한줄운세는 이제 그만~',
     emoji: '🌅',
     cost: '무료',
-    gradient: 'from-orange-50 to-yellow-50',
+    gradient: 'from-orange-900/30 to-yellow-900/30',
   },
   {
     type: 'luckyday',
@@ -49,15 +49,15 @@ const RECOMMENDATIONS: Recommendation[] = [
     subtitle: 'Top 3 길일을 골라드려요',
     emoji: '🗓️',
     cost: '🦴 2',
-    gradient: 'from-amber-50 to-yellow-50',
+    gradient: 'from-amber-900/30 to-yellow-900/30',
   },
   {
     type: 'chat',
     title: '더 궁금한 점이 있다면?',
-    subtitle: '복돌이에게 직접 물어보세요!',
+    subtitle: '멍도령에게 직접 물어보세요!',
     emoji: '💬',
     cost: '🦴 1',
-    gradient: 'from-sky-50 to-blue-50',
+    gradient: 'from-sky-900/30 to-blue-900/30',
   },
 ];
 
@@ -116,7 +116,7 @@ export function Recommendations({ exclude = [], limit = 5 }: RecommendationsProp
               <p className="text-xs text-warm-gray mt-0.5">{rec.subtitle}</p>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-              <span className="text-[11px] font-medium text-brown bg-white/60 rounded-full px-2 py-0.5 border border-brown/10">
+              <span className="text-[11px] font-medium text-brown bg-cream-dark/60 rounded-full px-2 py-0.5 border border-brown/15">
                 {rec.cost}
               </span>
               <span className="text-warm-gray text-sm">›</span>

@@ -184,28 +184,6 @@ export function Home() {
         </div>
       )}
 
-      {/* 히어로 배너 */}
-      <div
-        onClick={() => handleServiceClick('daily')}
-        className="relative -mx-4 -mt-4 px-6 pt-10 pb-8 rounded-b-3xl overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
-        style={{
-          background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 40%, #f59e0b 100%)',
-        }}
-      >
-        <div className="absolute inset-0 paw-bg opacity-20" />
-        <div className="relative z-10">
-          <p className="text-white/90 text-sm font-medium mb-1">매일 아침, 복돌이가 챙겨주는 ✨</p>
-          <h2
-            className="text-3xl font-bold text-white font-serif leading-tight"
-            style={{ textShadow: '2px 2px 0px rgba(0,0,0,0.4), 0 0 20px rgba(0,0,0,0.2)' }}
-          >
-            하루 운세<br />지금 확인하기
-          </h2>
-          <span className="inline-block mt-3 text-xs bg-white/25 backdrop-blur-sm text-white rounded-full px-4 py-1.5 font-medium">
-            바로 확인하기 &rarr;
-          </span>
-        </div>
-      </div>
 
       {/* 로그인 안내 (비로그인) */}
       {!isAuthenticated && (
@@ -276,7 +254,7 @@ export function Home() {
                       showToast('프로필이 삭제되었어요');
                     } catch { showToast('삭제에 실패했어요'); }
                   }}
-                  className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded-lg hover:bg-red-50 transition-colors"
+                  className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded-lg hover:bg-red-500/10 transition-colors"
                 >
                   삭제
                 </button>
@@ -303,7 +281,7 @@ export function Home() {
         </div>
       </div>
 
-      {/* 복돌이 상담 풀폭 카드 */}
+      {/* 멍도령 상담 풀폭 카드 */}
       <div className="mb-6">
         <div
           onClick={() => handleServiceClick('chat')}
@@ -311,12 +289,12 @@ export function Home() {
         >
           <img
             src="/images/chat.png"
-            alt="복돌이 상담"
+            alt="멍도령 상담"
             className="absolute inset-0 w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-4">
-            <h3 className="text-white text-xl font-bold font-serif">복돌이 상담</h3>
+            <h3 className="text-white text-xl font-bold font-serif">멍도령 상담</h3>
             <p className="text-white/80 text-xs mt-0.5">사주에 대해 궁금한 것을 자유롭게 물어보세요</p>
             <span className="inline-block mt-2 text-xs bg-white/20 backdrop-blur-sm text-white rounded-full px-3 py-1">
               🦴 1

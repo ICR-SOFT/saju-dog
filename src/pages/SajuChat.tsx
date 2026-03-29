@@ -186,7 +186,7 @@ export function SajuChat() {
     return (
       <Layout>
         <div className="text-center mb-4 -mx-4 -mt-4 px-4 pt-5 pb-4 gradient-hero rounded-b-3xl">
-          <h2 className="text-xl font-bold text-dark font-serif">복돌이 상담 💬</h2>
+          <h2 className="text-xl font-bold text-dark font-serif">멍도령 상담 💬</h2>
           <p className="text-xs text-warm-gray mt-1">사주에 대한 모든 궁금증을 해결해드려요</p>
         </div>
 
@@ -256,7 +256,7 @@ export function SajuChat() {
           {messages.length === 0 && !isWaiting && (
             <Card className="text-center">
               <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-brown/10 flex items-center justify-center">
-                <img src="/images/logo.png" alt="복돌이" className="w-12 h-12 rounded-full object-cover animate-float" />
+                <img src="/images/logo.png" alt="멍도령" className="w-12 h-12 rounded-full object-cover animate-float" />
               </div>
               <p className="text-dark font-bold font-serif">안녕하세요, 보호자님!</p>
               <p className="text-sm text-warm-gray mt-1 mb-4">사주에 대해 궁금한 것을 물어보세요</p>
@@ -279,13 +279,13 @@ export function SajuChat() {
             <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               {msg.role === 'assistant' && (
                 <div className="w-8 h-8 rounded-full bg-brown/10 flex items-center justify-center mr-2 mt-1 flex-shrink-0 border border-brown/10">
-                  <img src="/images/logo.png" alt="복돌이" className="w-full h-full rounded-full object-cover" />
+                  <img src="/images/logo.png" alt="멍도령" className="w-full h-full rounded-full object-cover" />
                 </div>
               )}
               <div className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
                 msg.role === 'user'
                   ? 'bg-gradient-to-br from-brown to-brown-dark text-cream rounded-br-sm shadow-md'
-                  : 'bg-white text-dark border border-cream-dark rounded-bl-sm card-glow'
+                  : 'bg-cream-dark text-dark border border-warm-gray-light/20 rounded-bl-sm card-glow'
               }`}>
                 {msg.role === 'assistant'
                   ? <span dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(msg.content) }} />
@@ -299,9 +299,9 @@ export function SajuChat() {
           {isWaiting && (
             <div className="flex justify-start">
               <div className="w-8 h-8 rounded-full bg-brown/10 flex items-center justify-center mr-2 flex-shrink-0 border border-brown/10">
-                <img src="/images/logo.png" alt="복돌이" className="w-full h-full rounded-full object-cover" />
+                <img src="/images/logo.png" alt="멍도령" className="w-full h-full rounded-full object-cover" />
               </div>
-              <div className="bg-white rounded-2xl rounded-bl-sm px-4 py-3 border border-cream-dark shadow-sm">
+              <div className="bg-cream-dark rounded-2xl rounded-bl-sm px-4 py-3 border border-warm-gray-light/20 shadow-sm">
                 <div className="flex gap-1.5">
                   <span className="w-2 h-2 bg-brown/30 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                   <span className="w-2 h-2 bg-brown/30 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -326,9 +326,9 @@ export function SajuChat() {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="복돌이에게 물어보세요..."
+              placeholder="멍도령에게 물어보세요..."
               disabled={isWaiting}
-              className="flex-1 rounded-xl border border-warm-gray-light/50 bg-white px-4 py-2.5 text-dark placeholder:text-warm-gray-light outline-none focus:border-brown focus:ring-1 focus:ring-brown/20 text-sm transition-all disabled:opacity-50"
+              className="flex-1 rounded-xl border border-warm-gray-light/30 bg-cream px-4 py-2.5 text-dark placeholder:text-warm-gray-light outline-none focus:border-brown focus:ring-1 focus:ring-brown/20 text-sm transition-all disabled:opacity-50"
             />
             <Button onClick={() => handleSend()} disabled={!input.trim() || isWaiting} size="md">
               전송

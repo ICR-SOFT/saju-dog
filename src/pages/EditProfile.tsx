@@ -123,7 +123,7 @@ export function EditProfile() {
           <div>
             <label className="text-sm font-medium text-dark-light block mb-1.5">관계</label>
             <select
-              className="w-full rounded-xl border border-warm-gray-light/50 bg-white px-4 py-2.5 text-dark outline-none focus:border-brown text-sm"
+              className="w-full rounded-xl border border-warm-gray-light/50 bg-cream px-4 py-2.5 text-dark outline-none focus:border-brown text-sm"
               value={form.relation}
               onChange={e => updateField('relation', e.target.value)}
             >
@@ -139,7 +139,7 @@ export function EditProfile() {
               {(['male', 'female'] as const).map(g => (
                 <button key={g} type="button" onClick={() => updateField('gender', g)}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all border-2 ${
-                    form.gender === g ? 'bg-brown text-cream border-brown shadow-md' : 'bg-white text-warm-gray border-cream-dark'
+                    form.gender === g ? 'bg-brown text-cream border-brown shadow-md' : 'bg-cream text-warm-gray border-warm-gray-light/20'
                   }`}>
                   {g === 'male' ? '👦 남성' : '👧 여성'}
                 </button>
@@ -164,7 +164,7 @@ export function EditProfile() {
             </div>
           </div>
 
-          {error && <p className="text-sm text-red-500 text-center bg-red-50 rounded-xl p-2">{error}</p>}
+          {error && <p className="text-sm text-red-500 text-center bg-red-900/20 rounded-xl p-2">{error}</p>}
 
           <Button type="submit" size="lg" isLoading={isLoading}>저장하기</Button>
         </form>

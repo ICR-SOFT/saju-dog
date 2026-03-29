@@ -14,10 +14,10 @@ export function ScoreRing({ score, maxScore = 100, size = 'md', color = '#ec4899
   return (
     <div className={`relative ${sizes[size]} mx-auto`}>
       <div className="absolute inset-0 rounded-full" style={{
-        background: `conic-gradient(${color} ${pct}%, #E8DFD3 ${pct}%)`,
+        background: `conic-gradient(${color} ${pct}%, #2a2a3a ${pct}%)`,
         padding: '4px',
       }}>
-        <div className="w-full h-full rounded-full bg-white flex flex-col items-center justify-center">
+        <div className="w-full h-full rounded-full bg-cream-dark flex flex-col items-center justify-center">
           <span className={`${textSizes[size]} font-bold text-dark font-serif`}>{score}</span>
           <span className="text-xs text-warm-gray">{label}</span>
         </div>

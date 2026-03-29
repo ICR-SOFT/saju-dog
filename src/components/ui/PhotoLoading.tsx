@@ -46,7 +46,7 @@ export function PhotoLoading() {
   return (
     <div className="flex flex-col items-center gap-4 py-6">
       {/* Photo booth frame */}
-      <div className="bg-white rounded-2xl p-3 shadow-lg border-2 border-cream-dark">
+      <div className="bg-cream-dark rounded-2xl p-3 shadow-lg border-2 border-warm-gray-light/20">
         <div className="grid grid-cols-2 gap-2">
           {indices.map((imgIndex, slot) => (
             <div
@@ -67,7 +67,7 @@ export function PhotoLoading() {
 
       {/* Typing dots text */}
       <p className="text-sm text-warm-gray flex items-center gap-1">
-        복돌이가 열심히 분석 중
+        멍도령이 열심히 분석 중
         <span className="typing-dots">
           <span className="dot">.</span>
           <span className="dot">.</span>

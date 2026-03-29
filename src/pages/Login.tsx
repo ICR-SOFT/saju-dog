@@ -86,8 +86,8 @@ export function Login() {
             <Logo size="xl" animate className="w-24 h-24 shadow-md border-2 border-brown/10" />
             <span className="absolute -top-1 -right-1 text-xl animate-sparkle">✨</span>
           </div>
-          <h1 className="text-3xl font-bold text-dark font-serif">사주독</h1>
-          <p className="text-brown font-medium mt-1 text-sm">사주로 보는 나의 이야기</p>
+          <h1 className="text-3xl font-bold text-dark font-serif">운명전쟁</h1>
+          <p className="text-brown font-medium mt-1 text-sm">사주로 읽는 나의 운명</p>
         </div>
 
         {/* SNS 로그인 */}
@@ -102,7 +102,7 @@ export function Login() {
           </button>
           <button
             onClick={() => handleOAuth('google')}
-            className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-all active:scale-[0.98]"
+            className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium bg-cream-dark border border-warm-gray-light/20 text-dark hover:bg-warm-gray-light/10 transition-all active:scale-[0.98]"
           >
             <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2a10.341 10.341 0 0 0-.164-1.841H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
             Google로 시작하기
@@ -125,7 +125,7 @@ export function Login() {
                 type="text"
                 value={nickname}
                 onChange={e => setNickname(e.target.value)}
-                placeholder="복돌이에게 불릴 이름"
+                placeholder="멍도령에게 불릴 이름"
               />
             )}
             <Input

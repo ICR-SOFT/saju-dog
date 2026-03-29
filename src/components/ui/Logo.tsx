@@ -15,7 +15,7 @@ export function Logo({ size = 'md', className = '', animate = false }: LogoProps
   return (
     <img
       src="/images/logo.png"
-      alt="복돌이"
+      alt="멍도령"
       className={`${SIZES[size]} rounded-full object-cover ${animate ? 'animate-float' : ''} ${className}`}
     />
   );

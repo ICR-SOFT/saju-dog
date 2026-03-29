@@ -35,10 +35,10 @@ interface DailyResult {
 
 const DAILY_SCORE_EMOJIS = ['', '😢', '😐', '🙂', '😊', '🤩'];
 const DAILY_CATEGORY_INFO = [
-  { key: 'love' as const, label: '연애', emoji: '💕', bgColor: 'bg-gradient-to-br from-pink-50 to-rose-50', iconBg: 'bg-pink-100 ring-2 ring-pink-200/50' },
-  { key: 'money' as const, label: '재물', emoji: '💰', bgColor: 'bg-gradient-to-br from-yellow-50 to-amber-50', iconBg: 'bg-yellow-100 ring-2 ring-yellow-200/50' },
-  { key: 'work' as const, label: '직장', emoji: '💼', bgColor: 'bg-gradient-to-br from-blue-50 to-indigo-50', iconBg: 'bg-blue-100 ring-2 ring-blue-200/50' },
-  { key: 'health' as const, label: '건강', emoji: '🏥', bgColor: 'bg-gradient-to-br from-green-50 to-emerald-50', iconBg: 'bg-green-100 ring-2 ring-green-200/50' },
+  { key: 'love' as const, label: '연애', emoji: '💕', bgColor: 'bg-gradient-to-br from-pink-900/25 to-rose-900/25', iconBg: 'bg-pink-900/40 ring-2 ring-pink-700/30' },
+  { key: 'money' as const, label: '재물', emoji: '💰', bgColor: 'bg-gradient-to-br from-yellow-900/25 to-amber-900/25', iconBg: 'bg-yellow-900/40 ring-2 ring-yellow-700/30' },
+  { key: 'work' as const, label: '직장', emoji: '💼', bgColor: 'bg-gradient-to-br from-blue-900/25 to-indigo-900/25', iconBg: 'bg-blue-900/40 ring-2 ring-blue-700/30' },
+  { key: 'health' as const, label: '건강', emoji: '🏥', bgColor: 'bg-gradient-to-br from-green-900/25 to-emerald-900/25', iconBg: 'bg-green-900/40 ring-2 ring-green-700/30' },
 ];
 
 const SERVICE_LABELS: Record<string, { label: string; emoji: string }> = {
@@ -47,7 +47,7 @@ const SERVICE_LABELS: Record<string, { label: string; emoji: string }> = {
   daily: { label: '오늘의 운세', emoji: '🌅' },
   daeun: { label: '대운 분석', emoji: '🌊' },
   yearly: { label: '연간 운세', emoji: '📅' },
-  chat: { label: '복돌이 상담', emoji: '💬' },
+  chat: { label: '멍도령 상담', emoji: '💬' },
   business: { label: '동업 궁합', emoji: '🤝' },
   luckyday: { label: '길일 추천', emoji: '🗓️' },
   love: { label: '연애 시기 분석', emoji: '💘' },
@@ -157,7 +157,7 @@ export function ReadingDetail() {
     return (
       <Layout>
         <Card className="text-center py-12">
-          <img src="/images/logo.png" alt="복돌이" className="w-12 h-12 mx-auto mb-3 rounded-full" />
+          <img src="/images/logo.png" alt="멍도령" className="w-12 h-12 mx-auto mb-3 rounded-full" />
           <p className="text-warm-gray mb-3">{error || '풀이를 찾을 수 없습니다'}</p>
           <Button onClick={() => navigate('/archive')}>보관함으로</Button>
         </Card>
@@ -176,7 +176,7 @@ export function ReadingDetail() {
           <img src={getCompatibilityImageUrl()} alt="" className="absolute inset-0 w-full h-full object-cover" />
         )}
         {!sajuData && !isCompatibility && <div className="absolute inset-0 gradient-hero" />}
-        <div className="absolute inset-0 bg-gradient-to-t from-cream via-transparent to-transparent" style={{ height: '40%', top: '60%' }} />
+        <div className="absolute inset-0 bg-gradient-to-t from-cream via-cream/50 to-transparent" style={{ height: '40%', top: '60%' }} />
         <button
           onClick={() => navigate('/archive')}
           className="absolute left-4 top-5 z-20 flex items-center gap-1 text-white/80 text-sm hover:text-white"
@@ -227,10 +227,10 @@ export function ReadingDetail() {
                 <div key={name} className="space-y-1">
                   <p className="text-xs font-medium text-dark">{{ year: '년주', month: '월주', day: '일주', hour: '시주' }[name]}</p>
                   {sajuData.sinsal.pillarSinsal[name].map((s, i) => (
-                    <span key={`s-${i}`} className="block text-[10px] bg-amber-50 text-amber-700 rounded px-1 py-0.5">{s}</span>
+                    <span key={`s-${i}`} className="block text-[10px] bg-amber-900/30 text-amber-300 rounded px-1 py-0.5">{s}</span>
                   ))}
                   {sajuData.sinsal.pillarRelations[name].map((r, i) => (
-                    <span key={`r-${i}`} className="block text-[10px] bg-blue-50 text-blue-600 rounded px-1 py-0.5">{r}</span>
+                    <span key={`r-${i}`} className="block text-[10px] bg-blue-900/30 text-blue-300 rounded px-1 py-0.5">{r}</span>
                   ))}
                 </div>
               ))}
@@ -243,7 +243,7 @@ export function ReadingDetail() {
               <h3 className="text-xs font-medium text-warm-gray mb-1.5">귀인</h3>
               <div className="flex flex-wrap gap-1">
                 {sajuData.sinsal.guiin.map((g, i) => (
-                  <span key={i} className="text-[10px] bg-green-50 text-green-700 rounded-full px-2 py-0.5">{g}</span>
+                  <span key={i} className="text-[10px] bg-green-900/30 text-green-300 rounded-full px-2 py-0.5">{g}</span>
                 ))}
               </div>
             </Card>
@@ -255,7 +255,7 @@ export function ReadingDetail() {
               <h3 className="text-xs font-medium text-warm-gray mb-1.5">전체 신살</h3>
               <div className="flex flex-wrap gap-1">
                 {sajuData.sinsal.allSinsal.map((s, i) => (
-                  <span key={i} className="text-[10px] bg-red-50 text-red-600 rounded-full px-2 py-0.5">{s}</span>
+                  <span key={i} className="text-[10px] bg-red-900/30 text-red-400 rounded-full px-2 py-0.5">{s}</span>
                 ))}
               </div>
             </Card>
@@ -316,7 +316,7 @@ export function ReadingDetail() {
                 <Card>
                   <h3 className="font-bold text-dark mb-2 flex items-center gap-2">
                     <span className="w-7 h-7 rounded-full bg-brown/10 flex items-center justify-center text-sm">🐾</span>
-                    복돌이의 조언
+                    멍도령의 조언
                   </h3>
                   <p className="text-sm text-dark-light leading-relaxed" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(daily.advice) }} />
                 </Card>
@@ -324,23 +324,23 @@ export function ReadingDetail() {
 
               {/* 행운 아이템 */}
               {daily.luckyItems && (
-                <Card className="bg-gradient-to-br from-emerald-50/50 to-green-50/30">
+                <Card className="bg-gradient-to-br from-emerald-900/20 to-green-900/15">
                   <h3 className="text-sm font-bold text-dark mb-3 text-center flex items-center justify-center gap-1.5">
-                    <span className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center text-sm">🍀</span>
+                    <span className="w-7 h-7 rounded-full bg-green-900/40 flex items-center justify-center text-sm">🍀</span>
                     행운 아이템
                   </h3>
                   <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                    <div className="bg-white/70 rounded-2xl px-3 py-3 shadow-sm border border-green-100/50">
+                    <div className="bg-cream/70 rounded-2xl px-3 py-3 shadow-sm border border-green-700/30">
                       <span className="text-lg">🎨</span>
                       <p className="text-warm-gray mt-1 mb-0.5">행운 색</p>
                       <p className="font-bold text-dark">{daily.luckyItems.color}</p>
                     </div>
-                    <div className="bg-white/70 rounded-2xl px-3 py-3 shadow-sm border border-green-100/50">
+                    <div className="bg-cream/70 rounded-2xl px-3 py-3 shadow-sm border border-green-700/30">
                       <span className="text-lg">🔢</span>
                       <p className="text-warm-gray mt-1 mb-0.5">행운 숫자</p>
                       <p className="font-bold text-dark">{daily.luckyItems.number}</p>
                     </div>
-                    <div className="bg-white/70 rounded-2xl px-3 py-3 shadow-sm border border-green-100/50">
+                    <div className="bg-cream/70 rounded-2xl px-3 py-3 shadow-sm border border-green-700/30">
                       <span className="text-lg">🍽️</span>
                       <p className="text-warm-gray mt-1 mb-0.5">행운 음식</p>
                       <p className="font-bold text-dark">{daily.luckyItems.food}</p>
@@ -362,7 +362,7 @@ export function ReadingDetail() {
           )}
 
           {result.summary && (
-            <Card className="text-center bg-gradient-to-br from-brown/5 to-amber-50/30">
+            <Card className="text-center bg-gradient-to-br from-brown/10 to-amber-900/20">
               <p className="text-lg font-medium text-dark font-serif" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(`"${result.summary}"`) }} />
             </Card>
           )}
@@ -373,7 +373,7 @@ export function ReadingDetail() {
             <Card>
               <h3 className="font-bold text-dark mb-2 flex items-center gap-2">
                 <span className="w-7 h-7 rounded-full bg-brown/10 flex items-center justify-center text-sm">🐾</span>
-                복돌이의 조언
+                멍도령의 조언
               </h3>
               <ul className="space-y-2">
                 {result.advice.map((a, i) => (
@@ -386,11 +386,11 @@ export function ReadingDetail() {
           )}
 
           {result.luckyItems && (
-            <Card className="bg-gradient-to-br from-emerald-50/50 to-green-50/30">
+            <Card className="bg-gradient-to-br from-emerald-900/20 to-green-900/15">
               <h3 className="text-sm font-bold text-dark mb-2 text-center">🍀 행운 아이템</h3>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 {Object.entries(result.luckyItems).map(([key, val]) => (
-                  <div key={key} className="bg-white/70 rounded-xl p-2.5 text-center shadow-sm">
+                  <div key={key} className="bg-cream/70 rounded-xl p-2.5 text-center shadow-sm">
                     <p className="text-warm-gray text-xs">
                       {key === 'color' ? '🎨 행운 색' : key === 'number' ? '🔢 행운 숫자' : key === 'direction' ? '🧭 행운 방향' : '🍽️ 행운 음식'}
                     </p>

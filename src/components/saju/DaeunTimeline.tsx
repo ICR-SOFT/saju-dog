@@ -22,7 +22,7 @@ export function DaeunTimeline({ daeun }: DaeunTimelineProps) {
                 : 'bg-cream-dark'
             }`}
             style={d.isCurrent ? {
-              background: 'linear-gradient(135deg, #C67A3C15 0%, #D4945E20 100%)',
+              background: 'linear-gradient(135deg, #D4A84325 0%, #E8C46920 100%)',
             } : undefined}
           >
             <p className="text-[10px] text-warm-gray">{d.startAge}~{d.endAge}세</p>

@@ -26,10 +26,10 @@ interface DailyResult {
 
 const SCORE_EMOJIS = ['', '😢', '😐', '🙂', '😊', '🤩'];
 const CATEGORY_INFO = [
-  { key: 'love' as const, label: '연애', emoji: '💕', bgColor: 'bg-gradient-to-br from-pink-50 to-rose-50', iconBg: 'bg-pink-100 ring-2 ring-pink-200/50' },
-  { key: 'money' as const, label: '재물', emoji: '💰', bgColor: 'bg-gradient-to-br from-yellow-50 to-amber-50', iconBg: 'bg-yellow-100 ring-2 ring-yellow-200/50' },
-  { key: 'work' as const, label: '직장', emoji: '💼', bgColor: 'bg-gradient-to-br from-blue-50 to-indigo-50', iconBg: 'bg-blue-100 ring-2 ring-blue-200/50' },
-  { key: 'health' as const, label: '건강', emoji: '🏥', bgColor: 'bg-gradient-to-br from-green-50 to-emerald-50', iconBg: 'bg-green-100 ring-2 ring-green-200/50' },
+  { key: 'love' as const, label: '연애', emoji: '💕', bgColor: 'bg-gradient-to-br from-pink-900/25 to-rose-900/25', iconBg: 'bg-pink-900/40 ring-2 ring-pink-700/30' },
+  { key: 'money' as const, label: '재물', emoji: '💰', bgColor: 'bg-gradient-to-br from-yellow-900/25 to-amber-900/25', iconBg: 'bg-yellow-900/40 ring-2 ring-yellow-700/30' },
+  { key: 'work' as const, label: '직장', emoji: '💼', bgColor: 'bg-gradient-to-br from-blue-900/25 to-indigo-900/25', iconBg: 'bg-blue-900/40 ring-2 ring-blue-700/30' },
+  { key: 'health' as const, label: '건강', emoji: '🏥', bgColor: 'bg-gradient-to-br from-green-900/25 to-emerald-900/25', iconBg: 'bg-green-900/40 ring-2 ring-green-700/30' },
 ];
 
 const POLL_INTERVAL = 5000;
@@ -171,7 +171,7 @@ export function DailyFortune() {
       ) : phase === 'loading' ? (
         <Card className="text-center py-4 gradient-hero">
           <PhotoLoading />
-          <p className="text-xs text-warm-gray animate-pulse-warm mt-2">복돌이가 오늘의 운세를 살펴보고 있어요...</p>
+          <p className="text-xs text-warm-gray animate-pulse-warm mt-2">멍도령이 오늘의 운세를 살펴보고 있어요...</p>
           <p className="text-xs text-warm-gray-light mt-1">풀이가 완료되면 보관함에서도 확인할 수 있어요</p>
           <p className="text-[10px] text-warm-gray-light/70 mt-0.5">완료 전까지 잠시만 기다려주세요</p>
         </Card>
@@ -189,11 +189,11 @@ export function DailyFortune() {
               <div
                 className="absolute inset-0 rounded-full"
                 style={{
-                  background: `conic-gradient(#C67A3C ${result.overallLuck * 20}%, #E8DFD3 ${result.overallLuck * 20}%)`,
+                  background: `conic-gradient(#D4A843 ${result.overallLuck * 20}%, #2a2a3a ${result.overallLuck * 20}%)`,
                   padding: '4px',
                 }}
               >
-                <div className="w-full h-full rounded-full bg-white flex flex-col items-center justify-center">
+                <div className="w-full h-full rounded-full bg-cream-dark flex flex-col items-center justify-center">
                   <span className="text-3xl">{SCORE_EMOJIS[result.overallLuck] || '🐕'}</span>
                   <span className="text-2xl font-bold text-brown font-serif mt-0.5">{result.overallLuck}/5</span>
                 </div>
@@ -242,23 +242,23 @@ export function DailyFortune() {
 
           {/* 행운 아이템 */}
           {result.luckyItems && (
-            <Card className="bg-gradient-to-br from-emerald-50/50 to-green-50/30">
+            <Card className="bg-gradient-to-br from-emerald-900/20 to-green-900/15">
               <h3 className="text-sm font-bold text-dark mb-3 text-center flex items-center justify-center gap-1.5">
-                <span className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center text-sm">🍀</span>
+                <span className="w-7 h-7 rounded-full bg-green-900/40 flex items-center justify-center text-sm">🍀</span>
                 행운 아이템
               </h3>
               <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                <div className="bg-white/70 rounded-2xl px-3 py-3 shadow-sm border border-green-100/50">
+                <div className="bg-cream/70 rounded-2xl px-3 py-3 shadow-sm border border-green-700/30">
                   <span className="text-lg">🎨</span>
                   <p className="text-warm-gray mt-1 mb-0.5">행운 색</p>
                   <p className="font-bold text-dark">{result.luckyItems.color}</p>
                 </div>
-                <div className="bg-white/70 rounded-2xl px-3 py-3 shadow-sm border border-green-100/50">
+                <div className="bg-cream/70 rounded-2xl px-3 py-3 shadow-sm border border-green-700/30">
                   <span className="text-lg">🔢</span>
                   <p className="text-warm-gray mt-1 mb-0.5">행운 숫자</p>
                   <p className="font-bold text-dark">{result.luckyItems.number}</p>
                 </div>
-                <div className="bg-white/70 rounded-2xl px-3 py-3 shadow-sm border border-green-100/50">
+                <div className="bg-cream/70 rounded-2xl px-3 py-3 shadow-sm border border-green-700/30">
                   <span className="text-lg">🍽️</span>
                   <p className="text-warm-gray mt-1 mb-0.5">행운 음식</p>
                   <p className="font-bold text-dark">{result.luckyItems.food}</p>
@@ -291,7 +291,7 @@ export function DailyFortune() {
       ) : (
         // idle 상태 — 오늘 결과 없음
         <Card className="text-center py-8">
-          <img src="/images/logo.png" alt="복돌이" className="w-12 h-12 mx-auto mb-3 rounded-full" />
+          <img src="/images/logo.png" alt="멍도령" className="w-12 h-12 mx-auto mb-3 rounded-full" />
           <p className="text-warm-gray mb-3">오늘의 운세를 확인해보세요</p>
           <Button onClick={() => { setIsReread(false); setShowConfirmModal(true); }}>오늘의 운세 보기</Button>
         </Card>

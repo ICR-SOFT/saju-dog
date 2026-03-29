@@ -27,12 +27,12 @@ export function Header() {
   }, [showProfileMenu]);
 
   return (
-    <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-cream-dark">
+    <header className="sticky top-0 z-50 bg-cream/95 backdrop-blur-md border-b border-warm-gray-light/15">
       <div className="mx-auto max-w-lg flex items-center justify-between px-4 h-12">
         {/* Left: logo + title */}
         <button onClick={() => navigate('/')} className="flex items-center gap-2 group">
-          <img src="/images/logo.png" alt="사주독" className="w-7 h-7 rounded-full group-hover:scale-110 transition-transform object-cover" />
-          <h1 className="text-base font-bold text-dark font-serif leading-tight">사주독</h1>
+          <img src="/images/logo.png" alt="운명전쟁" className="w-7 h-7 rounded-full group-hover:scale-110 transition-transform object-cover" />
+          <h1 className="text-base font-bold text-dark font-serif leading-tight">운명전쟁</h1>
         </button>
 
         {/* Right: profile selector + credits + menu */}
@@ -48,7 +48,7 @@ export function Header() {
                 <span className="text-warm-gray text-[10px]">▾</span>
               </button>
               {showProfileMenu && (
-                <div className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-cream-dark py-1 z-50 min-w-[140px]">
+                <div className="absolute right-0 top-full mt-1 bg-cream-dark rounded-xl shadow-lg border border-warm-gray-light/20 py-1 z-50 min-w-[140px]">
                   {profiles.map((p, i) => (
                     <button
                       key={p.id}
@@ -65,7 +65,7 @@ export function Header() {
             </div>
           )}
           {isAuthenticated && (
-            <div className="flex items-center gap-1 rounded-full bg-cream px-2.5 py-1 text-sm border border-cream-dark">
+            <div className="flex items-center gap-1 rounded-full bg-cream-dark px-2.5 py-1 text-sm border border-warm-gray-light/20">
               <span>🦴</span>
               <span className="font-medium text-brown text-xs">{credits?.bones ?? 0}</span>
             </div>

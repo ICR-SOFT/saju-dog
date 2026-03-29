@@ -71,7 +71,7 @@ export function MyPage() {
             <input
               value={nickname}
               onChange={e => setNickname(e.target.value)}
-              className="text-center text-lg font-bold text-dark font-serif bg-white/80 rounded-lg px-3 py-1 border border-brown/20 outline-none w-32"
+              className="text-center text-lg font-bold text-dark font-serif bg-cream/80 rounded-lg px-3 py-1 border border-brown/20 outline-none w-32"
               maxLength={10}
               autoFocus
             />
@@ -96,18 +96,18 @@ export function MyPage() {
       <Card className="mb-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-dark flex items-center gap-2">
-            <span className="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center text-sm">💰</span>
+            <span className="w-7 h-7 rounded-full bg-amber-900/30 flex items-center justify-center text-sm">💰</span>
             내 재화
           </h3>
           <Button size="sm" onClick={() => navigate('/shop')}>충전하기</Button>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-4 text-center border border-amber-100/50">
+          <div className="bg-gradient-to-br from-amber-900/20 to-orange-900/20 rounded-2xl p-4 text-center border border-amber-500/20">
             <span className="text-3xl">🦴</span>
             <p className="font-bold text-dark text-2xl mt-1 font-serif">{credits?.bones ?? 0}</p>
             <p className="text-xs text-warm-gray font-medium">뼈다귀</p>
           </div>
-          <div className="bg-gradient-to-br from-rose-50 to-pink-50 rounded-2xl p-4 text-center border border-rose-100/50">
+          <div className="bg-gradient-to-br from-rose-900/20 to-pink-900/20 rounded-2xl p-4 text-center border border-rose-500/20">
             <span className="text-3xl">🍖</span>
             <p className="font-bold text-dark text-2xl mt-1 font-serif">{credits?.treats ?? 0}</p>
             <p className="text-xs text-warm-gray font-medium">간식</p>

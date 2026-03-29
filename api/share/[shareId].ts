@@ -14,8 +14,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const baseUrl = 'https://saju-dog.vercel.app';
   const spaUrl = `${baseUrl}/share/${shareId}`;
 
-  let title = '사주독 — 사주로 보는 나의 이야기';
-  let description = '사주독에서 나만의 운세를 확인해보세요';
+  let title = '운명전쟁 — 사주로 읽는 나의 운명';
+  let description = '운명전쟁에서 나만의 운세를 확인해보세요';
   let imageUrl = `${baseUrl}/images/og-image.png`;
 
   try {
@@ -68,9 +68,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
           } catch {}
         }
-        title = names.length > 0 ? `${names.join(' × ')}님의 궁합 — 사주독` : '궁합 — 사주독';
+        title = names.length > 0 ? `${names.join(' × ')}님의 궁합 — 운명전쟁` : '궁합 — 운명전쟁';
       } else if (profileName) {
-        title = `${profileName}님의 사주풀이 — 사주독`;
+        title = `${profileName}님의 사주풀이 — 운명전쟁`;
       }
     }
   } catch {}
@@ -90,7 +90,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   <meta property="og:image:width" content="512" />
   <meta property="og:image:height" content="512" />
   <meta property="og:url" content="${baseUrl}/api/share/${shareId}" />
-  <meta property="og:site_name" content="사주독" />
+  <meta property="og:site_name" content="운명전쟁" />
   <meta property="og:locale" content="ko_KR" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="${esc(title)}" />
@@ -109,8 +109,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 </head>
 <body>
   <div class="wrap">
-    <img src="${baseUrl}/images/logo.png" alt="사주독" class="logo" />
-    <h1>🐕 사주독</h1>
+    <img src="${baseUrl}/images/logo.png" alt="운명전쟁" class="logo" />
+    <h1>🐕 운명전쟁</h1>
     <div class="spinner"></div>
     <p>풀이를 불러오는 중...</p>
   </div>

@@ -21,10 +21,10 @@ export function ConfirmModal({ isOpen, title, cost, bones, onConfirm, onCancel }
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* 오버레이 */}
-      <div className="absolute inset-0 bg-black/50" onClick={onCancel} />
+      <div className="absolute inset-0 bg-black/70" onClick={onCancel} />
 
       {/* 모달 */}
-      <div className="relative bg-white rounded-2xl w-full max-w-sm shadow-xl p-5 space-y-4 animate-fade-in">
+      <div className="relative bg-cream-dark rounded-2xl w-full max-w-sm shadow-xl p-5 space-y-4 animate-fade-in border border-warm-gray-light/20">
         <div className="text-center">
           <Logo size="md" className="mx-auto" />
           <h3 className="text-lg font-bold text-dark font-serif mt-2">{title}</h3>
