@@ -39,8 +39,8 @@ function ServiceCard({ title, subtitle, cost, image, gradient, onClick }: Servic
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
       <div className="absolute bottom-0 left-0 right-0 p-4">
-        <h3 className="text-white text-lg font-bold font-serif" style={{ textShadow: '1px 1px 0 rgba(0,0,0,0.5), -1px -1px 0 rgba(0,0,0,0.2)' }}>{title}</h3>
-        <p className="text-white/90 text-xs mt-0.5" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>{subtitle}</p>
+        <h3 className="text-white text-lg font-bold font-serif" style={{ textShadow: '0 2px 4px rgba(0,0,0,1), 0 0 12px rgba(0,0,0,0.8), 0 0 24px rgba(0,0,0,0.5)' }}>{title}</h3>
+        <p className="text-white/90 text-xs mt-0.5" style={{ textShadow: '0 2px 4px rgba(0,0,0,1), 0 0 10px rgba(0,0,0,0.7)' }}>{subtitle}</p>
         <span className="inline-block mt-2 text-xs bg-white/20 backdrop-blur-sm text-white rounded-full px-3 py-1">
           {cost > 0 ? `🦴 ${cost}` : '무료'}
         </span>
