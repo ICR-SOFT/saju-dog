@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { supabase } from '@/lib/supabase.ts';
+import { supabase, getValidSession } from '@/lib/supabase.ts';
 import { useSajuStore } from './saju.ts';
 import { useCreditStore } from './credit.ts';
 import type { User } from '@/types/user.ts';
@@ -116,7 +116,7 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
   },
 
   updateNickname: async (nickname) => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const session = await getValidSession();
     if (!session) throw new Error('로그인 필요');
     const user = session.user;
     const { error } = await supabase

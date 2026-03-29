@@ -1,4 +1,4 @@
-import { supabase } from './supabase.ts';
+import { supabase, getValidSession } from './supabase.ts';
 import type { SajuApiResponse } from '@/types/saju.ts';
 
 // ===== Edge Function 호출 래퍼 =====
@@ -6,7 +6,7 @@ import type { SajuApiResponse } from '@/types/saju.ts';
 // 백그라운드 복귀 후 깨지는 문제 방지. 실패 시 세션 갱신 후 1회 재시도.
 
 async function invokeEdgeFunction(name: string, body: Record<string, unknown>) {
-  const { data: { session } } = await supabase.auth.getSession();
+  const session = await getValidSession();
   if (!session) throw new Error('로그인이 필요합니다');
 
   let { data, error } = await supabase.functions.invoke(name, {
@@ -114,7 +114,7 @@ export async function getChatSessions(): Promise<ChatSession[]> {
 
 /** 세션 생성 */
 export async function createChatSession(profileId: string): Promise<ChatSession> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const session = await getValidSession();
   if (!session) throw new Error('로그인 필요');
   const user = session.user;
   const { data, error } = await supabase

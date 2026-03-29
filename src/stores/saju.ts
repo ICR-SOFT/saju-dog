@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { supabase } from '@/lib/supabase.ts';
+import { supabase, getValidSession } from '@/lib/supabase.ts';
 import type { SajuProfile, Reading } from '@/types/user.ts';
 import type { SajuApiResponse } from '@/types/saju.ts';
 import { requestReading as apiRequestReading, pollReadingStatus } from '@/lib/api.ts';
@@ -53,7 +53,7 @@ export const useSajuStore = create<SajuState>((set, get) => ({
   readingCache: {},
 
   fetchProfiles: async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const session = await getValidSession();
     if (!session) return;
     const user = session.user;
     const { data, error } = await supabase
@@ -67,7 +67,7 @@ export const useSajuStore = create<SajuState>((set, get) => ({
   },
 
   addProfile: async (profile) => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const session = await getValidSession();
     if (!session) throw new Error('로그인이 필요합니다');
     const user = session.user;
 
