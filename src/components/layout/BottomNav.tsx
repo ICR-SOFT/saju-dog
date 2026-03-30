@@ -65,10 +65,10 @@ export function BottomNav() {
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
-                className="flex-1 flex flex-col items-center -mt-5 relative z-10"
+                className="flex-1 flex flex-col items-center -mt-2 relative z-10"
               >
                 <div
-                  className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg ring-4 ring-cream-dark transition-transform active:scale-95 overflow-hidden ${
+                  className={`w-11 h-11 rounded-full flex items-center justify-center shadow-md ring-3 ring-cream-dark transition-transform active:scale-95 overflow-hidden ${
                     isActive ? 'bg-brown' : 'bg-brown-light'
                   }`}
                 >
@@ -76,7 +76,7 @@ export function BottomNav() {
                     <img
                       src="/images/logo.png"
                       alt="무료운세"
-                      className="w-10 h-10 rounded-full object-cover"
+                      className="w-8 h-8 rounded-full object-cover"
                       onError={() => setLogoError(true)}
                     />
                   ) : (
