@@ -5,6 +5,7 @@ import { Layout } from '@/components/layout/Layout.tsx';
 import { FourPillars } from '@/components/saju/FourPillars.tsx';
 import { OhaengBar } from '@/components/saju/OhaengBar.tsx';
 import { DaeunTimeline } from '@/components/saju/DaeunTimeline.tsx';
+import { SinsalSummary } from '@/components/saju/SinsalSummary.tsx';
 import { ChapterAccordion } from '@/components/saju/ChapterAccordion.tsx';
 import { Loading } from '@/components/ui/Loading.tsx';
 import { Card } from '@/components/ui/Card.tsx';
@@ -204,39 +205,7 @@ export function SharedReading() {
           <FourPillars data={sajuData} />
           <OhaengBar count={sajuData.ohaengCount} />
 
-          {/* 기둥별 신살 & 관계 */}
-          <Card>
-            <h3 className="text-sm font-bold text-dark mb-3 flex items-center gap-1.5">
-              <span className="w-6 h-6 rounded-full bg-brown/10 flex items-center justify-center text-xs">⚡</span>
-              기둥별 신살 & 관계
-            </h3>
-            <div className="grid grid-cols-4 gap-1 text-center">
-              {pillarNames.map(name => (
-                <div key={name} className="space-y-1">
-                  <p className="text-xs font-medium text-dark">{pillarLabels[name]}</p>
-                  {sajuData.sinsal.pillarSinsal[name].map((s, i) => (
-                    <span key={`s-${i}`} className="block text-[10px] bg-amber-900/30 text-amber-300 rounded px-1 py-0.5">{s}</span>
-                  ))}
-                  {sajuData.sinsal.pillarRelations[name].map((r, i) => (
-                    <span key={`r-${i}`} className="block text-[10px] bg-blue-900/30 text-blue-300 rounded px-1 py-0.5">{r}</span>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          {/* 귀인 */}
-          {sajuData.sinsal.guiin.length > 0 && (
-            <Card padding="sm">
-              <h3 className="text-xs font-medium text-warm-gray mb-1.5">귀인</h3>
-              <div className="flex flex-wrap gap-1">
-                {sajuData.sinsal.guiin.map((g, i) => (
-                  <span key={i} className="text-[10px] bg-green-900/30 text-green-300 rounded-full px-2 py-0.5">{g}</span>
-                ))}
-              </div>
-            </Card>
-          )}
-
+          <SinsalSummary sajuData={sajuData} />
           <DaeunTimeline daeun={sajuData.daeun} />
         </div>
       )}

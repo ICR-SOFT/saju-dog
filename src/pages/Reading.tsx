@@ -6,6 +6,7 @@ import { Layout } from '@/components/layout/Layout.tsx';
 import { FourPillars } from '@/components/saju/FourPillars.tsx';
 import { OhaengBar } from '@/components/saju/OhaengBar.tsx';
 import { DaeunTimeline } from '@/components/saju/DaeunTimeline.tsx';
+import { SinsalSummary } from '@/components/saju/SinsalSummary.tsx';
 import { ChapterAccordion } from '@/components/saju/ChapterAccordion.tsx';
 import { Recommendations } from '@/components/saju/Recommendations.tsx';
 import { PhotoLoading } from '@/components/ui/PhotoLoading.tsx';
@@ -227,75 +228,8 @@ export function Reading() {
           <FourPillars data={sajuData} />
           <OhaengBar count={sajuData.ohaengCount} />
 
-          {/* 기둥별 신살 & 관계 */}
-          <Card>
-            <h3 className="text-sm font-medium text-warm-gray mb-3">기둥별 신살 & 관계</h3>
-            <div className="grid grid-cols-4 gap-1 text-center">
-              {pillarNames.map(name => (
-                <div key={name} className="space-y-1">
-                  <p className="text-xs font-medium text-dark">{pillarLabels[name]}</p>
-                  {/* 신살 */}
-                  {sajuData.sinsal.pillarSinsal[name].map((s, i) => (
-                    <span key={`s-${i}`} className="block text-[10px] bg-amber-900/30 text-amber-300 rounded px-1 py-0.5">
-                      {s}
-                    </span>
-                  ))}
-                  {/* 관계 */}
-                  {sajuData.sinsal.pillarRelations[name].map((r, i) => (
-                    <span key={`r-${i}`} className="block text-[10px] bg-blue-900/30 text-blue-300 rounded px-1 py-0.5">
-                      {r}
-                    </span>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          {/* 귀인 */}
-          {sajuData.sinsal.guiin.length > 0 && (
-            <Card padding="sm">
-              <h3 className="text-xs font-medium text-warm-gray mb-1.5">귀인</h3>
-              <div className="flex flex-wrap gap-1">
-                {sajuData.sinsal.guiin.map((g, i) => (
-                  <span key={i} className="text-[10px] bg-green-900/30 text-green-300 rounded-full px-2 py-0.5">
-                    {g}
-                  </span>
-                ))}
-              </div>
-            </Card>
-          )}
-
-          {/* 전체 신살 */}
-          {sajuData.sinsal.allSinsal.length > 0 && (
-            <Card padding="sm">
-              <h3 className="text-xs font-medium text-warm-gray mb-1.5">전체 신살</h3>
-              <div className="flex flex-wrap gap-1">
-                {sajuData.sinsal.allSinsal.map((s, i) => (
-                  <span key={i} className="text-[10px] bg-red-900/30 text-red-400 rounded-full px-2 py-0.5">
-                    {s}
-                  </span>
-                ))}
-              </div>
-              {sajuData.sinsal.gongmang.length > 0 && (
-                <p className="text-[10px] text-warm-gray mt-1">공망: {sajuData.sinsal.gongmang.join(', ')}</p>
-              )}
-            </Card>
-          )}
-
+          <SinsalSummary sajuData={sajuData} />
           <DaeunTimeline daeun={sajuData.daeun} />
-
-          {/* 세운 */}
-          <Card padding="sm">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-warm-gray">{sajuData.currentYear.year}년 세운</span>
-              <span className="font-bold text-dark font-serif">
-                {sajuData.currentYear.stem}{sajuData.currentYear.branch}
-              </span>
-              <span className="text-xs text-warm-gray">
-                {sajuData.currentYear.stemSipsin} / {sajuData.currentYear.branchSipsin}
-              </span>
-            </div>
-          </Card>
         </div>
       )}
 
