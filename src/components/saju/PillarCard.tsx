@@ -37,31 +37,27 @@ export function PillarCard({ pillar, label, isDay = false }: PillarCardProps) {
         <span className="text-[10px] opacity-70">{pillar.branchHanja}</span>
       </div>
 
-      {/* 지장간 (여기·중기·정기) */}
-      <div className="flex gap-0.5 mt-0.5">
+      {/* 지장간 (여기·중기·정기) — 천간 + 십신 표시 */}
+      <div className="flex flex-col items-center gap-0.5 mt-0.5">
         {pillar.jijanggan.map((j, i) => (
-          <span
-            key={i}
-            className={`text-[9px] px-1 py-0.5 rounded ${
-              j.type === '정기'
-                ? 'bg-brown/20 text-brown-light font-medium'
-                : 'bg-warm-gray/10 text-warm-gray-light'
-            }`}
-            title={`${j.type}: ${j.stem}(${j.sipsin})`}
-          >
-            {j.stem}<sub className="opacity-60">{TYPE_LABEL[j.type]}</sub>
-          </span>
+          <div key={i} className="flex items-center gap-1">
+            <span className={`text-[9px] w-4 text-center ${
+              j.type === '정기' ? 'text-brown-light font-bold' : 'text-warm-gray-light'
+            }`}>
+              {j.stem}
+            </span>
+            <span className={`text-[8px] ${
+              j.type === '정기' ? 'text-brown-light/80' : 'text-warm-gray-light/60'
+            }`}>
+              {j.sipsin}
+            </span>
+          </div>
         ))}
       </div>
 
       {/* 천간십신 */}
-      <span className="text-[10px] text-warm-gray">
+      <span className="text-[10px] text-warm-gray mt-0.5">
         {pillar.stemSipsin === '일주' ? '일간' : pillar.stemSipsin}
-      </span>
-
-      {/* 지지십신 */}
-      <span className="text-[10px] text-warm-gray-light">
-        {pillar.branchSipsin}
       </span>
 
       {/* 12운성 */}
