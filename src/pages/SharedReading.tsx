@@ -147,8 +147,6 @@ export function SharedReading() {
     );
   }
 
-  const pillarNames = ['year', 'month', 'day', 'hour'] as const;
-  const pillarLabels = { year: '년주', month: '월주', day: '일주', hour: '시주' };
 
   return (
     <Layout>
