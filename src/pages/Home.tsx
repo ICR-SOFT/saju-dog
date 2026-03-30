@@ -119,7 +119,18 @@ const MORE_SERVICES: typeof MAIN_SERVICES = [
   { type: 'moving', title: '이사/부동산 운', subtitle: '언제 어디로 이동하면 좋을까?', cost: 2, image: '/images/moving.png', gradient: 'bg-gradient-to-br from-stone-400 to-amber-600' },
 ];
 
-// 모든 서비스 구현됨
+const NEW_SERVICES: typeof MAIN_SERVICES = [
+  { type: 'mbti', title: '사주 MBTI', subtitle: '사주로 보는 16가지 성격유형', cost: 2, image: '/images/mbti.png', gradient: 'bg-gradient-to-br from-fuchsia-400 to-purple-500' },
+  { type: 'pet', title: '반려동물 궁합', subtitle: '나와 찰떡인 반려동물은?', cost: 2, image: '/images/pet.png', gradient: 'bg-gradient-to-br from-amber-400 to-orange-400' },
+  { type: 'travel', title: '여행 운세', subtitle: '올해 최고의 여행 방위는?', cost: 2, image: '/images/travel.png', gradient: 'bg-gradient-to-br from-cyan-400 to-teal-500' },
+  { type: 'food', title: '식복 분석', subtitle: '오행으로 보는 행운 음식', cost: 2, image: '/images/food.png', gradient: 'bg-gradient-to-br from-red-400 to-orange-500' },
+  { type: 'color', title: '사주 컬러', subtitle: '오행 퍼스널컬러 진단', cost: 2, image: '/images/color.png', gradient: 'bg-gradient-to-br from-pink-400 to-violet-500' },
+  { type: 'study', title: '합격 기운', subtitle: '시험/학업 운세와 공부법', cost: 2, image: '/images/study.png', gradient: 'bg-gradient-to-br from-sky-400 to-blue-500' },
+  { type: 'ancestor', title: '조상 음덕', subtitle: '가문에서 받은 기운 분석', cost: 2, image: '/images/ancestor.png', gradient: 'bg-gradient-to-br from-amber-600 to-yellow-700' },
+  { type: 'child', title: '자녀운', subtitle: '미래 자녀의 타고난 특성', cost: 2, image: '/images/child.png', gradient: 'bg-gradient-to-br from-pink-300 to-rose-400' },
+  { type: 'secret', title: '숨겨진 재능', subtitle: '사주 속 잠든 능력 발굴', cost: 2, image: '/images/secret.png', gradient: 'bg-gradient-to-br from-indigo-400 to-purple-600' },
+  { type: 'timing', title: '황금 타이밍', subtitle: '인생 전환점 종합 분석', cost: 2, image: '/images/timing.png', gradient: 'bg-gradient-to-br from-yellow-400 to-amber-500' },
+];
 
 export function Home() {
   const navigate = useNavigate();
@@ -310,6 +321,26 @@ export function Home() {
         </h3>
         <div className="grid grid-cols-2 gap-3">
           {MORE_SERVICES.map(service => (
+            <ServiceCard
+              key={service.type}
+              title={service.title}
+              subtitle={service.subtitle}
+              cost={service.cost}
+              image={service.image}
+              gradient={service.gradient}
+              onClick={() => handleMoreServiceClick(service.type)}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* 신규 서비스 */}
+      <div className="mb-6">
+        <h3 className="text-base font-bold text-dark mb-3 flex items-center gap-2">
+          <span>🔮</span> 새로운 풀이
+        </h3>
+        <div className="grid grid-cols-2 gap-3">
+          {NEW_SERVICES.map(service => (
             <ServiceCard
               key={service.type}
               title={service.title}

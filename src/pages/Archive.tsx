@@ -20,6 +20,16 @@ const SERVICE_LABELS: Record<string, { label: string; emoji: string; borderColor
   career: { label: '직업 적성', emoji: '🎯', borderColor: 'border-l-blue-400' },
   pastlife: { label: '전생 이야기', emoji: '🔮', borderColor: 'border-l-purple-400' },
   moving: { label: '이사운', emoji: '🏠', borderColor: 'border-l-stone-400' },
+  mbti: { label: '사주 MBTI', emoji: '🧬', borderColor: 'border-l-fuchsia-400' },
+  pet: { label: '반려동물 궁합', emoji: '🐾', borderColor: 'border-l-amber-400' },
+  travel: { label: '여행 운세', emoji: '✈️', borderColor: 'border-l-cyan-400' },
+  food: { label: '식복 분석', emoji: '🍽️', borderColor: 'border-l-red-400' },
+  color: { label: '사주 컬러', emoji: '🎨', borderColor: 'border-l-pink-400' },
+  study: { label: '합격 기운', emoji: '📚', borderColor: 'border-l-sky-400' },
+  ancestor: { label: '조상 음덕', emoji: '🏛️', borderColor: 'border-l-amber-600' },
+  child: { label: '자녀운', emoji: '👶', borderColor: 'border-l-pink-300' },
+  secret: { label: '숨겨진 재능', emoji: '💎', borderColor: 'border-l-indigo-400' },
+  timing: { label: '황금 타이밍', emoji: '⏰', borderColor: 'border-l-yellow-400' },
 };
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {

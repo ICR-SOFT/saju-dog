@@ -177,6 +177,16 @@ export function Reading() {
     career: '직업 적성 분석',
     pastlife: '전생 이야기',
     moving: '이사/부동산 운',
+    mbti: '사주 MBTI',
+    pet: '반려동물 궁합',
+    travel: '여행 운세',
+    food: '식복 분석',
+    color: '사주 컬러',
+    study: '합격 기운',
+    ancestor: '조상 음덕',
+    child: '자녀운',
+    secret: '숨겨진 재능',
+    timing: '황금 타이밍',
   };
 
 

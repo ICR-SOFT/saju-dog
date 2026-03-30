@@ -30,6 +30,8 @@ const CREDIT_COSTS = {
   comprehensive: 3, compatibility: 3, daeun: 2, yearly: 2,
   daily: 0, chat: 1, business: 3, luckyday: 2,
   love: 2, wealth: 2, health: 2, career: 2, pastlife: 2, moving: 2,
+  mbti: 2, pet: 2, travel: 2, food: 2, color: 2,
+  study: 2, ancestor: 2, child: 2, secret: 2, timing: 2,
 };
 
 // 현재 처리 중인 reading ID 추적
@@ -337,6 +339,16 @@ ${questionBlock}
     pastlife: '전생 이야기를 사주 기반으로 재미있게 풀어주세요.',
     moving: '이사/부동산 운을 특화 분석해주세요. 좋은 방위, 피할 방위, 이사 적기, 부동산 투자.',
     daily: '오늘의 운세를 분석해주세요.',
+    mbti: '사주 오행/십신 조합으로 MBTI 16유형 중 가장 가까운 유형을 매칭하고 각 축(E/I, S/N, T/F, J/P)의 비율을 사주 근거로 분석해주세요.',
+    pet: '사주 오행과 성격 분석으로 나와 가장 잘 맞는 반려동물 종류와 구체적 품종을 추천해주세요.',
+    travel: '용신 방위 기반으로 올해 최고의 여행 방위와 시기, 여행 스타일을 분석해주세요.',
+    food: '오행별 음식 매핑(목=채소, 화=매운맛, 토=단맛, 금=자극, 수=짠맛)으로 행운 음식과 식복을 분석해주세요.',
+    color: '오행별 컬러 매핑(목=초록, 화=빨강, 토=노랑, 금=흰색, 수=검정)으로 퍼스널컬러와 행운 컬러를 분석해주세요.',
+    study: '인성/식상으로 학습 스타일, 관성/재성으로 합격 타이밍, 대운에서 합격 최적기를 분석해주세요.',
+    ancestor: '년주로 조상 기운, 월주로 부모 기운, 귀인으로 음덕을 분석해주세요. 가문의 에너지와 물려받은 재능.',
+    child: '시주로 자녀 기운, 식상으로 자녀 수와 특성을 분석해주세요. 자녀와의 궁합, 최적 출산 시기, 양육 방향.',
+    secret: '지장간 여기/중기의 숨은 십신으로 잠재 재능을 파악하고, 공망 위치로 막힌 재능, 대운에서 발현 시기를 분석해주세요.',
+    timing: '대운/세운에서 결혼/이직/창업/부동산 등 인생 주요 결정의 황금 타이밍을 종합 분석해주세요. 용신 시기=황금기, 기신 시기=보류기.',
   };
   const serviceInstruction = SERVICE_INSTRUCTIONS[reading.service_type] || SERVICE_INSTRUCTIONS.comprehensive;
 

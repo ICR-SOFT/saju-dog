@@ -57,6 +57,16 @@ const SERVICE_LABELS: Record<string, { label: string; emoji: string }> = {
   career: { label: '직업 적성 분석', emoji: '🎯' },
   pastlife: { label: '전생 이야기', emoji: '🔮' },
   moving: { label: '이사/부동산 운', emoji: '🏠' },
+  mbti: { label: '사주 MBTI', emoji: '🧬' },
+  pet: { label: '반려동물 궁합', emoji: '🐾' },
+  travel: { label: '여행 운세', emoji: '✈️' },
+  food: { label: '식복 분석', emoji: '🍽️' },
+  color: { label: '사주 컬러', emoji: '🎨' },
+  study: { label: '합격 기운', emoji: '📚' },
+  ancestor: { label: '조상 음덕', emoji: '🏛️' },
+  child: { label: '자녀운', emoji: '👶' },
+  secret: { label: '숨겨진 재능', emoji: '💎' },
+  timing: { label: '황금 타이밍', emoji: '⏰' },
 };
 
 export function ReadingDetail() {
