@@ -51,6 +51,27 @@ supabase.auth.onAuthStateChange((event, session) => {
   }
 });
 
+// ===== GoTrue lock 교착 근본 우회 =====
+// supabase.from().select() 등 PostgREST 쿼리는 내부적으로
+// _getAccessToken() → getSession() 호출 → GoTrue lock 무한 대기 가능.
+// cachedSession의 access_token을 직접 반환하여 lock을 완전 우회.
+const originalGetAccessToken = (supabase as any)._getAccessToken?.bind(supabase);
+(supabase as any)._getAccessToken = async () => {
+  if (cachedSession?.access_token) {
+    return cachedSession.access_token;
+  }
+  // 캐시 없음 (최초 로드) → 원래 메서드 사용 (타임아웃 보호)
+  if (originalGetAccessToken) {
+    try {
+      return await withTimeout(originalGetAccessToken(), 3000, '_getAccessToken');
+    } catch {
+      authLog('_getAccessToken: 원본 메서드 타임아웃, null 반환');
+      return null;
+    }
+  }
+  return null;
+};
+
 // ===== 타임아웃 헬퍼 =====
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   return Promise.race([
