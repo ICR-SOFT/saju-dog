@@ -12,7 +12,7 @@ export function FourPillars({ data }: FourPillarsProps) {
   return (
     <Card padding="sm" className="bg-gradient-to-br from-cream-dark to-cream/30">
       <h3 className="text-[10px] text-warm-gray mb-2 text-center">사주팔자</h3>
-      <div className="flex justify-center gap-2">
+      <div className="flex gap-1.5">
         <PillarCard pillar={pillars.hour} label="시주" />
         <PillarCard pillar={pillars.day} label="일주" isDay />
         <PillarCard pillar={pillars.month} label="월주" />

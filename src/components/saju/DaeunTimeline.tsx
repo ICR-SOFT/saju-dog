@@ -9,16 +9,15 @@ export function DaeunTimeline({ daeun }: DaeunTimelineProps) {
   return (
     <Card padding="sm">
       <h3 className="text-[10px] text-warm-gray mb-2">대운 흐름</h3>
-      {/* ring 잘림 방지: 내부 패딩으로 overflow 영역 확보 */}
-      <div className="overflow-x-auto -mx-1 px-1 pb-1">
+      <div className="overflow-x-auto pb-1">
         <div className="flex gap-1">
           {daeun.map((d, i) => (
             <div
               key={i}
-              className={`flex-shrink-0 rounded-lg px-2.5 py-1.5 text-center ${
+              className={`flex-shrink-0 rounded-lg px-2.5 py-1.5 text-center border-2 ${
                 d.isCurrent
-                  ? 'bg-brown/15 ring-2 ring-brown/50 shadow-sm shadow-brown/10'
-                  : 'bg-cream-dark'
+                  ? 'bg-brown/15 border-brown/50'
+                  : 'bg-cream-dark border-transparent'
               }`}
               style={{ minWidth: '3.4rem' }}
             >

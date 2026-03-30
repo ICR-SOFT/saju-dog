@@ -1,12 +1,50 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
+// SVG 아이콘 컴포넌트 — 깔끔한 라인 스타일
+function IconHome({ active }: { active: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#D4A843' : '#8B8580'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
+    </svg>
+  );
+}
+
+function IconProfile({ active }: { active: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#D4A843' : '#8B8580'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <line x1="19" y1="8" x2="19" y2="14" />
+      <line x1="22" y1="11" x2="16" y2="11" />
+    </svg>
+  );
+}
+
+function IconChat({ active }: { active: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#D4A843' : '#8B8580'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
+function IconArchive({ active }: { active: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#D4A843' : '#8B8580'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+    </svg>
+  );
+}
+
 const NAV_ITEMS = [
-  { path: '/', label: '홈', icon: '/icons/nav-home.png', isCenter: false },
-  { path: '/add-profile', label: '사주추가', icon: '/icons/nav-profile.png', isCenter: false },
-  { path: '/daily', label: '무료운세', icon: '/icons/nav-fortune.png', isCenter: true },
-  { path: '/chat', label: '사주상담', icon: '/icons/nav-chat.png', isCenter: false },
-  { path: '/archive', label: '보관함', icon: '/icons/nav-archive.png', isCenter: false },
+  { path: '/', label: '홈', Icon: IconHome, isCenter: false },
+  { path: '/add-profile', label: '사주추가', Icon: IconProfile, isCenter: false },
+  { path: '/daily', label: '무료운세', Icon: null, isCenter: true },
+  { path: '/chat', label: '사주상담', Icon: IconChat, isCenter: false },
+  { path: '/archive', label: '보관함', Icon: IconArchive, isCenter: false },
 ] as const;
 
 export function BottomNav() {
@@ -42,11 +80,10 @@ export function BottomNav() {
                       onError={() => setLogoError(true)}
                     />
                   ) : (
-                    <img
-                      src={item.icon}
-                      alt={item.label}
-                      className="w-8 h-8 object-contain"
-                    />
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 6v6l4 2" />
+                    </svg>
                   )}
                 </div>
                 <span className={`text-[10px] mt-0.5 ${isActive ? 'text-brown font-medium' : 'text-warm-gray'}`}>
@@ -64,23 +101,11 @@ export function BottomNav() {
                 isActive ? 'text-brown font-medium' : 'text-warm-gray'
               }`}
             >
-              <div
-                className={`flex items-center justify-center w-10 h-7 rounded-full transition-all ${
-                  isActive ? 'bg-brown/10 scale-110' : ''
-                }`}
-              >
-                <img
-                  src={item.icon}
-                  alt={item.label}
-                  className={`w-6 h-6 object-contain transition-opacity ${
-                    isActive ? 'opacity-100' : 'opacity-50'
-                  }`}
-                />
+              <div className={`flex items-center justify-center w-10 h-7 rounded-full transition-all ${isActive ? 'bg-brown/10' : ''}`}>
+                {item.Icon && <item.Icon active={isActive} />}
               </div>
-              <span>{item.label}</span>
-              {isActive && (
-                <span className="w-1 h-1 rounded-full bg-brown -mt-0.5" />
-              )}
+              <span className="text-[10px]">{item.label}</span>
+              {isActive && <span className="w-1 h-1 rounded-full bg-brown -mt-0.5" />}
             </button>
           );
         })}
