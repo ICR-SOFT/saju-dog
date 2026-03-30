@@ -8,6 +8,12 @@ const OHAENG_COLORS: Record<string, string> = {
   '수': 'bg-blue-900/40 text-blue-300 border-blue-700/50',
 };
 
+const TYPE_LABEL: Record<string, string> = {
+  '여기': '餘',
+  '중기': '中',
+  '정기': '正',
+};
+
 interface PillarCardProps {
   pillar: Pillar;
   label: string;
@@ -29,6 +35,23 @@ export function PillarCard({ pillar, label, isDay = false }: PillarCardProps) {
       <div className={`w-16 h-16 rounded-xl border flex flex-col items-center justify-center shadow-sm ${OHAENG_COLORS[pillar.branchOhaeng]}`}>
         <span className="text-xl font-bold font-serif">{pillar.branch}</span>
         <span className="text-[10px] opacity-70">{pillar.branchHanja}</span>
+      </div>
+
+      {/* 지장간 (여기·중기·정기) */}
+      <div className="flex gap-0.5 mt-0.5">
+        {pillar.jijanggan.map((j, i) => (
+          <span
+            key={i}
+            className={`text-[9px] px-1 py-0.5 rounded ${
+              j.type === '정기'
+                ? 'bg-brown/20 text-brown-light font-medium'
+                : 'bg-warm-gray/10 text-warm-gray-light'
+            }`}
+            title={`${j.type}: ${j.stem}(${j.sipsin})`}
+          >
+            {j.stem}<sub className="opacity-60">{TYPE_LABEL[j.type]}</sub>
+          </span>
+        ))}
       </div>
 
       {/* 천간십신 */}

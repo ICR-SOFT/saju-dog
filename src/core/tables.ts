@@ -34,19 +34,19 @@ export const BRANCH_OHAENG: Record<Branch, Ohaeng> = {
   '오': '화', '미': '토', '신': '금', '유': '금', '술': '토', '해': '수',
 };
 
-// 지지의 장간 (지장간)
-// [여기, 중기?, 정기] 형태. 중기가 없으면 빈 배열.
+// 지지의 장간 (지장간) — 여기(餘氣)·중기(中氣)·정기(正氣)
+// 子/卯/酉는 정기만, 午는 중기+정기, 나머지는 여기+중기+정기
 export const BRANCH_JIJANGGAN: Record<Branch, { stem: Stem; type: '여기' | '중기' | '정기' }[]> = {
-  '자': [{ stem: '임', type: '여기' }, { stem: '계', type: '정기' }],
+  '자': [{ stem: '임', type: '중기' }, { stem: '계', type: '정기' }],
   '축': [{ stem: '계', type: '여기' }, { stem: '신', type: '중기' }, { stem: '기', type: '정기' }],
   '인': [{ stem: '무', type: '여기' }, { stem: '병', type: '중기' }, { stem: '갑', type: '정기' }],
-  '묘': [{ stem: '갑', type: '여기' }, { stem: '을', type: '정기' }],
+  '묘': [{ stem: '을', type: '정기' }],
   '진': [{ stem: '을', type: '여기' }, { stem: '계', type: '중기' }, { stem: '무', type: '정기' }],
   '사': [{ stem: '무', type: '여기' }, { stem: '경', type: '중기' }, { stem: '병', type: '정기' }],
-  '오': [{ stem: '병', type: '여기' }, { stem: '기', type: '중기' }, { stem: '정', type: '정기' }],
+  '오': [{ stem: '기', type: '중기' }, { stem: '정', type: '정기' }],
   '미': [{ stem: '정', type: '여기' }, { stem: '을', type: '중기' }, { stem: '기', type: '정기' }],
   '신': [{ stem: '무', type: '여기' }, { stem: '임', type: '중기' }, { stem: '경', type: '정기' }],
-  '유': [{ stem: '경', type: '여기' }, { stem: '신', type: '정기' }],
+  '유': [{ stem: '신', type: '정기' }],
   '술': [{ stem: '신', type: '여기' }, { stem: '정', type: '중기' }, { stem: '무', type: '정기' }],
   '해': [{ stem: '무', type: '여기' }, { stem: '갑', type: '중기' }, { stem: '임', type: '정기' }],
 };
