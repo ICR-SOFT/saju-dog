@@ -82,17 +82,21 @@ export function ReadingDetail() {
 
   useEffect(() => {
     if (!readingId) return;
+    let cancelled = false;
+
     (async () => {
       setIsLoading(true);
       try {
         const { data, error: e } = await supabase.from('readings').select('*').eq('id', readingId).single();
+        if (cancelled) return;
         if (e) throw new Error(e.message);
         setReading(data);
 
-        // 프로필에서 만세력 계산
-        let profile = profiles.find(p => p.id === data.profile_id) ?? null;
+        // 프로필에서 만세력 계산 — store에서 먼저 찾고, 없으면 DB 조회
+        let profile = useSajuStore.getState().profiles.find(p => p.id === data.profile_id) ?? null;
         if (!profile && data.profile_id) {
           const { data: pData } = await supabase.from('saju_profiles').select('*').eq('id', data.profile_id).single();
+          if (cancelled) return;
           if (pData) profile = pData as SajuProfile;
         }
         if (profile) {
@@ -108,12 +112,14 @@ export function ReadingDetail() {
           setSajuData(saju);
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : '풀이를 불러올 수 없습니다');
+        if (!cancelled) setError(err instanceof Error ? err.message : '풀이를 불러올 수 없습니다');
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     })();
-  }, [readingId, profiles]);
+
+    return () => { cancelled = true; };
+  }, [readingId]);
 
   const profileName = reading
     ? profiles.find(p => p.id === reading.profile_id)?.name ?? '알 수 없음'
