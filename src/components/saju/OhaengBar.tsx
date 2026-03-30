@@ -2,11 +2,11 @@ import type { OhaengCount } from '@/types/saju.ts';
 import { Card } from '../ui/Card.tsx';
 
 const OHAENG_INFO = [
-  { key: '목' as const, label: '목', color: 'bg-green-400', emoji: '🌳' },
-  { key: '화' as const, label: '화', color: 'bg-red-400', emoji: '🔥' },
-  { key: '토' as const, label: '토', color: 'bg-yellow-400', emoji: '🏔️' },
-  { key: '금' as const, label: '금', color: 'bg-gray-400', emoji: '⚔️' },
-  { key: '수' as const, label: '수', color: 'bg-blue-400', emoji: '💧' },
+  { key: '목' as const, label: '목', color: '#4ade80', emoji: '🌳' },
+  { key: '화' as const, label: '화', color: '#f87171', emoji: '🔥' },
+  { key: '토' as const, label: '토', color: '#facc15', emoji: '🏔️' },
+  { key: '금' as const, label: '금', color: '#9ca3af', emoji: '⚔️' },
+  { key: '수' as const, label: '수', color: '#60a5fa', emoji: '💧' },
 ];
 
 interface OhaengBarProps {
@@ -14,36 +14,37 @@ interface OhaengBarProps {
 }
 
 export function OhaengBar({ count }: OhaengBarProps) {
-  const total = Object.values(count).reduce((a, b) => a + b, 0);
+  const total = Object.values(count).reduce((a, b) => a + b, 0) || 1;
 
   return (
-    <Card>
-      <h3 className="text-sm font-bold text-dark mb-3 flex items-center gap-1.5">
-        <span className="w-6 h-6 rounded-full bg-brown/10 flex items-center justify-center text-xs">☯️</span>
-        오행 분포
-      </h3>
-      <div className="space-y-2.5">
-        {OHAENG_INFO.map(({ key, label, color, emoji }) => (
-          <div key={key} className="flex items-center gap-2">
-            <div className="flex items-center gap-1 w-14">
-              <span className="text-sm">{emoji}</span>
-              <span className="text-xs font-medium text-dark">{label}</span>
-            </div>
-            <div className="flex-1 h-6 bg-cream-dark rounded-full overflow-hidden">
-              {count[key] > 0 && (
-                <div
-                  className={`h-full ${color} rounded-full transition-all duration-500 flex items-center justify-end pr-1.5`}
-                  style={{ width: `${Math.max((count[key] / total) * 100, 8)}%` }}
-                >
-                  <span className="text-[10px] font-bold text-white" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
-                    {count[key]}
-                  </span>
-                </div>
-              )}
-            </div>
-            <span className="text-xs font-bold w-5 text-right text-dark">{count[key]}</span>
-          </div>
-        ))}
+    <Card padding="sm">
+      <div className="flex items-center gap-3">
+        <span className="text-xs font-medium text-warm-gray shrink-0">오행</span>
+        {/* 가로 스택 바 */}
+        <div className="flex-1 h-5 rounded-full overflow-hidden flex bg-cream-dark">
+          {OHAENG_INFO.map(({ key, color }) =>
+            count[key] > 0 ? (
+              <div
+                key={key}
+                className="h-full flex items-center justify-center transition-all duration-500"
+                style={{ width: `${(count[key] / total) * 100}%`, backgroundColor: color }}
+              >
+                <span className="text-[9px] font-bold text-white" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>
+                  {count[key]}
+                </span>
+              </div>
+            ) : null,
+          )}
+        </div>
+        {/* 범례 */}
+        <div className="flex gap-1.5 shrink-0">
+          {OHAENG_INFO.map(({ key, label, color }) => (
+            <span key={key} className="flex items-center gap-0.5">
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: count[key] > 0 ? color : '#2a2a3a' }} />
+              <span className={`text-[9px] ${count[key] > 0 ? 'text-dark' : 'text-warm-gray-light/40'}`}>{label}{count[key]}</span>
+            </span>
+          ))}
+        </div>
       </div>
     </Card>
   );
