@@ -137,15 +137,9 @@ export default function GroupDetailPage() {
       };
       if (question) metadata.userQuestion = question;
 
-      const reqResult = await requestReading(primaryId, 'compatibility', secondaryId, false, metadata);
+      const reqResult = await requestReading(primaryId, 'compatibility', secondaryId, true, metadata);
       const readingId = reqResult.readingId;
       setCurrentReadingId(readingId);
-
-      if (reqResult.cached && reqResult.result) {
-        setIsRequesting(false);
-        router.push(`/archive/${readingId}`);
-        return;
-      }
 
       // 폴링
       for (let i = 0; i < 60; i++) {
