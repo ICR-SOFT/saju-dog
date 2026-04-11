@@ -18,6 +18,7 @@ import { showToast } from '@/components/ui/Toast';
 import { useAuthStore } from '@/stores/auth';
 import { useSajuStore } from '@/stores/saju';
 import { supabase } from '@/lib/supabase';
+import { createChatSession, sendChatMessage } from '@/lib/api';
 import { SERVICE_NAMES } from '@/lib/services';
 import type { ServiceType, SajuApiResponse, SajuPillars } from '@/types/saju';
 import type { Reading, SajuProfile } from '@/types/user';
@@ -232,6 +233,30 @@ export default function ArchiveDetailPage() {
                   홈으로
                 </Button>
               </div>
+
+              {/* Chat about this reading */}
+              {reading?.profile_id && (
+                <Button
+                  variant="secondary"
+                  className="w-full"
+                  onClick={async () => {
+                    try {
+                      const session = await createChatSession(reading.profile_id);
+                      await sendChatMessage(
+                        session.id,
+                        `[사주 풀이 내용]\n${result.summary}\n\n위 풀이 내용에 대해 궁금한 점을 물어보세요.`,
+                      );
+                      router.push('/chat');
+                    } catch (err) {
+                      showToast(
+                        err instanceof Error ? err.message : '채팅 세션 생성에 실패했어요',
+                      );
+                    }
+                  }}
+                >
+                  이 풀이에 대해 질문하기
+                </Button>
+              )}
             </>
           ) : (
             <div className="flex flex-col items-center gap-4 py-16">

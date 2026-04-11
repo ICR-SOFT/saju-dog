@@ -28,11 +28,11 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 const anthropic = new Anthropic({ apiKey: ANTHROPIC_KEY, timeout: 10 * 60 * 1000 }); // 10분 타임아웃
 
 const CREDIT_COSTS = {
-  comprehensive: 3, compatibility: 3, daeun: 2, yearly: 2,
-  daily: 0, chat: 1, business: 3, luckyday: 2,
-  love: 2, wealth: 2, health: 2, career: 2, pastlife: 2, moving: 2,
-  mbti: 2, pet: 2, travel: 2, food: 2, color: 2,
-  study: 2, ancestor: 2, child: 2, secret: 2, timing: 2,
+  comprehensive: 5, compatibility: 4, daeun: 3, yearly: 3,
+  daily: 0, chat: 1, business: 4, luckyday: 3,
+  love: 3, wealth: 3, health: 3, career: 3, pastlife: 3, moving: 3,
+  mbti: 3, pet: 3, travel: 3, food: 3, color: 3,
+  study: 3, ancestor: 3, child: 3, secret: 3, timing: 3,
 };
 
 // 현재 처리 중인 reading ID 추적
@@ -356,8 +356,13 @@ ${questionBlock}
   // ===== 고도화된 용신 분석 + 개인화 추천 (결정적) =====
   const luckySection = buildLuckySection(data, p, reading.service_type);
 
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
+
   return `[분석 유형: ${reading.service_type}]
+[오늘 날짜: ${todayStr}]
 아래는 서버에서 정밀 계산된 사주 데이터입니다. 이 데이터만 기반으로 해설하세요.
+"올해"는 반드시 ${today.getFullYear()}년을 의미합니다. 작년(${today.getFullYear() - 1})이나 내년(${today.getFullYear() + 1}) 이야기를 올해로 혼동하지 마세요.
 ${luckySection}
 ## 기본 정보
 - 이름: ${data.input?.name || profile.name} / 성별: ${data.input?.gender === 'male' ? '남성' : '여성'}

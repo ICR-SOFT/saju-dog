@@ -17,9 +17,11 @@ const corsHeaders = {
 };
 
 const CREDIT_COSTS: Record<string, number> = {
-  comprehensive: 3, compatibility: 3, daeun: 2, yearly: 2,
-  daily: 0, chat: 1, business: 3, luckyday: 2,
-  love: 2, wealth: 2, health: 2, career: 2, pastlife: 2, moving: 2,
+  comprehensive: 5, compatibility: 4, daeun: 3, yearly: 3,
+  daily: 0, chat: 1, business: 4, luckyday: 3,
+  love: 3, wealth: 3, health: 3, career: 3, pastlife: 3, moving: 3,
+  mbti: 3, pet: 3, travel: 3, food: 3, color: 3,
+  study: 3, ancestor: 3, child: 3, secret: 3, timing: 3,
 };
 
 serve(async (req) => {

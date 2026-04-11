@@ -19,6 +19,7 @@ import ProfileInfoBadges from '@/components/saju/ProfileInfoBadges';
 import { showToast } from '@/components/ui/Toast';
 import { useSajuStore } from '@/stores/saju';
 import { useCreditStore } from '@/stores/credit';
+import { createChatSession, sendChatMessage } from '@/lib/api';
 import { CREDIT_COSTS } from '@/types/api';
 import { SERVICE_NAMES } from '@/lib/services';
 import type { ServiceType, SajuPillars, SajuApiResponse } from '@/types/saju';
@@ -467,6 +468,28 @@ function ReadingContent() {
               >
                 다시 풀이받기 (🦴 {cost}개)
               </button>
+
+              {/* Chat about this reading */}
+              <Button
+                variant="secondary"
+                className="w-full"
+                onClick={async () => {
+                  try {
+                    const session = await createChatSession(profileId);
+                    await sendChatMessage(
+                      session.id,
+                      `[사주 풀이 내용]\n${reading.summary}\n\n위 풀이 내용에 대해 궁금한 점을 물어보세요.`,
+                    );
+                    router.push('/chat');
+                  } catch (err) {
+                    showToast(
+                      err instanceof Error ? err.message : '채팅 세션 생성에 실패했어요',
+                    );
+                  }
+                }}
+              >
+                이 풀이에 대해 질문하기
+              </Button>
             </>
           )}
         </div>
