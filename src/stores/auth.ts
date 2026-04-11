@@ -1,8 +1,8 @@
 import { create } from 'zustand';
-import { supabase, getValidSession } from '@/lib/supabase.ts';
-import { useSajuStore } from './saju.ts';
-import { useCreditStore } from './credit.ts';
-import type { User } from '@/types/user.ts';
+import { supabase, getValidSession } from '@/lib/supabase';
+import { useSajuStore } from './saju';
+import { useCreditStore } from './credit';
+import type { User } from '@/types/user';
 
 interface AuthState {
   user: User | null;

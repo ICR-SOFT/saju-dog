@@ -1,9 +1,9 @@
 import { create } from 'zustand';
-import { supabase, getValidSession } from '@/lib/supabase.ts';
-import type { SajuProfile, Reading } from '@/types/user.ts';
-import type { SajuApiResponse } from '@/types/saju.ts';
-import { requestReading as apiRequestReading, pollReadingStatus } from '@/lib/api.ts';
-import { useCreditStore } from './credit.ts';
+import { supabase, getValidSession } from '@/lib/supabase';
+import type { SajuProfile, Reading } from '@/types/user';
+import type { SajuApiResponse } from '@/types/saju';
+import { requestReading as apiRequestReading, pollReadingStatus } from '@/lib/api';
+import { useCreditStore } from './credit';
 
 interface SajuState {
   profiles: SajuProfile[];
@@ -39,6 +39,7 @@ const POLL_INTERVAL = 3000; // 3초마다 폴링
 export const useSajuStore = create<SajuState>((set, get) => ({
   profiles: [],
   selectedProfileIdx: (() => {
+    if (typeof window === 'undefined') return 0;
     const saved = localStorage.getItem('saju-selected-profile-idx');
     return saved ? parseInt(saved, 10) : 0;
   })(),
@@ -122,10 +123,10 @@ export const useSajuStore = create<SajuState>((set, get) => ({
       // 캐시 히트
       if (requestResult.cached && requestResult.result) {
         set((state) => ({
-          currentReading: requestResult.result!,
+          currentReading: requestResult.result as SajuApiResponse,
           isLoading: false,
-          processingStatus: 'completed',
-          readingCache: { ...state.readingCache, [`${profileId}:${serviceType}`]: requestResult.result! },
+          processingStatus: 'completed' as const,
+          readingCache: { ...state.readingCache, [`${profileId}:${serviceType}`]: requestResult.result as SajuApiResponse },
         }));
         return;
       }
@@ -212,6 +213,7 @@ export const useSajuStore = create<SajuState>((set, get) => ({
     const { data, error } = await supabase
       .from('readings')
       .select('*')
+      .eq('user_id', session.user.id)
       .in('processing_status', ['completed', 'pending', 'processing', 'failed'])
       .order('created_at', { ascending: false });
 
@@ -244,8 +246,10 @@ export const useSajuStore = create<SajuState>((set, get) => ({
 }));
 
 // 탭 복귀 시 잠긴 처리 상태 자동 리셋
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') {
-    useSajuStore.getState().resetStaleProcessing();
-  }
-});
+if (typeof window !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      useSajuStore.getState().resetStaleProcessing();
+    }
+  });
+}

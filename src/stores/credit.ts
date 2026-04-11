@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { supabase, getValidSession } from '@/lib/supabase.ts';
-import type { Credits } from '@/types/user.ts';
+import { supabase, getValidSession } from '@/lib/supabase';
+import type { Credits } from '@/types/user';
 
 interface CreditState {
   credits: Credits | null;

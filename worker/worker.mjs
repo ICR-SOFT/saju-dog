@@ -18,6 +18,7 @@ import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+const GEMINI_KEY = process.env.GEMINI_API_KEY;
 const POLL_INTERVAL = parseInt(process.env.POLL_INTERVAL_MS || '3000');
 const MAX_CONCURRENT = parseInt(process.env.MAX_CONCURRENT || '500');
 const RETRY_BASE_DELAY = parseInt(process.env.RETRY_BASE_DELAY_MS || '5000');
@@ -48,7 +49,7 @@ function log(level, msg, data) {
 }
 
 // ===== Claude API 호출 (SDK, 무한 재시도) =====
-async function callClaudeParsed(params, zodSchema) {
+async function callClaudeParsed(params, zodSchema, requestOptions = {}) {
   let attempt = 0;
 
   while (true) {
@@ -57,7 +58,7 @@ async function callClaudeParsed(params, zodSchema) {
       const response = await anthropic.messages.parse({
         ...params,
         output_config: { format: zodOutputFormat(zodSchema) },
-      });
+      }, requestOptions);
       return response;
     } catch (err) {
       // 레이트리밋 또는 서버 에러 → 재시도
@@ -476,18 +477,119 @@ function getZodSchema(serviceType) {
 }
 
 // ===== 비용 계산 =====
+function getModelRates(m) {
+  if (m.includes('opus')) return { i: 15.0, o: 75.0 };
+  if (m.includes('haiku')) return { i: 0.25, o: 1.25 };
+  return { i: 3.0, o: 15.0 }; // sonnet
+}
+
 function calculateCost(model, usage) {
   const inp = usage.input_tokens || 0;
   const out = usage.output_tokens || 0;
   const cacheR = usage.cache_read_input_tokens || 0;
   const cacheC = usage.cache_creation_input_tokens || 0;
 
-  let iRate = 3.0, oRate = 15.0;
-  if (model.includes('opus')) { iRate = 15.0; oRate = 75.0; }
-  else if (model.includes('haiku')) { iRate = 0.25; oRate = 1.25; }
+  const { i: iRate, o: oRate } = getModelRates(model);
+  let cost = ((inp - cacheR) * iRate + cacheR * iRate * 0.1 + cacheC * iRate * 1.25 + out * oRate) / 1e6;
 
-  const cost = ((inp - cacheR) * iRate + cacheR * iRate * 0.1 + cacheC * iRate * 1.25 + out * oRate) / 1e6;
-  return { model, input_tokens: inp, output_tokens: out, cache_read_tokens: cacheR, cache_creation_tokens: cacheC, cost_usd: Math.round(cost * 10000) / 10000 };
+  // Advisor iterations 비용 추가
+  let advisorInput = 0, advisorOutput = 0;
+  if (usage.iterations) {
+    for (const iter of usage.iterations) {
+      if (iter.type === 'advisor_message') {
+        const aInp = iter.input_tokens || 0;
+        const aOut = iter.output_tokens || 0;
+        const aCacheR = iter.cache_read_input_tokens || 0;
+        const aCacheC = iter.cache_creation_input_tokens || 0;
+        const { i: aI, o: aO } = getModelRates(iter.model || '');
+        cost += ((aInp - aCacheR) * aI + aCacheR * aI * 0.1 + aCacheC * aI * 1.25 + aOut * aO) / 1e6;
+        advisorInput += aInp;
+        advisorOutput += aOut;
+      }
+    }
+  }
+
+  const result = { model, input_tokens: inp, output_tokens: out, cache_read_tokens: cacheR, cache_creation_tokens: cacheC, cost_usd: Math.round(cost * 10000) / 10000 };
+  if (advisorInput > 0) {
+    result.advisor_input_tokens = advisorInput;
+    result.advisor_output_tokens = advisorOutput;
+  }
+  return result;
+}
+
+// ===== OG 이미지 생성 (Gemini) =====
+const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${GEMINI_KEY}`;
+
+async function generateOgImage(readingId, serviceType, summary, chapters) {
+  if (!GEMINI_KEY) {
+    log('warn', `[${readingId.slice(0, 8)}] OG image skipped: no GEMINI_API_KEY`);
+    return null;
+  }
+
+  try {
+    // 풀이 결과에서 핵심 내용 추출
+    const plainSummary = (summary || '').replace(/<[^>]*>/g, '').slice(0, 200);
+    const chapterSnippets = Array.isArray(chapters)
+      ? chapters.slice(0, 3).map(ch => ch.content?.replace(/<[^>]*>/g, '').slice(0, 100)).join(' ')
+      : '';
+    const readingContext = `${plainSummary} ${chapterSnippets}`.slice(0, 400);
+
+    // Gemini에게 풀이 내용을 전달하고 어울리는 이미지를 생성하도록 요청
+    const prompt = `I have a Korean fortune telling (사주) reading result. Based on the content below, create a beautiful, evocative illustration that captures the mood and themes of this reading.
+
+Reading content: "${readingContext}"
+
+Create a wide illustration (1200x630 aspect ratio) that visually represents the key themes, emotions, and energy described in this reading. The style should be dreamy and atmospheric - soft watercolor or digital painting style with warm, mystical tones. Include symbolic elements that match the reading's themes (e.g., if about wealth use golden imagery, if about love use warm pink tones, if about career use ascending imagery). Make it beautiful and shareable on social media. No text, no letters, no words in the image.`;
+
+    const response = await fetch(GEMINI_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseModalities: ['image', 'text'],
+          imageGenerationConfig: { aspectRatio: '21:9' },
+        },
+      }),
+    });
+
+    const data = await response.json();
+    const parts = data?.candidates?.[0]?.content?.parts || [];
+    const imagePart = parts.find(p => p.inlineData);
+
+    if (!imagePart) {
+      log('warn', `[${readingId.slice(0, 8)}] Gemini returned no image`);
+      return null;
+    }
+
+    // Supabase Storage에 업로드
+    const imageBuffer = Buffer.from(imagePart.inlineData.data, 'base64');
+    const filePath = `${readingId}.png`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('og-images')
+      .upload(filePath, imageBuffer, {
+        contentType: 'image/png',
+        upsert: true,
+      });
+
+    if (uploadError) {
+      log('warn', `[${readingId.slice(0, 8)}] OG upload failed: ${uploadError.message}`);
+      return null;
+    }
+
+    const { data: urlData } = supabase.storage.from('og-images').getPublicUrl(filePath);
+    const ogUrl = urlData.publicUrl;
+
+    // readings 테이블에 URL 저장
+    await supabase.from('readings').update({ og_image_url: ogUrl }).eq('id', readingId);
+
+    log('info', `[${readingId.slice(0, 8)}] OG image generated: ${(imageBuffer.length / 1024).toFixed(0)}KB`);
+    return { url: ogUrl, size_bytes: imageBuffer.length };
+  } catch (err) {
+    log('warn', `[${readingId.slice(0, 8)}] OG image error: ${err.message}`);
+    return null;
+  }
 }
 
 // ===== 크레딧 환불 =====
@@ -681,6 +783,16 @@ async function processReading(reading) {
     };
     if (config.temperature !== null) baseParams.temperature = config.temperature;
 
+    // Advisor Tool 설정
+    const requestOptions = {};
+    if (config.use_advisor && config.advisor_model) {
+      baseParams.tools = [
+        { type: 'advisor_20260301', name: 'advisor', model: config.advisor_model }
+      ];
+      requestOptions.headers = { 'anthropic-beta': 'advisor-tool-2026-03-01' };
+      log('info', `[${rid}] Advisor enabled: ${config.model} + ${config.advisor_model}`);
+    }
+
     // 품질 검증 포함 재시도 루프
     const MAX_QUALITY_RETRIES = 5;
     let parsed = null;
@@ -701,7 +813,7 @@ async function processReading(reading) {
         params.messages = [{ role: 'user', content: userMessage + retryMsg }];
       }
 
-      const apiResponse = await callClaudeParsed(params, zodSchema);
+      const apiResponse = await callClaudeParsed(params, zodSchema, requestOptions);
 
       // stop_reason 체크
       const stopReason = apiResponse.stop_reason;
@@ -809,14 +921,27 @@ async function processReading(reading) {
 
     const durationMs = Date.now() - startTime;
 
+    const finalApiCost = { ...apiCost, total_cost_usd: Math.round(totalApiCost * 10000) / 10000 };
+
     await supabase.from('readings').update({
       result: parsed,
       processing_status: 'completed',
       processing_completed_at: new Date().toISOString(),
       processing_duration_ms: durationMs,
-      api_cost: { ...apiCost, total_cost_usd: Math.round(totalApiCost * 10000) / 10000 },
+      api_cost: finalApiCost,
       prompt_config_id: config.id,
     }).eq('id', reading.id);
+
+    // OG 이미지 비동기 생성 (실패해도 reading 결과에 영향 없음)
+    generateOgImage(reading.id, reading.service_type, parsed?.summary, parsed?.chapters).then(ogResult => {
+      if (ogResult) {
+        // Gemini 비용 추적 (대략 이미지 1장당 ~$0.002)
+        const geminiCost = 0.002;
+        supabase.from('readings').update({
+          api_cost: { ...finalApiCost, gemini_og_cost_usd: geminiCost, total_cost_usd: Math.round((totalApiCost + geminiCost) * 10000) / 10000 },
+        }).eq('id', reading.id);
+      }
+    }).catch(() => {});
 
     totalProcessed++;
     totalCostUsd += totalApiCost;

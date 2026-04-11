@@ -9,10 +9,10 @@ import {
   type Pillar, type OhaengCount, type DaeunEntry,
   type SpecialFormation, type SajuPillars, type SajuInput,
   type JijangganEntry, type Sipsin,
-} from '@/types/saju.ts';
+} from '@/types/saju';
 
-import { calculateSinsal } from './sinsal.ts';
-import { calculateDdi, calculateZodiac } from './zodiac.ts';
+import { calculateSinsal } from './sinsal';
+import { calculateDdi, calculateZodiac } from './zodiac';
 
 import {
   STEM_HANJA, STEM_OHAENG, STEM_YINYANG,
@@ -21,9 +21,9 @@ import {
   getHourBranchIndex, getSipsin, getTwelveStage,
   CHUNG_PAIRS, HAP_PAIRS, SAMHAP_GROUPS, BANGHAP_GROUPS,
   HYUNG_PAIRS, PA_PAIRS, HAE_PAIRS, WONJIN_PAIRS,
-} from './tables.ts';
+} from './tables';
 
-import { getSajuMonth, getSajuYear, getAdjacentTermDates } from './solar-terms.ts';
+import { getSajuMonth, getSajuYear, getAdjacentTermDates } from './solar-terms';
 
 // ===== 지방시 보정 (경도 기반) =====
 // KST 기준 경선(135°E)과의 경도 차이만 보정

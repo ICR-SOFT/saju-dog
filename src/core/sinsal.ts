@@ -4,9 +4,9 @@
  * AI에게 맡기지 않는다.
  */
 
-import type { Branch, Stem } from '@/types/saju.ts';
-import { BRANCHES } from '@/types/saju.ts';
-import { STEM_OHAENG, STEM_YINYANG, BRANCH_JIJANGGAN, getSipsin } from './tables.ts';
+import type { Branch, Stem } from '@/types/saju';
+import { BRANCHES } from '@/types/saju';
+import { STEM_OHAENG, STEM_YINYANG, BRANCH_JIJANGGAN, getSipsin } from './tables';
 
 // ===== 유틸리티 =====
 

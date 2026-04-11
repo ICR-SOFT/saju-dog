@@ -1,4 +1,4 @@
-import type { ServiceType, SajuApiResponse } from './saju.ts';
+import type { ServiceType, SajuApiResponse } from './saju';
 
 // ===== Edge Function 요청 =====
 

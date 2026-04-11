@@ -3,7 +3,7 @@
  * 모든 매핑은 전통 명리학 기준
  */
 
-import type { Stem, Branch, Ohaeng, YinYang, TwelveStage } from '@/types/saju.ts';
+import type { Stem, Branch, Ohaeng, YinYang, TwelveStage } from '@/types/saju';
 
 // ===== 천간 (10 Heavenly Stems) =====
 

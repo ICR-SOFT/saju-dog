@@ -2,7 +2,7 @@
  * 띠 (동물 + 색상) + 별자리 (서양 조디악) 계산
  */
 
-import type { Stem, Branch } from '@/types/saju.ts';
+import type { Stem, Branch } from '@/types/saju';
 
 // ===== 띠 (12동물) =====
 const ANIMAL_MAP: Record<Branch, string> = {

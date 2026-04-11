@@ -1,62 +1,76 @@
-import { useState } from 'react';
+'use client';
+
+import { useState, useRef, useEffect } from 'react';
 import DOMPurify from 'dompurify';
-import type { SajuChapter } from '@/types/saju.ts';
-import { Card } from '../ui/Card.tsx';
+import type { SajuChapter } from '@/types/saju';
 
 interface ChapterAccordionProps {
-  chapters: SajuChapter[];
+  chapter: SajuChapter;
+  defaultOpen?: boolean;
 }
 
-export function ChapterAccordion({ chapters }: ChapterAccordionProps) {
-  // chapters가 string으로 들어올 수 있음 (tool_use auto 모드에서 발생)
-  let parsed = chapters;
-  if (typeof parsed === 'string') {
-    try { parsed = JSON.parse(parsed); } catch { parsed = []; }
-  }
-  const safeChapters = Array.isArray(parsed) ? parsed : [];
-  // Set으로 여러 개 동시 오픈
-  const [openIds, setOpenIds] = useState<Set<string>>(() => {
-    return safeChapters[0] ? new Set([safeChapters[0].id]) : new Set();
+export default function ChapterAccordion({ chapter, defaultOpen = false }: ChapterAccordionProps) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [contentHeight, setContentHeight] = useState(0);
+
+  useEffect(() => {
+    if (contentRef.current) {
+      setContentHeight(contentRef.current.scrollHeight);
+    }
+  }, [chapter.content, isOpen]);
+
+  // DOMPurify로 XSS 방지 - 허용된 태그/속성만 통과
+  const sanitizedContent = DOMPurify.sanitize(chapter.content, {
+    ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'h3', 'h4', 'ul', 'ol', 'li', 'span'],
+    ALLOWED_ATTR: ['class', 'style'],
   });
 
-  if (safeChapters.length === 0) return null;
-
-  const toggle = (id: string) => {
-    setOpenIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
+  // 접혀있을 때 미리보기 텍스트 (HTML 태그 제거한 plain text)
+  const previewText = chapter.content.replace(/<[^>]*>/g, '').slice(0, 60);
 
   return (
-    <div className="space-y-2">
-      {safeChapters.map(chapter => {
-        const isOpen = openIds.has(chapter.id);
-        return (
-          <Card key={chapter.id} padding="sm" className="overflow-hidden">
-            <button
-              onClick={() => toggle(chapter.id)}
-              className="w-full flex items-center justify-between py-2 px-1 text-left"
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-lg">{chapter.emoji}</span>
-                <span className="font-medium text-dark text-sm">{chapter.title}</span>
-              </div>
-              <span className={`text-warm-gray transition-transform ${isOpen ? 'rotate-180' : ''}`}>
-                ▾
-              </span>
-            </button>
-            {isOpen && (
-              <div
-                className="px-1 pb-2 text-sm text-dark-light leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(chapter.content) }}
-              />
-            )}
-          </Card>
-        );
-      })}
+    <div className="pixel-card overflow-hidden">
+      {/* Header - 제목 항상 전체 표시 */}
+      <button
+        type="button"
+        className="w-full flex flex-col p-4 text-left gap-1"
+        onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+      >
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center gap-2">
+            <span className="text-lg shrink-0">{chapter.emoji}</span>
+            <span className="font-pixel text-xs text-[var(--text-primary)]">
+              {chapter.title}
+            </span>
+          </div>
+          <span className="font-pixel text-xs text-[var(--text-muted)] shrink-0 ml-2">
+            {isOpen ? '▲' : '▼'}
+          </span>
+        </div>
+        {/* 접혀있을 때 미리보기 */}
+        {!isOpen && previewText && (
+          <p className="text-[11px] text-[var(--text-muted)] leading-relaxed mt-0.5 line-clamp-2">
+            {previewText}...
+          </p>
+        )}
+      </button>
+
+      {/* Content - DOMPurify 필수 적용 (sanitizedContent만 렌더링) */}
+      <div
+        style={{
+          maxHeight: isOpen ? `${contentHeight}px` : '0px',
+          opacity: isOpen ? 1 : 0,
+        }}
+        className="transition-all duration-300 ease-in-out overflow-hidden"
+      >
+        <div
+          ref={contentRef}
+          className="chapter-content px-4 pb-4 text-sm text-[var(--text-secondary)] leading-relaxed"
+          dangerouslySetInnerHTML={{ __html: sanitizedContent }}
+        />
+      </div>
     </div>
   );
 }

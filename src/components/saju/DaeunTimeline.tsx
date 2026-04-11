@@ -1,38 +1,39 @@
-import type { DaeunEntry } from '@/types/saju.ts';
-import { Card } from '../ui/Card.tsx';
+'use client';
+
+import type { DaeunEntry } from '@/types/saju';
 
 interface DaeunTimelineProps {
   daeun: DaeunEntry[];
 }
 
-export function DaeunTimeline({ daeun }: DaeunTimelineProps) {
+export default function DaeunTimeline({ daeun }: DaeunTimelineProps) {
   return (
-    <Card padding="sm">
-      <h3 className="text-[10px] text-warm-gray mb-2">대운 흐름</h3>
+    <div className="pixel-card p-3">
+      <h3 className="font-pixel text-[10px] text-[var(--text-muted)] mb-2">대운 흐름</h3>
       <div className="overflow-x-auto pb-1">
         <div className="flex gap-1">
           {daeun.map((d, i) => (
             <div
               key={i}
-              className={`flex-shrink-0 rounded-lg px-2.5 py-1.5 text-center border-2 ${
+              className={`flex-shrink-0 text-center px-2.5 py-1.5 border-2 ${
                 d.isCurrent
-                  ? 'bg-brown/15 border-brown/50'
-                  : 'bg-cream-dark border-transparent'
+                  ? 'bg-[var(--accent-light)] border-[var(--accent)]'
+                  : 'bg-[var(--bg-secondary)] border-transparent'
               }`}
               style={{ minWidth: '3.4rem' }}
             >
-              <p className="text-[8px] text-warm-gray-light">{d.startAge}~{d.endAge}</p>
-              <p className={`text-sm font-bold font-serif leading-tight ${d.isCurrent ? 'text-brown' : 'text-dark'}`}>
+              <p className="text-[8px] text-[var(--text-muted)]">{d.startAge}~{d.endAge}</p>
+              <p className={`text-sm font-bold leading-tight ${d.isCurrent ? 'text-[var(--accent)]' : 'text-[var(--text-primary)]'}`}>
                 {d.stem}{d.branch}
               </p>
-              <p className="text-[8px] text-warm-gray-light">{d.stemSipsin}</p>
+              <p className="text-[8px] text-[var(--text-muted)]">{d.stemSipsin}</p>
               {d.isCurrent && (
-                <p className="text-[7px] text-brown font-medium mt-0.5">현재</p>
+                <p className="font-pixel text-[7px] text-[var(--accent)] mt-0.5">현재</p>
               )}
             </div>
           ))}
         </div>
       </div>
-    </Card>
+    </div>
   );
 }

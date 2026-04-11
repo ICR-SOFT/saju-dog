@@ -1,83 +1,100 @@
-import { useState } from 'react';
-import { Button } from './Button.tsx';
-import { Logo } from './Logo.tsx';
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import Button from './Button';
 
 interface ConfirmModalProps {
   isOpen: boolean;
+  onClose: () => void;
+  onConfirm: (question?: string) => void;
   title: string;
-  cost: number;
-  bones: number;
-  onConfirm: (question: string) => void;
-  onCancel: () => void;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  showQuestion?: boolean;
+  disabled?: boolean;
 }
 
-export function ConfirmModal({ isOpen, title, cost, bones, onConfirm, onCancel }: ConfirmModalProps) {
+export default function ConfirmModal({
+  isOpen,
+  onClose,
+  onConfirm,
+  title,
+  message,
+  confirmText = '확인',
+  cancelText = '취소',
+  showQuestion = false,
+  disabled = false,
+}: ConfirmModalProps) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
   const [question, setQuestion] = useState('');
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (isOpen) {
+      dialog.showModal();
+    } else {
+      dialog.close();
+      setQuestion('');
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const canAfford = bones >= cost;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* 오버레이 */}
-      <div className="absolute inset-0 bg-black/70" onClick={onCancel} />
+    <dialog
+      ref={dialogRef}
+      className="fixed inset-0 z-[100] m-auto p-0 bg-transparent backdrop:bg-black/50"
+      onClose={onClose}
+    >
+      <div className="pixel-border bg-[var(--bg-primary)] p-5 w-[min(320px,85vw)] flex flex-col gap-4">
+        <h2 className="font-pixel text-sm text-[var(--text-primary)] text-center">
+          {title}
+        </h2>
 
-      {/* 모달 */}
-      <div className="relative bg-cream-dark rounded-2xl w-full max-w-sm shadow-xl p-5 space-y-4 animate-fade-in border border-warm-gray-light/20">
-        <div className="text-center">
-          <Logo size="md" className="mx-auto" />
-          <h3 className="text-lg font-bold text-dark font-serif mt-2">{title}</h3>
-        </div>
+        <p className="text-sm text-[var(--text-secondary)] text-center leading-relaxed">
+          {message}
+        </p>
 
-        {/* 비용 정보 */}
-        <div className="bg-cream-dark rounded-xl p-3 text-sm space-y-1">
-          <div className="flex justify-between">
-            <span className="text-warm-gray">비용</span>
-            <span className="font-medium text-dark">{cost > 0 ? `🦴 ${cost}개` : '무료'}</span>
+        {showQuestion && (
+          <div>
+            <input
+              type="text"
+              value={question}
+              onChange={e => setQuestion(e.target.value.slice(0, 80))}
+              placeholder="궁금한 점이 있다면 한 줄로 적어주세요 (선택)"
+              className="w-full border-2 border-[var(--pixel-border)] bg-[var(--bg-secondary)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)] placeholder:text-[var(--text-muted)]"
+              maxLength={80}
+            />
+            {question && (
+              <p className="text-[10px] text-[var(--text-muted)] text-right mt-0.5">{question.length}/80</p>
+            )}
           </div>
-          <div className="flex justify-between">
-            <span className="text-warm-gray">보유</span>
-            <span className={`font-medium ${canAfford ? 'text-green-600' : 'text-red-500'}`}>
-              🦴 {bones}개
-            </span>
-          </div>
-        </div>
-
-        {/* 질문 입력 */}
-        <div>
-          <input
-            type="text"
-            value={question}
-            onChange={e => setQuestion(e.target.value.slice(0, 80))}
-            placeholder="궁금한 점이 있다면 한 줄로 적어주세요 (선택)"
-            className="w-full rounded-xl border border-warm-gray-light/50 bg-cream px-4 py-2.5 text-dark text-sm outline-none focus:border-brown placeholder:text-warm-gray-light"
-            maxLength={80}
-          />
-          {question && (
-            <p className="text-[10px] text-warm-gray text-right mt-0.5">{question.length}/80</p>
-          )}
-        </div>
-
-        {!canAfford && (
-          <p className="text-sm text-red-500 text-center">뼈다귀가 부족합니다</p>
         )}
 
-        {/* 버튼 */}
-        <div className="flex gap-2">
-          <Button variant="secondary" size="md" onClick={onCancel} className="flex-1">
-            취소
+        {disabled && (
+          <p className="text-sm text-[var(--error)] text-center">뼈다귀가 부족합니다</p>
+        )}
+
+        <div className="flex gap-3 mt-2">
+          <Button variant="secondary" size="sm" className="flex-1" onClick={onClose}>
+            {cancelText}
           </Button>
           <Button
-            size="md"
-            onClick={() => onConfirm(question.trim())}
-            disabled={!canAfford}
+            variant="primary"
+            size="sm"
             className="flex-1"
+            disabled={disabled}
+            onClick={() => {
+              onConfirm(question.trim() || undefined);
+              onClose();
+            }}
           >
-            {cost > 0 ? `🦴 ${cost} 풀이받기` : '풀이받기'}
+            {confirmText}
           </Button>
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }

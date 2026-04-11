@@ -1,23 +1,19 @@
-import type { ReactNode, HTMLAttributes } from 'react';
-
-interface CardProps extends HTMLAttributes<HTMLDivElement> {
-  children: ReactNode;
-  padding?: 'sm' | 'md' | 'lg';
+interface CardProps {
+  className?: string;
+  children: React.ReactNode;
+  onClick?: () => void;
 }
 
-export function Card({ children, padding = 'md', className = '', ...props }: CardProps) {
-  const paddingClasses = {
-    sm: 'p-3',
-    md: 'p-5',
-    lg: 'p-7',
-  };
+export default function Card({ className = '', children, onClick }: CardProps) {
+  const Tag = onClick ? 'button' : 'div';
 
   return (
-    <div
-      className={`rounded-2xl bg-cream-dark card-glow border border-warm-gray-light/20 transition-all duration-200 ${paddingClasses[padding]} ${className}`}
-      {...props}
+    <Tag
+      className={`pixel-card p-4 ${onClick ? 'cursor-pointer w-full text-left' : ''} ${className}`}
+      onClick={onClick}
+      type={onClick ? 'button' : undefined}
     >
       {children}
-    </div>
+    </Tag>
   );
 }
