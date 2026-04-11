@@ -14,6 +14,7 @@ import Recommendations from '@/components/saju/Recommendations';
 import DaeunTimeline from '@/components/saju/DaeunTimeline';
 import SinsalSummary from '@/components/saju/SinsalSummary';
 import ProfileInfoBadges from '@/components/saju/ProfileInfoBadges';
+import DailyResultView from '@/components/saju/DailyResultView';
 import DOMPurify from 'dompurify';
 import { showToast } from '@/components/ui/Toast';
 import { useAuthStore } from '@/stores/auth';
@@ -135,6 +136,8 @@ export default function ArchiveDetailPage() {
                 목록으로
               </Button>
             </div>
+          ) : result && isDaily ? (
+            <DailyResultView result={result as unknown as Record<string, unknown>} />
           ) : result ? (
             <>
               {/* Summary - DOMPurify 필수 적용 */}

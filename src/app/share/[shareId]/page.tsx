@@ -12,6 +12,7 @@ import FourPillars from '@/components/saju/FourPillars';
 import OhaengBar from '@/components/saju/OhaengBar';
 import DaeunTimeline from '@/components/saju/DaeunTimeline';
 import SinsalSummary from '@/components/saju/SinsalSummary';
+import DailyResultView from '@/components/saju/DailyResultView';
 import { supabase } from '@/lib/supabase';
 import { SERVICE_NAMES } from '@/lib/services';
 import type { ServiceType, SajuPillars, SajuApiResponse, SajuChapter } from '@/types/saju';
@@ -90,6 +91,20 @@ export default function SharePage() {
               사주독에서 나도 보기
             </Button>
           </div>
+        ) : result && serviceType === 'daily' ? (
+          <>
+            {ogImageUrl && (
+              <div className="-mx-4 -mt-4 mb-2">
+                <img src={ogImageUrl} alt={serviceName} className="w-full h-auto object-cover" />
+              </div>
+            )}
+            <DailyResultView result={result as unknown as Record<string, unknown>} />
+            <div className="mt-4 mb-8">
+              <Button variant="primary" className="w-full" onClick={() => router.push('/')}>
+                사주독에서 나도 보기
+              </Button>
+            </div>
+          </>
         ) : result ? (
           <>
             {/* OG 이미지 */}
