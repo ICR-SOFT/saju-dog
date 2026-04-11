@@ -577,13 +577,21 @@ async function generateOgImage(readingId, serviceType, summary, chapters, profil
       return [name, ddi, zodiac].filter(Boolean).join(' ');
     }).filter(Boolean).join(' / ');
 
-    // Gemini에게 풀이 내용 + 띠/별자리 기반 이미지 생성
-    const prompt = `Create a wide illustration (1200x630) based on this Korean fortune telling reading.
+    // 궁합 여부에 따라 다른 프롬프트
+    const isCompat = ['compatibility', 'business'].includes(serviceType);
+    const personCount = profileList.length;
 
-Reading themes: "${readingContext}"
-${extraInfo ? `Zodiac/Animal sign: ${extraInfo}` : ''}
-
-Create a beautiful 16-bit retro pixel art scene that symbolically represents the reading's themes and energy. Use the zodiac animal or constellation as a visual motif if provided. The scene should convey the emotional tone of the reading (e.g., prosperity=golden treasure landscape, love=romantic garden, challenge=stormy mountain path, growth=blooming spring field). Rich detailed pixel art background with atmospheric lighting. Warm color palette, thick black outlines, visible pixel grid. No characters, no dogs, no people. Pure symbolic landscape/scene. No text, no letters, no words.`;
+    let prompt;
+    if (isCompat && personCount >= 2) {
+      // 궁합: 띠 동물들이 상호작용하는 장면
+      const animals = profileList.map(p => p?.calculated_saju?.ddi?.animal || '강아지').join(' and ');
+      prompt = `Create a wide 16-bit pixel art illustration (1200x630). ${personCount} cute pixel art animals (${animals}) interacting together in a scene that reflects their relationship energy. Based on this reading: "${readingContext.slice(0, 200)}". The animals should have distinct personalities visible through their poses and expressions. Cozy detailed background setting. Warm color palette, thick black outlines, visible pixel grid. Absolutely no text, no letters, no words, no numbers anywhere in the image.`;
+    } else {
+      // 개인 풀이: 띠 동물이 이 사람의 성격/분위기를 표현
+      const animal = profileData?.calculated_saju?.ddi?.animal || '강아지';
+      const zodiacSign = profileData?.calculated_saju?.zodiac?.name || '';
+      prompt = `Create a wide 16-bit pixel art illustration (1200x630). A cute pixel art ${animal} character that embodies this person's personality and energy. Based on this reading: "${readingContext.slice(0, 250)}". The ${animal} should have a distinct personality shown through its pose, expression, accessories, and surroundings that reflect the person's traits and current life energy.${zodiacSign ? ` Subtly incorporate ${zodiacSign} constellation motifs.` : ''} Rich detailed pixel art environment matching the mood. Warm color palette, thick black outlines, visible pixel grid. Absolutely no text, no letters, no words, no numbers anywhere in the image.`;
+    }
 
     const response = await fetch(GEMINI_ENDPOINT, {
       method: 'POST',
