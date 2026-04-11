@@ -953,6 +953,18 @@ async function processReading(reading) {
         }
       }
 
+      // 중복 제목 후처리 — 같은 제목이 있으면 뒤쪽에 (2), (3) 추가
+      if (Array.isArray(result.chapters)) {
+        const titleCount = {};
+        for (const ch of result.chapters) {
+          if (!ch.title) continue;
+          titleCount[ch.title] = (titleCount[ch.title] || 0) + 1;
+          if (titleCount[ch.title] > 1) {
+            ch.title = `${ch.title} (${titleCount[ch.title]})`;
+          }
+        }
+      }
+
       // 품질 검증 (완화: 이모지 누락은 후처리로 보완, 챕터 수와 내용만 체크)
       const chapters = result.chapters;
       const minChapters = reading.service_type === 'daily' ? 0
