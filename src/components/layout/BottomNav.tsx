@@ -14,7 +14,7 @@ const navItems: NavItem[] = [
   { href: '/', icon: '/images/ui/home.png', label: '홈' },
   { href: '/archive', icon: '/images/ui/archive.png', label: '기록' },
   { href: '/groups', icon: '/images/ui/group.png', label: '그룹' },
-  { href: '/shop', icon: '/images/ui/shop.png', label: '상점' },
+  { href: '/chat', icon: '/images/ui/chat-nav.png', label: '채팅' },
   { href: '/my', icon: '/images/ui/mypage.png', label: 'MY' },
 ];
 

@@ -109,10 +109,11 @@ export default function Header({ title, showBack = false, rightAction }: HeaderP
             <button
               type="button"
               onClick={() => router.push('/shop')}
-              className="flex items-center gap-1 px-1.5 py-0.5 hover:bg-[var(--gold-light)] transition-colors"
+              className="flex items-center gap-1 px-2 py-1 pixel-border-sm hover:bg-[var(--gold-light)] transition-colors"
             >
               <span className="text-xs">🦴</span>
               <span className="font-pixel text-[10px] text-[var(--gold)]">{credits.bones}</span>
+              <span className="font-pixel text-[8px] text-[var(--text-muted)]">+</span>
             </button>
           )}
           {rightAction}
