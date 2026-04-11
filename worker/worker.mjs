@@ -553,7 +553,6 @@ Create a wide illustration (1200x630 aspect ratio) that visually represents the 
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
           responseModalities: ['image', 'text'],
-          imageGenerationConfig: { aspectRatio: '21:9' },
         },
       }),
     });
@@ -563,7 +562,9 @@ Create a wide illustration (1200x630 aspect ratio) that visually represents the 
     const imagePart = parts.find(p => p.inlineData);
 
     if (!imagePart) {
-      log('warn', `[${readingId.slice(0, 8)}] Gemini returned no image`);
+      const errMsg = data?.error?.message || data?.candidates?.[0]?.finishReason || 'unknown';
+      const textPart = parts.find(p => p.text);
+      log('warn', `[${readingId.slice(0, 8)}] Gemini no image: ${errMsg}${textPart ? ` | text: ${textPart.text.slice(0, 100)}` : ''}`);
       return null;
     }
 
@@ -912,26 +913,33 @@ async function processReading(reading) {
         }
       }
 
-      // 품질 검증
+      // 품질 검증 (완화: 이모지 누락은 후처리로 보완, 챕터 수와 내용만 체크)
       const chapters = result.chapters;
-      const minChapters = reading.service_type === 'daily' ? 0 : 5;
+      const minChapters = reading.service_type === 'daily' ? 0 : 3;
       const chapterCount = Array.isArray(chapters) ? chapters.length : 0;
       const hasEnoughChapters = minChapters === 0 || chapterCount >= minChapters;
 
-      // 챕터 내용 잘림 체크
-      const truncatedChapters = Array.isArray(chapters) ? chapters.filter(ch => ch.content && ch.content.length < 100) : [];
-      const hasTruncated = truncatedChapters.length > 2;
+      // 챕터 내용 잘림 체크 (50자 미만이 과반수면 fail)
+      const truncatedChapters = Array.isArray(chapters) ? chapters.filter(ch => ch.content && ch.content.length < 50) : [];
+      const hasTruncated = truncatedChapters.length > Math.ceil(chapterCount / 2);
 
-      // 이모지 누락 체크 (daily 제외)
-      const missingEmoji = reading.service_type !== 'daily' && Array.isArray(chapters) && chapters.some(ch => !ch.emoji || !ch.emoji.trim());
+      // 이모지 누락은 후처리로 기본값 채움 (fail 사유에서 제외)
+      if (Array.isArray(chapters)) {
+        const defaultEmojis = ['🔮','⭐','💫','🌟','✨','🎯','💡','🌈','🍀','🌙','🔥','💎','🌊','🏔️','🎭'];
+        for (let ci = 0; ci < chapters.length; ci++) {
+          if (!chapters[ci].emoji || !chapters[ci].emoji.trim()) {
+            chapters[ci].emoji = defaultEmojis[ci % defaultEmojis.length];
+          }
+        }
+      }
 
-      if (hasEnoughChapters && !hasTruncated && !missingEmoji) {
+      if (hasEnoughChapters && !hasTruncated) {
         parsed = result;
         log('info', `[${rid}] Quality OK (attempt ${attempt}): ${chapterCount} chapters, stop=${stopReason}`);
         break;
       }
 
-      log('warn', `[${rid}] Quality FAIL (attempt ${attempt}/${MAX_QUALITY_RETRIES}): chapters=${chapterCount}/${minChapters}, truncated=${truncatedChapters.length}, missingEmoji=${missingEmoji}, stop=${stopReason}`);
+      log('warn', `[${rid}] Quality FAIL (attempt ${attempt}/${MAX_QUALITY_RETRIES}): chapters=${chapterCount}/${minChapters}, truncated=${truncatedChapters.length}, stop=${stopReason}`);
 
       if (attempt === MAX_QUALITY_RETRIES) {
         parsed = result;

@@ -56,6 +56,7 @@ export interface Reading {
   api_cost: Record<string, unknown> | null;
   failure_reason: string | null;
   share_id: string | null;
+  og_image_url: string | null;
   metadata: Record<string, unknown> | null;
   created_at: string;
 }

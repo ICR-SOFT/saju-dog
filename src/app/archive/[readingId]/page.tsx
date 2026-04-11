@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Image from 'next/image';
 import AppShell from '@/components/layout/AppShell';
 import AuthRequired from '@/components/layout/AuthRequired';
 import Button from '@/components/ui/Button';
@@ -111,6 +112,20 @@ export default function ArchiveDetailPage() {
     <AuthRequired>
       <AppShell title={serviceName}>
         <div className="p-4 flex flex-col gap-6 animate-fade-in">
+          {/* OG 이미지 (상단 전체 너비) */}
+          {reading?.og_image_url && (
+            <div className="-mx-4 -mt-4 mb-2">
+              <Image
+                src={reading.og_image_url}
+                alt={serviceName}
+                width={480}
+                height={252}
+                className="w-full h-auto object-cover"
+                unoptimized
+              />
+            </div>
+          )}
+
           {isLoading ? (
             <Loading message="결과를 불러오는 중..." />
           ) : error ? (
