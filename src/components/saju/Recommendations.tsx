@@ -2,10 +2,10 @@
 
 interface RecommendationsProps {
   luckyItems: {
-    color: string;
-    number: string;
-    direction: string;
-    food: string;
+    color?: string;
+    number?: string;
+    direction?: string;
+    food?: string;
   };
 }
 
