@@ -94,7 +94,40 @@ export default function CompatibilityPage() {
           if (durations.length) setAvgDuration(Math.round(durations.reduce((a: number, b: number) => a + b, 0) / durations.length));
         }
       });
-  }, [fetchProfiles, fetchCredits, fetchReadings]);
+    // 처리 중인 궁합이 있으면 자동 폴링 시작
+    supabase.from('readings').select('id, created_at')
+      .eq('service_type', 'compatibility')
+      .in('processing_status', ['processing', 'pending'])
+      .order('created_at', { ascending: false }).limit(1)
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          const r = data[0];
+          setIsLoading(true);
+          setLoadingStart(new Date(r.created_at).getTime());
+          setLoadingElapsed(Date.now() - new Date(r.created_at).getTime());
+          // 폴링
+          (async () => {
+            for (let i = 0; i < 60; i++) {
+              await new Promise(resolve => setTimeout(resolve, 3000));
+              const status = await pollReadingStatus(r.id);
+              if (status.status === 'completed') {
+                setIsLoading(false);
+                fetchReadings();
+                router.push(`/archive/${r.id}`);
+                return;
+              }
+              if (status.status === 'failed') {
+                setError(status.failure_reason || '분석에 실패했어요');
+                setIsLoading(false);
+                fetchCredits();
+                return;
+              }
+            }
+            setIsLoading(false);
+          })();
+        }
+      });
+  }, [fetchProfiles, fetchCredits, fetchReadings, router]);
 
   // 로딩 타이머
   useEffect(() => {

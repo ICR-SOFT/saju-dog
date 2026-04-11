@@ -84,18 +84,47 @@ export default function GroupDetailPage() {
     const { data } = await supabase
       .from('readings')
       .select('id, service_type, processing_status, result, metadata, created_at')
-      .eq('processing_status', 'completed')
+      .in('processing_status', ['completed', 'processing', 'pending'])
       .order('created_at', { ascending: false });
 
     if (data) {
-      // Filter client-side: metadata.groupId must match this group
       const filtered = data.filter((r) => {
         const meta = r.metadata as Record<string, unknown> | null;
         return meta?.groupId === groupId;
       });
       setGroupReadings(filtered as GroupReading[]);
+
+      // 처리 중인 reading이 있으면 자동으로 폴링 시작
+      const processing = filtered.find(r => r.processing_status === 'processing' || r.processing_status === 'pending');
+      if (processing && !isRequesting) {
+        setCurrentReadingId(processing.id);
+        setIsRequesting(true);
+        setLoadingStart(new Date(processing.created_at).getTime());
+        setLoadingElapsed(Date.now() - new Date(processing.created_at).getTime());
+
+        // 폴링 시작
+        (async () => {
+          for (let i = 0; i < 60; i++) {
+            await new Promise(r => setTimeout(r, 3000));
+            const status = await pollReadingStatus(processing.id);
+            if (status.status === 'completed') {
+              setIsRequesting(false);
+              loadGroupReadings();
+              router.push(`/archive/${processing.id}`);
+              return;
+            }
+            if (status.status === 'failed') {
+              showToast(status.failure_reason || '풀이에 실패했어요');
+              setIsRequesting(false);
+              loadGroupReadings();
+              return;
+            }
+          }
+          setIsRequesting(false);
+        })();
+      }
     }
-  }, [groupId]);
+  }, [groupId, isRequesting, router]);
 
   useEffect(() => {
     fetchProfiles();
