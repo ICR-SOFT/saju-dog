@@ -13,6 +13,7 @@ import ChapterAccordion from '@/components/saju/ChapterAccordion';
 import { useSajuStore } from '@/stores/saju';
 import { useCreditStore } from '@/stores/credit';
 import { CREDIT_COSTS } from '@/types/api';
+import { supabase } from '@/lib/supabase';
 import { requestReading, pollReadingStatus } from '@/lib/api';
 import type { SajuApiResponse, SajuChapter } from '@/types/saju';
 
@@ -53,6 +54,9 @@ export default function CompatibilityPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [loadingStart, setLoadingStart] = useState(0);
+  const [loadingElapsed, setLoadingElapsed] = useState(0);
+  const [avgDuration, setAvgDuration] = useState(80000);
 
   const cost = CREDIT_COSTS.compatibility.bones;
   const getProfileName = (id: string) => profiles.find(p => p.id === id)?.name || '?';
@@ -80,7 +84,26 @@ export default function CompatibilityPage() {
     fetchProfiles();
     fetchCredits();
     fetchReadings();
+    // 평균 처리 시간 조회
+    supabase.from('readings').select('processing_duration_ms')
+      .eq('service_type', 'compatibility').eq('processing_status', 'completed')
+      .not('processing_duration_ms', 'is', null).order('created_at', { ascending: false }).limit(10)
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          const durations = data.map(d => d.processing_duration_ms).filter(Boolean);
+          if (durations.length) setAvgDuration(Math.round(durations.reduce((a: number, b: number) => a + b, 0) / durations.length));
+        }
+      });
   }, [fetchProfiles, fetchCredits, fetchReadings]);
+
+  // 로딩 타이머
+  useEffect(() => {
+    if (!isLoading) return;
+    const interval = setInterval(() => {
+      setLoadingElapsed(Date.now() - loadingStart);
+    }, 500);
+    return () => clearInterval(interval);
+  }, [isLoading, loadingStart]);
 
   useEffect(() => {
     if (initialized || profiles.length < 2) return;
@@ -96,6 +119,8 @@ export default function CompatibilityPage() {
     if (selectedIds.length < 2) return;
     setShowConfirm(false);
     setIsLoading(true);
+    setLoadingStart(Date.now());
+    setLoadingElapsed(0);
     setError(null);
 
     try {
@@ -170,15 +195,29 @@ export default function CompatibilityPage() {
       <AppShell title="궁합" showBack>
         <div className="p-4 flex flex-col gap-5 animate-fade-in">
           {/* 로딩 중 - 상단 배너 (폼은 계속 사용 가능) */}
-          {isLoading && (
-            <div className="pixel-border-accent p-3 bg-[var(--accent-light)] flex items-center gap-3">
-              <div className="pixel-loading shrink-0"><span /><span /><span /></div>
-              <div>
-                <p className="font-pixel text-[10px] text-[var(--accent)]">궁합 분석 중...</p>
-                <p className="text-[9px] text-[var(--text-muted)]">완료되면 자동으로 결과 화면으로 이동해요</p>
+          {isLoading && (() => {
+            const est = avgDuration * 1.2;
+            const progress = Math.min((loadingElapsed / est) * 100, 95);
+            const remainSec = Math.max(0, Math.round((est - loadingElapsed) / 1000));
+            return (
+              <div className="pixel-border-accent p-4 bg-[var(--accent-light)] flex flex-col gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="pixel-loading shrink-0"><span /><span /><span /></div>
+                  <div>
+                    <p className="font-pixel text-[10px] text-[var(--accent)]">궁합 분석 중...</p>
+                    <p className="text-[9px] text-[var(--text-muted)]">완료되면 자동으로 결과로 이동해요</p>
+                  </div>
+                </div>
+                <div className="w-full h-3 border-2 border-[var(--accent)] bg-white">
+                  <div className="h-full bg-[var(--accent)] transition-all duration-500" style={{ width: `${progress}%` }} />
+                </div>
+                <div className="flex justify-between text-[9px] text-[var(--text-muted)]">
+                  <span>{Math.round(loadingElapsed / 1000)}초 경과</span>
+                  <span>약 {remainSec}초 남음</span>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* 프로필 선택 (항상 표시) */}
           {(

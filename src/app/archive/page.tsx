@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import AppShell from '@/components/layout/AppShell';
@@ -26,10 +26,30 @@ const NAMED_TYPES = FILTER_TABS
   .filter((t) => Array.isArray(t.types))
   .flatMap((t) => t.types as string[]);
 
+function ProcessingGauge({ createdAt }: { createdAt: string }) {
+  const [elapsed, setElapsed] = useState(Date.now() - new Date(createdAt).getTime());
+  useEffect(() => {
+    const start = new Date(createdAt).getTime();
+    setElapsed(Date.now() - start);
+    const interval = setInterval(() => setElapsed(Date.now() - start), 1000);
+    return () => clearInterval(interval);
+  }, [createdAt]);
+  const est = 90000 * 1.2; // 평균 90초 + 20%
+  const progress = Math.min((elapsed / est) * 100, 95);
+  return (
+    <div className="w-full mt-1.5">
+      <div className="w-full h-2 border border-[var(--warning)] bg-[var(--bg-secondary)]">
+        <div className="h-full bg-[var(--warning)] transition-all duration-1000" style={{ width: `${progress}%` }} />
+      </div>
+      <p className="text-[8px] text-[var(--text-muted)] text-right mt-0.5">{Math.round(elapsed / 1000)}초 경과</p>
+    </div>
+  );
+}
+
 function statusBadge(status: string) {
   switch (status) {
     case 'completed':
-      return <span className="font-pixel text-[10px] text-[var(--success)]">✅ 완료</span>;
+      return <span className="font-pixel text-[10px] text-[var(--success)]">완료</span>;
     case 'processing':
     case 'pending':
       return (
@@ -39,7 +59,7 @@ function statusBadge(status: string) {
         </span>
       );
     case 'failed':
-      return <span className="font-pixel text-[10px] text-[var(--error)]">❌ 실패</span>;
+      return <span className="font-pixel text-[10px] text-[var(--error)]">실패</span>;
     default:
       return null;
   }
@@ -176,7 +196,7 @@ export default function ArchivePage() {
                 <button
                   key={reading.id}
                   type="button"
-                  className="pixel-card p-4 w-full text-left flex items-center gap-3"
+                  className="pixel-card p-4 w-full text-left flex flex-wrap items-center gap-3"
                   onClick={() => {
                     if (reading.processing_status === 'completed') {
                       router.push(`/archive/${reading.id}`);
@@ -197,6 +217,9 @@ export default function ArchivePage() {
                   <div className="shrink-0">
                     {statusBadge(reading.processing_status)}
                   </div>
+                  {(reading.processing_status === 'processing' || reading.processing_status === 'pending') && (
+                    <ProcessingGauge createdAt={reading.created_at} />
+                  )}
                 </button>
               );
             })
