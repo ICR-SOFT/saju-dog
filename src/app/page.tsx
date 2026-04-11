@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import AppShell from '@/components/layout/AppShell';
 import CostBadge from '@/components/ui/CostBadge';
+import BannerSlider from '@/components/ui/BannerSlider';
 import { useAuthStore } from '@/stores/auth';
 import { useSajuStore } from '@/stores/saju';
 import { useCreditStore } from '@/stores/credit';
@@ -190,6 +191,16 @@ export default function HomePage() {
             </button>
           )}
         </section>
+
+        {/* Banner Slider */}
+        <BannerSlider onNavigate={(path) => {
+          const selectedProfile = profiles[selectedProfileIdx];
+          if (path.startsWith('/reading/') && selectedProfile) {
+            router.push(path.replace(':profileId', selectedProfile.id));
+          } else {
+            router.push(path);
+          }
+        }} />
 
         {/* Main services - 2 column image cards */}
         <section className="mb-4">

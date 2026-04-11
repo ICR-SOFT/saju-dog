@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import AppShell from '@/components/layout/AppShell';
@@ -9,6 +9,22 @@ import Loading from '@/components/ui/Loading';
 import { useSajuStore } from '@/stores/saju';
 import { SERVICE_NAMES } from '@/lib/services';
 import type { ServiceType } from '@/types/saju';
+
+const FILTER_TABS: { label: string; types: string[] | null | 'other' }[] = [
+  { label: '전체', types: null },
+  { label: '종합', types: ['comprehensive'] },
+  { label: '궁합', types: ['compatibility', 'business'] },
+  { label: '대운', types: ['daeun'] },
+  { label: '올해운세', types: ['yearly'] },
+  { label: '오늘운세', types: ['daily'] },
+  { label: '채팅', types: ['chat'] },
+  { label: '기타', types: 'other' },
+];
+
+// All named service types (used to compute "기타")
+const NAMED_TYPES = FILTER_TABS
+  .filter((t) => Array.isArray(t.types))
+  .flatMap((t) => t.types as string[]);
 
 function statusBadge(status: string) {
   switch (status) {
@@ -33,11 +49,21 @@ export default function ArchivePage() {
   const router = useRouter();
   const { readings, fetchReadings, isLoading, profiles, fetchProfiles } = useSajuStore();
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [selectedFilter, setSelectedFilter] = useState(0);
 
   useEffect(() => {
     fetchReadings();
     fetchProfiles();
   }, [fetchReadings, fetchProfiles]);
+
+  const filteredReadings = useMemo(() => {
+    const tab = FILTER_TABS[selectedFilter];
+    if (!tab || tab.types === null) return readings;
+    if (tab.types === 'other') {
+      return readings.filter((r) => !NAMED_TYPES.includes(r.service_type));
+    }
+    return readings.filter((r) => (tab.types as string[]).includes(r.service_type));
+  }, [readings, selectedFilter]);
 
   // 5-second auto-refresh polling when any readings are processing/pending
   useEffect(() => {
@@ -63,10 +89,28 @@ export default function ArchivePage() {
     <AuthRequired>
       <AppShell title="풀이 기록" showNav>
         <div className="p-4 flex flex-col gap-3 animate-fade-in">
+          {/* Service Type Filter Tabs */}
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+            {FILTER_TABS.map((tab, idx) => (
+              <button
+                key={tab.label}
+                type="button"
+                className={`pixel-border-sm shrink-0 px-3 py-1.5 font-pixel text-[10px] transition-colors ${
+                  selectedFilter === idx
+                    ? 'bg-[var(--accent)] text-white'
+                    : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                }`}
+                onClick={() => setSelectedFilter(idx)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
           {isLoading && readings.length === 0 ? (
             <Loading message="기록을 불러오는 중..." />
           ) : readings.length === 0 ? (
-            /* Empty State */
+            /* Empty State - no readings at all */
             <div className="flex flex-col items-center justify-center py-16 gap-4">
               <pre className="font-pixel text-[10px] text-[var(--text-muted)] leading-tight text-center whitespace-pre">
 {`   / \\__
@@ -86,9 +130,16 @@ export default function ArchivePage() {
                 첫 번째 풀이 시작하기 →
               </button>
             </div>
+          ) : filteredReadings.length === 0 ? (
+            /* Empty State - no readings matching filter */
+            <div className="flex flex-col items-center justify-center py-12 gap-3">
+              <p className="font-pixel text-xs text-[var(--text-muted)] text-center">
+                해당 유형의 풀이 기록이 없어요
+              </p>
+            </div>
           ) : (
             /* Reading List */
-            readings.map((reading) => {
+            filteredReadings.map((reading) => {
               const serviceType = reading.service_type as ServiceType;
               const name = SERVICE_NAMES[serviceType] || reading.service_type;
               const date = new Date(reading.created_at).toLocaleDateString('ko-KR', {

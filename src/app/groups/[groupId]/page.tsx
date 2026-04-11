@@ -10,6 +10,8 @@ import { showToast } from '@/components/ui/Toast';
 import { useSajuStore } from '@/stores/saju';
 import { supabase } from '@/lib/supabase';
 import { requestReading } from '@/lib/api';
+import { SERVICE_NAMES } from '@/lib/services';
+import type { ServiceType } from '@/types/saju';
 
 interface GroupMember {
   id: string;
@@ -32,6 +34,15 @@ interface ProfileGroup {
   profile_group_members: GroupMember[];
 }
 
+interface GroupReading {
+  id: string;
+  service_type: string;
+  processing_status: string;
+  result: Record<string, unknown> | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+}
+
 export default function GroupDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -39,6 +50,7 @@ export default function GroupDetailPage() {
   const { profiles, fetchProfiles } = useSajuStore();
 
   const [group, setGroup] = useState<ProfileGroup | null>(null);
+  const [groupReadings, setGroupReadings] = useState<GroupReading[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRequesting, setIsRequesting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -59,10 +71,28 @@ export default function GroupDetailPage() {
     setIsLoading(false);
   }, [groupId]);
 
+  const loadGroupReadings = useCallback(async () => {
+    const { data } = await supabase
+      .from('readings')
+      .select('id, service_type, processing_status, result, metadata, created_at')
+      .eq('processing_status', 'completed')
+      .order('created_at', { ascending: false });
+
+    if (data) {
+      // Filter client-side: metadata.groupId must match this group
+      const filtered = data.filter((r) => {
+        const meta = r.metadata as Record<string, unknown> | null;
+        return meta?.groupId === groupId;
+      });
+      setGroupReadings(filtered as GroupReading[]);
+    }
+  }, [groupId]);
+
   useEffect(() => {
     fetchProfiles();
     loadGroup();
-  }, [fetchProfiles, loadGroup]);
+    loadGroupReadings();
+  }, [fetchProfiles, loadGroup, loadGroupReadings]);
 
   const handleGroupReading = async () => {
     if (!group || group.profile_group_members.length < 2) {
@@ -266,6 +296,54 @@ export default function GroupDetailPage() {
                     </button>
                   </div>
                 ))}
+              </div>
+
+              {/* Group Readings History */}
+              <div className="flex flex-col gap-3">
+                <h3 className="font-pixel text-xs text-[var(--text-secondary)]">
+                  풀이 기록
+                </h3>
+                {groupReadings.length === 0 ? (
+                  <div className="pixel-card p-4 text-center">
+                    <p className="font-pixel text-[10px] text-[var(--text-muted)]">
+                      아직 그룹 풀이 기록이 없어요
+                    </p>
+                  </div>
+                ) : (
+                  groupReadings.map((reading) => {
+                    const serviceType = reading.service_type as ServiceType;
+                    const name = SERVICE_NAMES[serviceType] || reading.service_type;
+                    const date = new Date(reading.created_at).toLocaleDateString('ko-KR', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                    });
+                    const overallScore = reading.result?.overallScore as number | undefined;
+
+                    return (
+                      <button
+                        key={reading.id}
+                        type="button"
+                        className="pixel-card p-3 w-full text-left flex items-center gap-3"
+                        onClick={() => router.push(`/archive/${reading.id}`)}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="font-pixel text-xs text-[var(--text-primary)] truncate">
+                            {name}
+                          </p>
+                          <p className="text-[10px] text-[var(--text-muted)] mt-0.5">
+                            {date}
+                          </p>
+                        </div>
+                        {overallScore != null && (
+                          <span className="font-pixel text-xs text-[var(--accent)] shrink-0">
+                            {overallScore}점
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })
+                )}
               </div>
 
               {/* Group Reading Button */}
