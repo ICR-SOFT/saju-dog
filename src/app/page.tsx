@@ -149,50 +149,8 @@ export default function HomePage() {
 
   return (
     <AppShell title="사주독" showNav>
-      <div className="px-3 py-3">
-        {/* Profile selector */}
-        <section className="mb-4">
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
-            {profiles.map((profile, idx) => (
-              <button
-                key={profile.id}
-                type="button"
-                onClick={() => selectProfile(idx)}
-                className={`flex-shrink-0 flex flex-col items-center gap-1 px-3 py-2 min-w-[72px] transition-all ${
-                  selectedProfileIdx === idx
-                    ? 'pixel-border-accent bg-[var(--accent-light)]'
-                    : 'pixel-border-sm bg-[var(--bg-card)] hover:bg-[var(--bg-hover)]'
-                }`}
-              >
-                <span className="font-pixel text-[10px] text-[var(--text-primary)] truncate max-w-[56px]">
-                  {profile.name}
-                </span>
-                <span className="text-[9px] text-[var(--text-muted)]">
-                  {profile.relation || '본인'}
-                </span>
-              </button>
-            ))}
-            <button
-              type="button"
-              onClick={() => router.push('/profile/add')}
-              className="flex-shrink-0 flex flex-col items-center justify-center gap-1 px-3 py-2 min-w-[72px] pixel-border-sm bg-[var(--bg-card)] hover:bg-[var(--bg-hover)]"
-            >
-              <span className="text-lg text-[var(--text-muted)]">+</span>
-              <span className="font-pixel text-[10px] text-[var(--text-muted)]">추가</span>
-            </button>
-          </div>
-          {profiles[selectedProfileIdx] && (
-            <button
-              type="button"
-              onClick={() => router.push(`/profile/${profiles[selectedProfileIdx].id}/edit`)}
-              className="text-[10px] text-[var(--text-muted)] hover:text-[var(--accent)] mt-1"
-            >
-              프로필 수정
-            </button>
-          )}
-        </section>
-
-        {/* Banner Slider */}
+      <div className="px-3 py-2">
+        {/* Banner Slider (최상단) */}
         <BannerSlider onNavigate={(path) => {
           const selectedProfile = profiles[selectedProfileIdx];
           if (path.startsWith('/reading/') && selectedProfile) {
@@ -201,6 +159,33 @@ export default function HomePage() {
             router.push(path);
           }
         }} />
+
+        {/* Profile selector (컴팩트 칩) */}
+        <section className="mb-3">
+          <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none items-center">
+            {profiles.map((profile, idx) => (
+              <button
+                key={profile.id}
+                type="button"
+                onClick={() => selectProfile(idx)}
+                className={`flex-shrink-0 px-2.5 py-1 font-pixel text-[10px] transition-all ${
+                  selectedProfileIdx === idx
+                    ? 'pixel-border-accent bg-[var(--accent-light)] text-[var(--accent)]'
+                    : 'pixel-border-sm bg-[var(--bg-card)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
+                }`}
+              >
+                {profile.name}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => router.push('/profile/add')}
+              className="flex-shrink-0 px-2.5 py-1 pixel-border-sm bg-[var(--bg-card)] text-[var(--text-muted)] font-pixel text-[10px] hover:bg-[var(--bg-hover)]"
+            >
+              + 추가
+            </button>
+          </div>
+        </section>
 
         {/* Main services - 2 column image cards */}
         <section className="mb-4">
