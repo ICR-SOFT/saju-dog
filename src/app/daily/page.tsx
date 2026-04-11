@@ -53,9 +53,9 @@ function StarScore({ score, max = 5 }: { score: number; max?: number }) {
 }
 
 export default function DailyPage() {
-  const { profiles, fetchProfiles } = useSajuStore();
+  const { profiles, fetchProfiles, selectedProfileIdx } = useSajuStore();
   const { fetchCredits } = useCreditStore();
-  const [selectedIdx, setSelectedIdx] = useState(0);
+  const [selectedIdx, setSelectedIdx] = useState(selectedProfileIdx);
   const [dailyResult, setDailyResult] = useState<DailyResult | null>(null);
   const [ogImageUrl, setOgImageUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
