@@ -525,7 +525,7 @@ function calculateCost(model, usage) {
 // ===== OG 이미지 생성 (Gemini) =====
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${GEMINI_KEY}`;
 
-async function generateOgImage(readingId, serviceType, summary, chapters, profileData) {
+async function generateOgImage(readingId, serviceType, summary, chapters, profileData, allProfiles = []) {
   if (!GEMINI_KEY) {
     log('warn', `[${readingId.slice(0, 8)}] OG image skipped: no GEMINI_API_KEY`);
     return null;
@@ -539,10 +539,15 @@ async function generateOgImage(readingId, serviceType, summary, chapters, profil
       : '';
     const readingContext = `${plainSummary} ${chapterSnippets}`.slice(0, 400);
 
-    // 띠/별자리 정보 추출
-    const ddi = profileData?.calculated_saju?.ddi?.fullName || '';
-    const zodiac = profileData?.calculated_saju?.zodiac?.name || '';
-    const extraInfo = [ddi, zodiac].filter(Boolean).join(', ');
+    // 띠/별자리 정보 추출 (궁합: 모든 참여자)
+    const profileList = allProfiles.length > 0 ? allProfiles : [profileData].filter(Boolean);
+    const extraInfo = profileList.map(p => {
+      const saju = p?.calculated_saju;
+      const name = p?.name || '';
+      const ddi = saju?.ddi?.fullName || '';
+      const zodiac = saju?.zodiac?.name || '';
+      return [name, ddi, zodiac].filter(Boolean).join(' ');
+    }).filter(Boolean).join(' / ');
 
     // Gemini에게 풀이 내용 + 띠/별자리 기반 이미지 생성
     const prompt = `Create a wide illustration (1200x630) based on this Korean fortune telling reading.
@@ -969,7 +974,8 @@ async function processReading(reading) {
     }).eq('id', reading.id);
 
     // OG 이미지 비동기 생성 (실패해도 reading 결과에 영향 없음)
-    generateOgImage(reading.id, reading.service_type, parsed?.summary, parsed?.chapters, profile).then(ogResult => {
+    const allOgProfiles = [profile, secondaryProfile, ...extraProfiles].filter(Boolean);
+    generateOgImage(reading.id, reading.service_type, parsed?.summary, parsed?.chapters, profile, allOgProfiles).then(ogResult => {
       if (ogResult) {
         const gc = ogResult.gemini_cost_usd || 0;
         totalCostUsd += gc; // Gemini 비용도 글로벌 합산
