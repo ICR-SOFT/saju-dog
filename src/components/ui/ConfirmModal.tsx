@@ -45,10 +45,10 @@ export default function ConfirmModal({
   return (
     <dialog
       ref={dialogRef}
-      className="fixed inset-0 z-[100] m-auto p-0 bg-transparent backdrop:bg-black/50"
+      className="fixed inset-0 z-[100] m-auto p-0 bg-transparent backdrop:bg-black/50 max-h-[85dvh] overflow-y-auto"
       onClose={onClose}
     >
-      <div className="pixel-border bg-[var(--bg-primary)] p-5 w-[min(320px,85vw)] flex flex-col gap-4">
+      <div className="pixel-border bg-[var(--bg-primary)] p-5 w-[min(320px,85vw)] flex flex-col gap-4 my-auto">
         <h2 className="font-pixel text-sm text-[var(--text-primary)] text-center">
           {title}
         </h2>

@@ -194,32 +194,8 @@ export default function CompatibilityPage() {
     <AuthRequired>
       <AppShell title="궁합" showBack>
         <div className="p-4 flex flex-col gap-5 animate-fade-in">
-          {/* 로딩 중 - 상단 배너 (폼은 계속 사용 가능) */}
-          {isLoading && (() => {
-            const est = avgDuration * 1.2;
-            const progress = Math.min((loadingElapsed / est) * 100, 95);
-            const remainSec = Math.max(0, Math.round((est - loadingElapsed) / 1000));
-            return (
-              <div className="pixel-border-accent p-4 bg-[var(--accent-light)] flex flex-col gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="pixel-loading shrink-0"><span /><span /><span /></div>
-                  <div>
-                    <p className="font-pixel text-[10px] text-[var(--accent)]">궁합 분석 중...</p>
-                    <p className="text-[9px] text-[var(--text-muted)]">완료되면 자동으로 결과로 이동해요</p>
-                  </div>
-                </div>
-                <div className="w-full h-3 border-2 border-[var(--accent)] bg-white">
-                  <div className="h-full bg-[var(--accent)] transition-all duration-500" style={{ width: `${progress}%` }} />
-                </div>
-                <div className="flex justify-between text-[9px] text-[var(--text-muted)]">
-                  <span>{Math.round(loadingElapsed / 1000)}초 경과</span>
-                  <span>약 {remainSec}초 남음</span>
-                </div>
-              </div>
-            );
-          })()}
 
-          {/* 프로필 선택 (항상 표시) */}
+          {/* 프로필 선택 */}
           {(
             <div className="flex flex-col gap-3">
               <label className="font-pixel text-[10px] text-[var(--text-muted)]">
@@ -323,16 +299,33 @@ export default function CompatibilityPage() {
             </div>
           )}
 
-          {(
-            <>
-              <Button variant="primary" size="lg" className="w-full"
-                onClick={() => setShowConfirm(true)} disabled={selectedIds.length < 2}>
-                궁합 보기 <CostBadge cost={cost} className="ml-2" />
-              </Button>
-              {credits && (
-                <p className="text-center text-xs text-[var(--text-muted)]">보유: {credits.bones}개</p>
-              )}
-            </>
+          <Button variant="primary" size="lg" className="w-full"
+            onClick={() => setShowConfirm(true)} disabled={selectedIds.length < 2 || isLoading}
+            loading={isLoading}>
+            궁합 보기 <CostBadge cost={cost} className="ml-2" />
+          </Button>
+
+          {/* 로딩 게이지 - 버튼 아래 */}
+          {isLoading && (() => {
+            const est = avgDuration * 1.2;
+            const progress = Math.min((loadingElapsed / est) * 100, 95);
+            const remainSec = Math.max(0, Math.round((est - loadingElapsed) / 1000));
+            return (
+              <div className="pixel-border-accent p-3 bg-[var(--accent-light)] flex flex-col gap-2">
+                <p className="font-pixel text-[10px] text-[var(--accent)] text-center">궁합 분석 중... 완료되면 자동 이동</p>
+                <div className="w-full h-3 border-2 border-[var(--accent)] bg-white">
+                  <div className="h-full bg-[var(--accent)] transition-all duration-500" style={{ width: `${progress}%` }} />
+                </div>
+                <div className="flex justify-between text-[9px] text-[var(--text-muted)]">
+                  <span>{Math.round(loadingElapsed / 1000)}초 경과</span>
+                  <span>약 {remainSec}초 남음</span>
+                </div>
+              </div>
+            );
+          })()}
+
+          {credits && !isLoading && (
+            <p className="text-center text-xs text-[var(--text-muted)]">보유: {credits.bones}개</p>
           )}
 
           {/* 궁합 내역 */}
