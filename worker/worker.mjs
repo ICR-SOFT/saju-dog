@@ -953,8 +953,22 @@ async function processReading(reading) {
         }
       }
 
-      // 중복 제목 후처리 — 같은 제목이 있으면 뒤쪽에 (2), (3) 추가
+      // 중복/잘린 챕터 후처리
       if (Array.isArray(result.chapters)) {
+        // 1. 같은 id의 중복 챕터 → 더 긴 content만 유지
+        const byId = {};
+        for (const ch of result.chapters) {
+          const key = ch.id || ch.title;
+          if (!byId[key] || (ch.content?.length || 0) > (byId[key].content?.length || 0)) {
+            byId[key] = ch;
+          }
+        }
+        result.chapters = Object.values(byId);
+
+        // 2. 잘린 챕터 제거 (50자 미만)
+        result.chapters = result.chapters.filter(ch => (ch.content?.length || 0) >= 50);
+
+        // 3. 남은 중복 제목에 넘버링
         const titleCount = {};
         for (const ch of result.chapters) {
           if (!ch.title) continue;
@@ -963,6 +977,9 @@ async function processReading(reading) {
             ch.title = `${ch.title} (${titleCount[ch.title]})`;
           }
         }
+
+        // 4. id 재정렬
+        result.chapters.forEach((ch, i) => { ch.id = `chapter-${String(i + 1).padStart(2, '0')}`; });
       }
 
       // 품질 검증 (완화: 이모지 누락은 후처리로 보완, 챕터 수와 내용만 체크)
