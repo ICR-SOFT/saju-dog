@@ -525,7 +525,7 @@ function calculateCost(model, usage) {
 // ===== OG 이미지 생성 (Gemini) =====
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${GEMINI_KEY}`;
 
-async function generateOgImage(readingId, serviceType, summary, chapters) {
+async function generateOgImage(readingId, serviceType, summary, chapters, profileData) {
   if (!GEMINI_KEY) {
     log('warn', `[${readingId.slice(0, 8)}] OG image skipped: no GEMINI_API_KEY`);
     return null;
@@ -539,12 +539,18 @@ async function generateOgImage(readingId, serviceType, summary, chapters) {
       : '';
     const readingContext = `${plainSummary} ${chapterSnippets}`.slice(0, 400);
 
-    // Gemini에게 풀이 내용을 전달하고 어울리는 픽셀아트 이미지를 생성
-    const prompt = `I have a Korean fortune telling (사주) reading result. Based on the content below, create an illustration that captures the mood and themes.
+    // 띠/별자리 정보 추출
+    const ddi = profileData?.calculated_saju?.ddi?.fullName || '';
+    const zodiac = profileData?.calculated_saju?.zodiac?.name || '';
+    const extraInfo = [ddi, zodiac].filter(Boolean).join(', ');
 
-Reading content: "${readingContext}"
+    // Gemini에게 풀이 내용 + 띠/별자리 기반 이미지 생성
+    const prompt = `Create a wide illustration (1200x630) based on this Korean fortune telling reading.
 
-Create a wide illustration (1200x630 aspect ratio) in charming 16-bit retro pixel art style reminiscent of classic SNES RPGs. Visible pixel grid, thick black outlines, warm color palette. A small adorable chibi golden retriever puppy with round black eyes and golden fur appears in the scene. The background and setting should visually represent the key themes and emotions from the reading (e.g., wealth = treasure/gold, love = hearts/roses, career = desk/city, health = nature/potions). Detailed pixel art environment with warm atmospheric lighting. No text, no letters, no words in the image.`;
+Reading themes: "${readingContext}"
+${extraInfo ? `Zodiac/Animal sign: ${extraInfo}` : ''}
+
+Create a beautiful 16-bit retro pixel art scene that symbolically represents the reading's themes and energy. Use the zodiac animal or constellation as a visual motif if provided. The scene should convey the emotional tone of the reading (e.g., prosperity=golden treasure landscape, love=romantic garden, challenge=stormy mountain path, growth=blooming spring field). Rich detailed pixel art background with atmospheric lighting. Warm color palette, thick black outlines, visible pixel grid. No characters, no dogs, no people. Pure symbolic landscape/scene. No text, no letters, no words.`;
 
     const response = await fetch(GEMINI_ENDPOINT, {
       method: 'POST',
@@ -963,7 +969,7 @@ async function processReading(reading) {
     }).eq('id', reading.id);
 
     // OG 이미지 비동기 생성 (실패해도 reading 결과에 영향 없음)
-    generateOgImage(reading.id, reading.service_type, parsed?.summary, parsed?.chapters).then(ogResult => {
+    generateOgImage(reading.id, reading.service_type, parsed?.summary, parsed?.chapters, profile).then(ogResult => {
       if (ogResult) {
         const gc = ogResult.gemini_cost_usd || 0;
         totalCostUsd += gc; // Gemini 비용도 글로벌 합산

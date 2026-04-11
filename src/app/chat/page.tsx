@@ -1,7 +1,10 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { Suspense, useEffect, useState, useRef, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import DOMPurify from 'dompurify';
+import Loading from '@/components/ui/Loading';
 import AppShell from '@/components/layout/AppShell';
 import AuthRequired from '@/components/layout/AuthRequired';
 import Button from '@/components/ui/Button';
@@ -30,11 +33,22 @@ const POLL_INTERVAL = 2000;
 type View = 'list' | 'chat';
 
 export default function ChatPage() {
+  return (
+    <Suspense fallback={<Loading message="로딩 중..." />}>
+      <ChatContent />
+    </Suspense>
+  );
+}
+
+function ChatContent() {
+  const searchParams = useSearchParams();
+  const initialSessionId = searchParams.get('sessionId');
+
   const { profiles, fetchProfiles } = useSajuStore();
   const { credits, fetchCredits } = useCreditStore();
   const [selectedIdx, setSelectedIdx] = useState(0);
 
-  const [view, setView] = useState<View>('list');
+  const [view, setView] = useState<View>(initialSessionId ? 'chat' : 'list');
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSession, setActiveSession] = useState<ChatSession | null>(null);
   const [messages, setMessages] = useState<ChatMessageRow[]>([]);
@@ -63,8 +77,17 @@ export default function ChatPage() {
   }, []);
 
   useEffect(() => {
-    loadSessions();
-  }, [loadSessions]);
+    loadSessions().then(() => {
+      // URL에서 sessionId가 전달된 경우 바로 해당 세션 열기
+      if (initialSessionId) {
+        getChatMessages(initialSessionId).then(msgs => {
+          setMessages(msgs);
+          setActiveSession({ id: initialSessionId } as ChatSession);
+          setView('chat');
+        }).catch(() => {});
+      }
+    });
+  }, [loadSessions, initialSessionId]);
 
   // Auto-scroll
   useEffect(() => {
@@ -269,7 +292,7 @@ export default function ChatPage() {
             {/* Session list */}
             {sessions.length === 0 ? (
               <div className="flex flex-col items-center gap-4 py-12">
-                <span className="text-4xl">🐕</span>
+                <span className="text-4xl"><Image src="/images/mascot-new.png" alt="멍도령" width={32} height={32} className="w-full h-full rounded-full object-cover" /></span>
                 <p className="font-pixel text-xs text-[var(--text-muted)] text-center">
                   아직 상담 내역이 없어요
                 </p>
@@ -338,7 +361,7 @@ export default function ChatPage() {
           <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
             {messages.length === 0 && !isPolling && (
               <div className="flex flex-col items-center gap-4 py-8">
-                <span className="text-4xl">🐕</span>
+                <span className="text-4xl"><Image src="/images/mascot-new.png" alt="멍도령" width={32} height={32} className="w-full h-full rounded-full object-cover" /></span>
                 <p className="font-pixel text-xs text-[var(--text-muted)] text-center">
                   사주에 대해 물어보세요
                 </p>
@@ -365,8 +388,8 @@ export default function ChatPage() {
                 className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 {msg.role === 'assistant' && (
-                  <div className="w-8 h-8 shrink-0 mr-2 flex items-center justify-center border-2 border-[var(--pixel-border)] bg-[var(--bg-secondary)] text-sm">
-                    🐕
+                  <div className="w-8 h-8 shrink-0 mr-2">
+                    <Image src="/images/mascot-new.png" alt="멍도령" width={32} height={32} className="w-full h-full rounded-full object-cover" />
                   </div>
                 )}
                 <div
@@ -388,8 +411,8 @@ export default function ChatPage() {
             {/* Polling Indicator */}
             {isPolling && (
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 shrink-0 flex items-center justify-center border-2 border-[var(--pixel-border)] bg-[var(--bg-secondary)] text-sm">
-                  🐕
+                <div className="w-8 h-8 shrink-0">
+                  <Image src="/images/mascot-new.png" alt="멍도령" width={32} height={32} className="w-full h-full rounded-full object-cover" />
                 </div>
                 <div className="chat-bubble-ai p-3">
                   <div className="pixel-loading">

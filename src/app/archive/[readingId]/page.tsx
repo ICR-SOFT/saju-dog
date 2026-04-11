@@ -261,7 +261,7 @@ export default function ArchiveDetailPage() {
                         session.id,
                         `[사주 풀이 내용]\n${result.summary}\n\n위 풀이 내용에 대해 궁금한 점을 물어보세요.`,
                       );
-                      router.push('/chat');
+                      router.push(`/chat?sessionId=${session.id}`);
                     } catch (err) {
                       showToast(
                         err instanceof Error ? err.message : '채팅 세션 생성에 실패했어요',
