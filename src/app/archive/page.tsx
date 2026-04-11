@@ -161,7 +161,9 @@ export default function ArchivePage() {
             /* Reading List */
             filteredReadings.map((reading) => {
               const serviceType = reading.service_type as ServiceType;
-              const name = SERVICE_NAMES[serviceType] || reading.service_type;
+              const meta = reading.metadata as Record<string, string> | null;
+              const groupName = meta?.groupName;
+              const name = groupName ? `${groupName}의 풀이` : (SERVICE_NAMES[serviceType] || reading.service_type);
               const date = new Date(reading.created_at).toLocaleDateString('ko-KR', {
                 year: 'numeric',
                 month: 'short',
