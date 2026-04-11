@@ -27,13 +27,14 @@ export default function SharePage() {
   const [profileData, setProfileData] = useState<SajuProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [ogImageUrl, setOgImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchSharedReading() {
       setIsLoading(true);
       const { data, error: fetchError } = await supabase
         .from('readings')
-        .select('result, service_type, profile_id')
+        .select('result, service_type, profile_id, og_image_url')
         .eq('share_id', shareId)
         .eq('processing_status', 'completed')
         .single();
@@ -46,6 +47,7 @@ export default function SharePage() {
 
       setResult(data.result as SajuApiResponse);
       setServiceType(data.service_type as ServiceType);
+      if (data.og_image_url) setOgImageUrl(data.og_image_url);
 
       // Load profile for saju details
       if (data.profile_id) {
@@ -90,6 +92,13 @@ export default function SharePage() {
           </div>
         ) : result ? (
           <>
+            {/* OG 이미지 */}
+            {ogImageUrl && (
+              <div className="-mx-4 -mt-4 mb-2">
+                <img src={ogImageUrl} alt={serviceName} className="w-full h-auto object-cover" />
+              </div>
+            )}
+
             {/* Service Name */}
             <div className="text-center">
               <span className="font-pixel text-xs text-[var(--text-muted)]">{serviceName}</span>

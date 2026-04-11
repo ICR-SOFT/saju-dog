@@ -2,6 +2,7 @@
 
 import { Suspense, useState, useEffect, useCallback } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
+import Image from 'next/image';
 import DOMPurify from 'dompurify';
 import AppShell from '@/components/layout/AppShell';
 import AuthRequired from '@/components/layout/AuthRequired';
@@ -70,6 +71,7 @@ function ReadingContent() {
   const [avgDuration, setAvgDuration] = useState<number>(60000); // 기본 60초
   const [loadingElapsed, setLoadingElapsed] = useState(0);
   const [loadingStartTime, setLoadingStartTime] = useState<number | null>(null);
+  const [ogImageUrl, setOgImageUrl] = useState<string | null>(null);
 
   const profile = profiles.find((p) => p.id === profileId);
   const cost = CREDIT_COSTS[serviceType]?.bones ?? 0;
@@ -153,6 +155,15 @@ function ReadingContent() {
       setPhase('loading');
     } else if (processingStatus === 'completed' && currentReading) {
       setPhase('result');
+      // OG 이미지 URL 가져오기
+      const rid = readingId || useSajuStore.getState().pendingReadingId;
+      if (rid) {
+        (async () => {
+          const { supabase } = await import('@/lib/supabase');
+          const { data } = await supabase.from('readings').select('og_image_url').eq('id', rid).single();
+          if (data?.og_image_url) setOgImageUrl(data.og_image_url);
+        })();
+      }
     } else if (processingStatus === 'failed') {
       setPhase('profile');
     }
@@ -374,6 +385,13 @@ function ReadingContent() {
           {/* ===== Phase 4: Result ===== */}
           {phase === 'result' && reading && (
             <>
+              {/* OG 이미지 */}
+              {ogImageUrl && (
+                <div className="-mx-4 -mt-4 mb-2">
+                  <Image src={ogImageUrl} alt={serviceName} width={480} height={252} className="w-full h-auto object-cover" unoptimized />
+                </div>
+              )}
+
               {/* Summary (DOMPurify sanitized - safe to render) */}
               <div className="pixel-border-accent p-4 bg-[var(--accent-light)]">
                 <p
