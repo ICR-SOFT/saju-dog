@@ -9,9 +9,12 @@ import Loading from '@/components/ui/Loading';
 import { showToast } from '@/components/ui/Toast';
 import { useSajuStore } from '@/stores/saju';
 import { supabase } from '@/lib/supabase';
-import { requestReading } from '@/lib/api';
+import { requestReading, pollReadingStatus, createChatSession, sendChatMessage } from '@/lib/api';
 import { formatBirthDate } from '@/lib/format';
 import { SERVICE_NAMES } from '@/lib/services';
+import ConfirmModal from '@/components/ui/ConfirmModal';
+import CostBadge from '@/components/ui/CostBadge';
+import { CREDIT_COSTS } from '@/types/api';
 import type { ServiceType } from '@/types/saju';
 
 interface GroupMember {
@@ -54,7 +57,12 @@ export default function GroupDetailPage() {
   const [groupReadings, setGroupReadings] = useState<GroupReading[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRequesting, setIsRequesting] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [loadingStart, setLoadingStart] = useState(0);
+  const [loadingElapsed, setLoadingElapsed] = useState(0);
+  const [currentReadingId, setCurrentReadingId] = useState<string | null>(null);
+  const [completedResult, setCompletedResult] = useState<Record<string, unknown> | null>(null);
   const [showAddMember, setShowAddMember] = useState(false);
   const [newMemberRole, setNewMemberRole] = useState('');
   const [selectedNewProfileId, setSelectedNewProfileId] = useState('');
@@ -95,18 +103,29 @@ export default function GroupDetailPage() {
     loadGroupReadings();
   }, [fetchProfiles, loadGroup, loadGroupReadings]);
 
-  const handleGroupReading = async () => {
+  // 로딩 타이머
+  useEffect(() => {
+    if (!isRequesting) return;
+    const interval = setInterval(() => {
+      setLoadingElapsed(Date.now() - loadingStart);
+    }, 500);
+    return () => clearInterval(interval);
+  }, [isRequesting, loadingStart]);
+
+  const handleGroupReading = async (question?: string) => {
     if (!group || group.profile_group_members.length < 2) {
       showToast('그룹 풀이에는 2명 이상의 멤버가 필요해요');
       return;
     }
 
+    setShowConfirm(false);
     setIsRequesting(true);
+    setLoadingStart(Date.now());
+    setLoadingElapsed(0);
+    setCompletedResult(null);
 
     try {
-      const memberIds = group.profile_group_members
-        .map((m) => m.profile_id)
-        .filter(Boolean);
+      const memberIds = group.profile_group_members.map((m) => m.profile_id).filter(Boolean);
       const primaryId = memberIds[0];
       const secondaryId = memberIds.length > 1 ? memberIds[1] : undefined;
 
@@ -116,14 +135,54 @@ export default function GroupDetailPage() {
         groupId: group.id,
         groupName: group.name,
       };
+      if (question) metadata.userQuestion = question;
 
-      await requestReading(primaryId, 'compatibility', secondaryId, false, metadata);
-      showToast('그룹 풀이를 요청했어요!');
-      router.push('/archive');
+      const reqResult = await requestReading(primaryId, 'compatibility', secondaryId, false, metadata);
+      const readingId = reqResult.readingId;
+      setCurrentReadingId(readingId);
+
+      if (reqResult.cached && reqResult.result) {
+        setIsRequesting(false);
+        router.push(`/archive/${readingId}`);
+        return;
+      }
+
+      // 폴링
+      for (let i = 0; i < 60; i++) {
+        await new Promise(r => setTimeout(r, 3000));
+        const status = await pollReadingStatus(readingId);
+        if (status.status === 'completed' && status.result) {
+          setCompletedResult(status.result as Record<string, unknown>);
+          setIsRequesting(false);
+          loadGroupReadings();
+          router.push(`/archive/${readingId}`);
+          return;
+        }
+        if (status.status === 'failed') {
+          showToast(status.failure_reason || '풀이에 실패했어요');
+          setIsRequesting(false);
+          return;
+        }
+      }
+      showToast('시간이 초과되었어요. 기록에서 확인해주세요.');
+      setIsRequesting(false);
     } catch (err) {
       showToast(err instanceof Error ? err.message : '풀이 요청에 실패했어요');
-    } finally {
       setIsRequesting(false);
+    }
+  };
+
+  const handleChatAboutGroup = async () => {
+    if (!group || !currentReadingId) return;
+    try {
+      const primaryId = group.profile_group_members[0]?.profile_id;
+      if (!primaryId) return;
+      const session = await createChatSession(primaryId);
+      const names = group.profile_group_members.map(m => m.saju_profiles?.name).filter(Boolean).join(', ');
+      await sendChatMessage(session.id, `[그룹 풀이: ${group.name}]\n멤버: ${names}\n\n이 그룹의 풀이 결과에 대해 궁금한 점을 물어보세요.`);
+      router.push(`/chat?sessionId=${session.id}`);
+    } catch {
+      showToast('채팅 세션 생성에 실패했어요');
     }
   };
 
@@ -352,18 +411,55 @@ export default function GroupDetailPage() {
                 variant="primary"
                 size="lg"
                 className="w-full"
-                onClick={handleGroupReading}
+                onClick={() => setShowConfirm(true)}
                 loading={isRequesting}
                 disabled={isRequesting || group.profile_group_members.length < 2}
               >
-                그룹 풀이 시작
+                그룹 풀이 시작 <CostBadge cost={CREDIT_COSTS.compatibility.bones} className="ml-2" />
               </Button>
+
+              {/* 로딩 게이지 */}
+              {isRequesting && (() => {
+                const est = 90000 * 1.2;
+                const progress = Math.min((loadingElapsed / est) * 100, 95);
+                const remainSec = Math.max(0, Math.round((est - loadingElapsed) / 1000));
+                return (
+                  <div className="pixel-border-accent p-3 bg-[var(--accent-light)] flex flex-col gap-2">
+                    <p className="font-pixel text-[10px] text-[var(--accent)] text-center">그룹 풀이 분석 중...</p>
+                    <div className="w-full h-3 border-2 border-[var(--accent)] bg-white">
+                      <div className="h-full bg-[var(--accent)] transition-all duration-500" style={{ width: `${progress}%` }} />
+                    </div>
+                    <div className="flex justify-between text-[9px] text-[var(--text-muted)]">
+                      <span>{Math.round(loadingElapsed / 1000)}초 경과</span>
+                      <span>약 {remainSec}초 남음</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* 완료 후 채팅 이어가기 */}
+              {currentReadingId && !isRequesting && (
+                <Button variant="secondary" className="w-full" onClick={handleChatAboutGroup}>
+                  이 풀이에 대해 질문하기
+                </Button>
+              )}
 
               {group.profile_group_members.length < 2 && (
                 <p className="text-[10px] text-[var(--text-muted)] text-center">
                   그룹 풀이에는 2명 이상의 멤버가 필요해요
                 </p>
               )}
+
+              {/* ConfirmModal */}
+              <ConfirmModal
+                isOpen={showConfirm}
+                onClose={() => setShowConfirm(false)}
+                onConfirm={handleGroupReading}
+                title="그룹 풀이"
+                message={`${group.profile_group_members.map(m => m.saju_profiles?.name).filter(Boolean).join(' & ')}의 그룹 궁합을 분석할까요?`}
+                confirmText={`🦴 ${CREDIT_COSTS.compatibility.bones} 시작`}
+                showQuestion
+              />
 
               {/* Delete Group */}
               {showDeleteConfirm ? (
