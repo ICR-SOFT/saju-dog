@@ -57,15 +57,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       }
     }
 
-    const serviceName = SERVICE_NAMES[data.service_type] || data.service_type;
+    const groupName = meta?.groupName;
+    const serviceName = groupName ? `${groupName}의 풀이` : (SERVICE_NAMES[data.service_type] || data.service_type);
     const result = data.result as Record<string, unknown> | null;
     const summary = result?.summary
       ? String(result.summary).replace(/<[^>]*>/g, '').slice(0, 150)
       : '사주독에서 사주 풀이를 확인해보세요';
 
     const ogImage = data.og_image_url || '/images/og-image-pixel.png';
-    const namePrefix = profileNames ? `${profileNames}님의 ` : '';
-    const pageTitle = `${namePrefix}${serviceName} 풀이 결과 - 사주독`;
+    const namePrefix = !groupName && profileNames ? `${profileNames}님의 ` : '';
+    const pageTitle = `${namePrefix}${serviceName} 결과 - 사주독`;
 
     return {
       title: pageTitle,
