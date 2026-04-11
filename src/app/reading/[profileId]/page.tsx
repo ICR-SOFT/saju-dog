@@ -460,7 +460,7 @@ function ReadingContent() {
                       {reading.advice.map((item, i) => (
                         <li key={i} className="flex gap-2 text-sm text-[var(--text-secondary)]">
                           <span className="text-[var(--accent)] shrink-0">▸</span>
-                          <span>{item}</span>
+                          <span dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(item, { ALLOWED_TAGS: ['strong', 'em', 'br'] }) }} />
                         </li>
                       ))}
                     </ul>
