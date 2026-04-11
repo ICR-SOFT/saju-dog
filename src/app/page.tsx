@@ -19,35 +19,35 @@ interface ServiceItem {
 }
 
 const MAIN_SERVICES: ServiceItem[] = [
-  { type: 'comprehensive', title: '종합 사주', subtitle: '타고난 운명을 12챕터로 깊이 풀어드려요', cost: 3, image: '/images/pixel/comprehensive.png' },
-  { type: 'compatibility', title: '궁합', subtitle: '두 사람의 인연과 케미를 확인해요', cost: 3, image: '/images/pixel/compatibility.png' },
-  { type: 'daeun', title: '대운 분석', subtitle: '언제 물 들어오는지 알려드려요', cost: 2, image: '/images/pixel/daeun.png' },
-  { type: 'luckyday', title: '길일 택일', subtitle: 'Top 3 길일을 골라드려요', cost: 2, image: '/images/pixel/luckyday.png' },
-  { type: 'yearly', title: '올해 운세', subtitle: '내후년 운세는 어떨까?', cost: 2, image: '/images/pixel/yearly.png' },
+  { type: 'comprehensive', title: '종합 사주', subtitle: '타고난 운명을 12챕터로 깊이 풀어드려요', cost: 5, image: '/images/pixel/comprehensive.png' },
+  { type: 'compatibility', title: '궁합', subtitle: '두 사람의 인연과 케미를 확인해요', cost: 5, image: '/images/pixel/compatibility.png' },
+  { type: 'daeun', title: '대운 분석', subtitle: '언제 물 들어오는지 알려드려요', cost: 4, image: '/images/pixel/daeun.png' },
+  { type: 'luckyday', title: '길일 택일', subtitle: 'Top 3 길일을 골라드려요', cost: 4, image: '/images/pixel/luckyday.png' },
+  { type: 'yearly', title: '올해 운세', subtitle: '내후년 운세는 어떨까?', cost: 4, image: '/images/pixel/yearly.png' },
   { type: 'daily', title: '오늘의 운세', subtitle: '오늘 하루 운세와 행운 키워드', cost: 0, image: '/images/pixel/daily.png' },
 ];
 
 const MORE_SERVICES: ServiceItem[] = [
-  { type: 'business', title: '동업 궁합', subtitle: 'N명이 사업하면 몇 점?', cost: 3, image: '/images/pixel/business.png' },
-  { type: 'love', title: '연애 시기', subtitle: '올해 연애운 타이밍은?', cost: 2, image: '/images/pixel/love.png' },
-  { type: 'wealth', title: '재물운', subtitle: '돈이 들어오는 시기와 방향', cost: 2, image: '/images/pixel/wealth.png' },
-  { type: 'health', title: '건강운', subtitle: '올해 조심할 건강 포인트', cost: 2, image: '/images/pixel/health.png' },
-  { type: 'career', title: '직업 적성', subtitle: '타고난 직업 DNA는?', cost: 2, image: '/images/pixel/career.png' },
-  { type: 'pastlife', title: '전생', subtitle: '전생에 당신은 누구였을까?', cost: 2, image: '/images/pixel/pastlife.png' },
-  { type: 'moving', title: '이사운', subtitle: '언제 어디로 이동하면 좋을까?', cost: 2, image: '/images/pixel/moving.png' },
+  { type: 'business', title: '동업 궁합', subtitle: 'N명이 사업하면 몇 점?', cost: 5, image: '/images/pixel/business.png' },
+  { type: 'love', title: '연애 시기', subtitle: '올해 연애운 타이밍은?', cost: 4, image: '/images/pixel/love.png' },
+  { type: 'wealth', title: '재물운', subtitle: '돈이 들어오는 시기와 방향', cost: 4, image: '/images/pixel/wealth.png' },
+  { type: 'health', title: '건강운', subtitle: '올해 조심할 건강 포인트', cost: 4, image: '/images/pixel/health.png' },
+  { type: 'career', title: '직업 적성', subtitle: '타고난 직업 DNA는?', cost: 4, image: '/images/pixel/career.png' },
+  { type: 'pastlife', title: '전생', subtitle: '전생에 당신은 누구였을까?', cost: 4, image: '/images/pixel/pastlife.png' },
+  { type: 'moving', title: '이사운', subtitle: '언제 어디로 이동하면 좋을까?', cost: 4, image: '/images/pixel/moving.png' },
 ];
 
 const NEW_SERVICES: ServiceItem[] = [
-  { type: 'mbti', title: '사주 MBTI', subtitle: '사주로 보는 16가지 성격유형', cost: 2, image: '/images/pixel/mbti.png' },
-  { type: 'pet', title: '반려동물', subtitle: '나와 찰떡인 반려동물은?', cost: 2, image: '/images/pixel/pet.png' },
-  { type: 'travel', title: '여행 운세', subtitle: '올해 최고의 여행 방위는?', cost: 2, image: '/images/pixel/travel.png' },
-  { type: 'food', title: '식복', subtitle: '오행으로 보는 행운 음식', cost: 2, image: '/images/pixel/food.png' },
-  { type: 'color', title: '퍼스널컬러', subtitle: '오행 퍼스널컬러 진단', cost: 2, image: '/images/pixel/color.png' },
-  { type: 'study', title: '합격 기운', subtitle: '시험/학업 운세와 공부법', cost: 2, image: '/images/pixel/study.png' },
-  { type: 'ancestor', title: '조상 음덕', subtitle: '가문에서 받은 기운 분석', cost: 2, image: '/images/pixel/ancestor.png' },
-  { type: 'child', title: '자녀운', subtitle: '미래 자녀의 타고난 특성', cost: 2, image: '/images/pixel/child.png' },
-  { type: 'secret', title: '숨겨진 재능', subtitle: '사주 속 잠든 능력 발굴', cost: 2, image: '/images/pixel/secret.png' },
-  { type: 'timing', title: '황금 타이밍', subtitle: '인생 전환점 종합 분석', cost: 2, image: '/images/pixel/timing.png' },
+  { type: 'mbti', title: '사주 MBTI', subtitle: '사주로 보는 16가지 성격유형', cost: 4, image: '/images/pixel/mbti.png' },
+  { type: 'pet', title: '반려동물', subtitle: '나와 찰떡인 반려동물은?', cost: 4, image: '/images/pixel/pet.png' },
+  { type: 'travel', title: '여행 운세', subtitle: '올해 최고의 여행 방위는?', cost: 4, image: '/images/pixel/travel.png' },
+  { type: 'food', title: '식복', subtitle: '오행으로 보는 행운 음식', cost: 4, image: '/images/pixel/food.png' },
+  { type: 'color', title: '퍼스널컬러', subtitle: '오행 퍼스널컬러 진단', cost: 4, image: '/images/pixel/color.png' },
+  { type: 'study', title: '합격 기운', subtitle: '시험/학업 운세와 공부법', cost: 4, image: '/images/pixel/study.png' },
+  { type: 'ancestor', title: '조상 음덕', subtitle: '가문에서 받은 기운 분석', cost: 4, image: '/images/pixel/ancestor.png' },
+  { type: 'child', title: '자녀운', subtitle: '미래 자녀의 타고난 특성', cost: 4, image: '/images/pixel/child.png' },
+  { type: 'secret', title: '숨겨진 재능', subtitle: '사주 속 잠든 능력 발굴', cost: 4, image: '/images/pixel/secret.png' },
+  { type: 'timing', title: '황금 타이밍', subtitle: '인생 전환점 종합 분석', cost: 4, image: '/images/pixel/timing.png' },
 ];
 
 function ServiceCard({ service, onClick }: { service: ServiceItem; onClick: () => void }) {

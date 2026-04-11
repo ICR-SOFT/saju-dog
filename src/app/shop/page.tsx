@@ -13,10 +13,10 @@ interface PricingPlan {
 }
 
 const PRICING_PLANS: PricingPlan[] = [
-  { bones: 10, price: 1900, boneIcons: 1 },
-  { bones: 30, price: 4900, boneIcons: 2, badge: '인기!' },
-  { bones: 60, price: 8900, boneIcons: 3, badge: '추천!' },
-  { bones: 120, price: 14900, boneIcons: 4, badge: '최고가성비!' },
+  { bones: 5, price: 1990, boneIcons: 1 },
+  { bones: 15, price: 4900, boneIcons: 2, badge: '인기!' },
+  { bones: 35, price: 9900, boneIcons: 3, badge: '추천!' },
+  { bones: 70, price: 16900, boneIcons: 4, badge: '최고가성비!' },
 ];
 
 function formatPrice(price: number) {

@@ -28,11 +28,11 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 const anthropic = new Anthropic({ apiKey: ANTHROPIC_KEY, timeout: 10 * 60 * 1000 }); // 10분 타임아웃
 
 const CREDIT_COSTS = {
-  comprehensive: 5, compatibility: 4, daeun: 3, yearly: 3,
-  daily: 0, chat: 1, business: 4, luckyday: 3,
-  love: 3, wealth: 3, health: 3, career: 3, pastlife: 3, moving: 3,
-  mbti: 3, pet: 3, travel: 3, food: 3, color: 3,
-  study: 3, ancestor: 3, child: 3, secret: 3, timing: 3,
+  comprehensive: 5, compatibility: 5, daeun: 4, yearly: 4,
+  daily: 0, chat: 1, business: 5, luckyday: 4,
+  love: 4, wealth: 4, health: 4, career: 4, pastlife: 4, moving: 4,
+  mbti: 4, pet: 4, travel: 4, food: 4, color: 4,
+  study: 4, ancestor: 4, child: 4, secret: 4, timing: 4,
 };
 
 // 현재 처리 중인 reading ID 추적
