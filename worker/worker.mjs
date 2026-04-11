@@ -567,6 +567,15 @@ Create a wide illustration (1200x630 aspect ratio) that visually represents the 
       return null;
     }
 
+    // Gemini 비용 정밀 계산 (usageMetadata 기반)
+    // gemini-3.1-flash-image: input $0.50/1M, output(image) $60.00/1M
+    const usage = data?.usageMetadata || {};
+    const inputTokens = usage.promptTokenCount || 0;
+    const outputTokens = usage.candidatesTokenCount || 0;
+    const inputCost = (inputTokens * 0.50) / 1_000_000;
+    const outputCost = (outputTokens * 60.0) / 1_000_000;
+    const geminiCost = Math.round((inputCost + outputCost) * 1_000_000) / 1_000_000; // 6자리 정밀도
+
     // Supabase Storage에 업로드
     const imageBuffer = Buffer.from(imagePart.inlineData.data, 'base64');
     const filePath = `${readingId}.png`;
@@ -589,8 +598,14 @@ Create a wide illustration (1200x630 aspect ratio) that visually represents the 
     // readings 테이블에 URL 저장
     await supabase.from('readings').update({ og_image_url: ogUrl }).eq('id', readingId);
 
-    log('info', `[${readingId.slice(0, 8)}] OG image generated: ${(imageBuffer.length / 1024).toFixed(0)}KB`);
-    return { url: ogUrl, size_bytes: imageBuffer.length };
+    log('info', `[${readingId.slice(0, 8)}] OG image: ${(imageBuffer.length / 1024).toFixed(0)}KB | tokens ${inputTokens}→${outputTokens} | $${geminiCost}`);
+    return {
+      url: ogUrl,
+      size_bytes: imageBuffer.length,
+      gemini_cost_usd: geminiCost,
+      gemini_input_tokens: inputTokens,
+      gemini_output_tokens: outputTokens,
+    };
   } catch (err) {
     log('warn', `[${readingId.slice(0, 8)}] OG image error: ${err.message}`);
     return null;
@@ -940,10 +955,15 @@ async function processReading(reading) {
     // OG 이미지 비동기 생성 (실패해도 reading 결과에 영향 없음)
     generateOgImage(reading.id, reading.service_type, parsed?.summary, parsed?.chapters).then(ogResult => {
       if (ogResult) {
-        // Gemini 비용 추적 (대략 이미지 1장당 ~$0.002)
-        const geminiCost = 0.002;
+        const gc = ogResult.gemini_cost_usd || 0;
         supabase.from('readings').update({
-          api_cost: { ...finalApiCost, gemini_og_cost_usd: geminiCost, total_cost_usd: Math.round((totalApiCost + geminiCost) * 10000) / 10000 },
+          api_cost: {
+            ...finalApiCost,
+            gemini_og_cost_usd: gc,
+            gemini_input_tokens: ogResult.gemini_input_tokens,
+            gemini_output_tokens: ogResult.gemini_output_tokens,
+            total_cost_usd: Math.round((totalApiCost + gc) * 1_000_000) / 1_000_000,
+          },
         }).eq('id', reading.id);
       }
     }).catch(() => {});
