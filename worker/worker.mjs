@@ -339,7 +339,7 @@ ${questionBlock}
     career: '직업 적성을 특화 분석해주세요. 추천 직종, 이직 타이밍, 성공 전략.',
     pastlife: '전생 이야기를 사주 기반으로 재미있게 풀어주세요.',
     moving: '이사/부동산 운을 특화 분석해주세요. 좋은 방위, 피할 방위, 이사 적기, 부동산 투자.',
-    daily: '오늘의 운세를 분석해주세요.',
+    daily: '오늘의 운세를 오늘 일진(천간지지) 데이터 기반으로 분석해주세요. 오늘 일진과 사주 일간의 오행 관계(비겁/식상/재성/관성/인성)가 핵심입니다. 어제/내일과 다른 오늘만의 포인트를 찾아주세요.',
     mbti: '사주 오행/십신 조합으로 MBTI 16유형 중 가장 가까운 유형을 매칭하고 각 축(E/I, S/N, T/F, J/P)의 비율을 사주 근거로 분석해주세요.',
     pet: '사주 오행과 성격 분석으로 나와 가장 잘 맞는 반려동물 종류와 구체적 품종을 추천해주세요.',
     travel: '용신 방위 기반으로 올해 최고의 여행 방위와 시기, 여행 스타일을 분석해주세요.',
@@ -359,8 +359,36 @@ ${questionBlock}
   const today = new Date();
   const todayStr = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
 
+  // 오늘 일진(천간지지) 계산 — 1900년 1월 1일 = 경자일 기준
+  const STEMS = ['갑','을','병','정','무','기','경','신','임','계'];
+  const BRANCHES = ['자','축','인','묘','진','사','오','미','신','유','술','해'];
+  const STEM_OHAENG = { '갑':'목','을':'목','병':'화','정':'화','무':'토','기':'토','경':'금','신':'금','임':'수','계':'수' };
+  const baseDate = new Date(1900, 0, 1);
+  const diffDays = Math.floor((today - baseDate) / 86400000);
+  const baseStemIdx = 6; // 경=6
+  const baseBranchIdx = 0; // 자=0
+  const todayStemIdx = (baseStemIdx + diffDays) % 10;
+  const todayBranchIdx = (baseBranchIdx + diffDays) % 12;
+  const todayStem = STEMS[todayStemIdx];
+  const todayBranch = BRANCHES[todayBranchIdx];
+  const todayOhaeng = STEM_OHAENG[todayStem];
+  const dayGanji = `${todayStem}${todayBranch}`;
+
+  // 오늘 일진과 사주 일간의 관계 분석
+  const dayStemOhaeng = STEM_OHAENG[p.day.stem] || '';
+  const OHAENG_RELATION = {
+    '목': { '목':'비겁', '화':'식상', '토':'재성', '금':'관성', '수':'인성' },
+    '화': { '목':'인성', '화':'비겁', '토':'식상', '금':'재성', '수':'관성' },
+    '토': { '목':'관성', '화':'인성', '토':'비겁', '금':'식상', '수':'재성' },
+    '금': { '목':'재성', '화':'관성', '토':'인성', '금':'비겁', '수':'식상' },
+    '수': { '목':'식상', '화':'재성', '토':'관성', '금':'인성', '수':'비겁' },
+  };
+  const dayRelation = OHAENG_RELATION[dayStemOhaeng]?.[todayOhaeng] || '';
+  const todayDayInfo = `오늘 일진: ${dayGanji}일 (${todayOhaeng}) | 일간(${p.day.stem}/${dayStemOhaeng})과의 관계: ${dayRelation}`;
+
   return `[분석 유형: ${reading.service_type}]
 [오늘 날짜: ${todayStr}]
+[${todayDayInfo}]
 아래는 서버에서 정밀 계산된 사주 데이터입니다. 이 데이터만 기반으로 해설하세요.
 "올해"는 반드시 ${today.getFullYear()}년을 의미합니다. 작년(${today.getFullYear() - 1})이나 내년(${today.getFullYear() + 1}) 이야기를 올해로 혼동하지 마세요.
 ${luckySection}
