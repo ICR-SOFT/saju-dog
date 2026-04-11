@@ -539,12 +539,12 @@ async function generateOgImage(readingId, serviceType, summary, chapters) {
       : '';
     const readingContext = `${plainSummary} ${chapterSnippets}`.slice(0, 400);
 
-    // Gemini에게 풀이 내용을 전달하고 어울리는 이미지를 생성하도록 요청
-    const prompt = `I have a Korean fortune telling (사주) reading result. Based on the content below, create a beautiful, evocative illustration that captures the mood and themes of this reading.
+    // Gemini에게 풀이 내용을 전달하고 어울리는 픽셀아트 이미지를 생성
+    const prompt = `I have a Korean fortune telling (사주) reading result. Based on the content below, create an illustration that captures the mood and themes.
 
 Reading content: "${readingContext}"
 
-Create a wide illustration (1200x630 aspect ratio) that visually represents the key themes, emotions, and energy described in this reading. The style should be dreamy and atmospheric - soft watercolor or digital painting style with warm, mystical tones. Include symbolic elements that match the reading's themes (e.g., if about wealth use golden imagery, if about love use warm pink tones, if about career use ascending imagery). Make it beautiful and shareable on social media. No text, no letters, no words in the image.`;
+Create a wide illustration (1200x630 aspect ratio) in charming 16-bit retro pixel art style reminiscent of classic SNES RPGs. Visible pixel grid, thick black outlines, warm color palette. A small adorable chibi golden retriever puppy with round black eyes and golden fur appears in the scene. The background and setting should visually represent the key themes and emotions from the reading (e.g., wealth = treasure/gold, love = hearts/roses, career = desk/city, health = nature/potions). Detailed pixel art environment with warm atmospheric lighting. No text, no letters, no words in the image.`;
 
     const response = await fetch(GEMINI_ENDPOINT, {
       method: 'POST',

@@ -25,12 +25,36 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const supabase = createClient(supabaseUrl, supabaseKey);
     const { data } = await supabase
       .from('readings')
-      .select('service_type, result, og_image_url')
+      .select('service_type, result, og_image_url, profile_id, secondary_profile_id, metadata')
       .eq('share_id', shareId)
       .single();
 
     if (!data) {
       return { title: '사주독 - 풀이 공유' };
+    }
+
+    // 대상자 이름 조회
+    const profileIds = [data.profile_id, data.secondary_profile_id].filter(Boolean) as string[];
+    const meta = data.metadata as Record<string, string> | null;
+    if (meta?.allProfileIds) {
+      try {
+        const allIds = JSON.parse(meta.allProfileIds) as string[];
+        allIds.forEach(id => { if (!profileIds.includes(id)) profileIds.push(id); });
+      } catch { /* ignore */ }
+    }
+
+    let profileNames = '';
+    if (profileIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from('saju_profiles')
+        .select('id, name')
+        .in('id', profileIds);
+      if (profiles) {
+        profileNames = profileIds
+          .map(id => profiles.find(p => p.id === id)?.name)
+          .filter(Boolean)
+          .join(' & ');
+      }
     }
 
     const serviceName = SERVICE_NAMES[data.service_type] || data.service_type;
@@ -40,12 +64,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       : '사주독에서 사주 풀이를 확인해보세요';
 
     const ogImage = data.og_image_url || '/images/og-image-pixel.png';
+    const namePrefix = profileNames ? `${profileNames}님의 ` : '';
+    const pageTitle = `${namePrefix}${serviceName} 풀이 결과 - 사주독`;
 
     return {
-      title: `${serviceName} 풀이 결과 - 사주독`,
+      title: pageTitle,
       description: summary,
       openGraph: {
-        title: `${serviceName} 풀이 결과 - 사주독`,
+        title: pageTitle,
         description: summary,
         images: [{ url: ogImage, width: 1200, height: 630 }],
         type: 'article',
@@ -53,7 +79,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       },
       twitter: {
         card: 'summary_large_image',
-        title: `${serviceName} 풀이 결과 - 사주독`,
+        title: pageTitle,
         description: summary,
         images: [ogImage],
       },
