@@ -825,10 +825,11 @@ async function processReading(reading) {
 
       // 재시도 시 유저 메시지에 피드백 추가
       if (attempt > 1) {
-        const minChapters = reading.service_type === 'daily' ? 0 : 5;
+        const minChapters = reading.service_type === 'daily' ? 0
+          : ['comprehensive', 'compatibility', 'business'].includes(reading.service_type) ? 12 : 8;
         const retryMsg = `\n\n[중요] 이전 시도에서 품질 문제가 있었습니다. 반드시 다음을 지켜주세요:
 - 최소 ${minChapters}개 이상의 완전한 챕터
-- 각 챕터의 content는 최소 200자 이상
+- 각 챕터의 content는 최소 300자 이상 (구체적 사례와 비유 포함)
 - 각 챕터의 "emoji" 필드에 반드시 이모지 1개를 넣으세요 (예: "🔥", "💰", "❤️")
 - "title" 필드에는 이모지를 넣지 마세요. 이모지는 오직 "emoji" 필드에만!`;
         params.messages = [{ role: 'user', content: userMessage + retryMsg }];
@@ -915,7 +916,8 @@ async function processReading(reading) {
 
       // 품질 검증 (완화: 이모지 누락은 후처리로 보완, 챕터 수와 내용만 체크)
       const chapters = result.chapters;
-      const minChapters = reading.service_type === 'daily' ? 0 : 3;
+      const minChapters = reading.service_type === 'daily' ? 0
+        : ['comprehensive', 'compatibility', 'business'].includes(reading.service_type) ? 8 : 5;
       const chapterCount = Array.isArray(chapters) ? chapters.length : 0;
       const hasEnoughChapters = minChapters === 0 || chapterCount >= minChapters;
 
