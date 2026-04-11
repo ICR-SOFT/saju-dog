@@ -8,6 +8,7 @@ import Button from '@/components/ui/Button';
 import { showToast } from '@/components/ui/Toast';
 import { useSajuStore } from '@/stores/saju';
 import { supabase, getValidSession } from '@/lib/supabase';
+import { formatBirthDate } from '@/lib/format';
 
 interface SelectedMember {
   profileId: string;
@@ -178,7 +179,7 @@ export default function GroupCreatePage() {
                             {profile.name}
                           </p>
                           <p className="text-[10px] text-[var(--text-muted)]">
-                            {profile.birth_date} · {profile.relation}
+                            {formatBirthDate(profile.birth_date)} · {profile.relation}
                           </p>
                         </div>
                       </button>

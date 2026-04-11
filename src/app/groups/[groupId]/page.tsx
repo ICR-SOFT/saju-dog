@@ -10,6 +10,7 @@ import { showToast } from '@/components/ui/Toast';
 import { useSajuStore } from '@/stores/saju';
 import { supabase } from '@/lib/supabase';
 import { requestReading } from '@/lib/api';
+import { formatBirthDate } from '@/lib/format';
 import { SERVICE_NAMES } from '@/lib/services';
 import type { ServiceType } from '@/types/saju';
 
@@ -247,7 +248,7 @@ export default function GroupDetailPage() {
                           <option value="">프로필 선택</option>
                           {availableProfiles.map((p) => (
                             <option key={p.id} value={p.id}>
-                              {p.name} ({p.birth_date})
+                              {p.name} ({formatBirthDate(p.birth_date)})
                             </option>
                           ))}
                         </select>
@@ -283,7 +284,7 @@ export default function GroupDetailPage() {
                         {member.saju_profiles?.name || '알 수 없음'}
                       </p>
                       <p className="text-[10px] text-[var(--text-muted)]">
-                        {member.saju_profiles?.birth_date}
+                        {member.saju_profiles?.birth_date ? formatBirthDate(member.saju_profiles.birth_date) : ''}
                         {member.role && ` · ${member.role}`}
                       </p>
                     </div>
