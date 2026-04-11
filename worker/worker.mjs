@@ -858,19 +858,27 @@ async function processReading(reading) {
     let parsed = null;
     let apiCost = null;
     let totalApiCost = 0;
+    let lastChapterCount = 0;
+    let lastTruncatedCount = 0;
 
     for (let attempt = 1; attempt <= MAX_QUALITY_RETRIES; attempt++) {
       const params = { ...baseParams };
 
-      // 재시도 시 유저 메시지에 피드백 추가
+      // 재시도 시 이전 실패 사유를 구체적으로 알려줌
       if (attempt > 1) {
         const minChapters = reading.service_type === 'daily' ? 0
           : ['comprehensive', 'compatibility', 'business'].includes(reading.service_type) ? 12 : 8;
-        const retryMsg = `\n\n[중요] 이전 시도에서 품질 문제가 있었습니다. 반드시 다음을 지켜주세요:
-- 최소 ${minChapters}개 이상의 완전한 챕터
+        const prevFailReasons = [];
+        if (lastChapterCount < minChapters) prevFailReasons.push(`챕터가 ${lastChapterCount}개밖에 없었음 (최소 ${minChapters}개 필요)`);
+        if (lastTruncatedCount > 0) prevFailReasons.push(`${lastTruncatedCount}개 챕터가 50자 미만으로 내용이 잘렸음`);
+        const failFeedback = prevFailReasons.length > 0 ? `\n이전 시도(${attempt - 1}차)의 문제: ${prevFailReasons.join('. ')}` : '';
+
+        const retryMsg = `\n\n[중요 - ${attempt}차 재시도] 이전 시도에서 품질 문제가 있었습니다.${failFeedback}
+반드시 다음을 지켜주세요:
+- 최소 ${minChapters}개 이상의 완전한 챕터 (이전에 ${lastChapterCount}개였음)
 - 각 챕터의 content는 최소 300자 이상 (구체적 사례와 비유 포함)
-- 각 챕터의 "emoji" 필드에 반드시 이모지 1개를 넣으세요 (예: "🔥", "💰", "❤️")
-- "title" 필드에는 이모지를 넣지 마세요. 이모지는 오직 "emoji" 필드에만!`;
+- 각 챕터의 "emoji" 필드에 반드시 이모지 1개
+- 모든 챕터 title은 서로 달라야 함`;
         params.messages = [{ role: 'user', content: userMessage + retryMsg }];
       }
 
@@ -1009,11 +1017,19 @@ async function processReading(reading) {
         break;
       }
 
-      log('warn', `[${rid}] Quality FAIL (attempt ${attempt}/${MAX_QUALITY_RETRIES}): chapters=${chapterCount}/${minChapters}, truncated=${truncatedChapters.length}, stop=${stopReason}`);
+      // 실패 사유 기록 + 다음 재시도에 전달할 정보 갱신
+      lastChapterCount = chapterCount;
+      lastTruncatedCount = truncatedChapters.length;
+      const failReasons = [];
+      if (!hasEnoughChapters) failReasons.push(`챕터 수 부족(${chapterCount}/${minChapters}개)`);
+      if (hasTruncated) failReasons.push(`잘린 챕터 ${truncatedChapters.length}개(50자 미만)`);
+      const failDetail = failReasons.join(', ');
+
+      log('warn', `[${rid}] Quality FAIL (attempt ${attempt}/${MAX_QUALITY_RETRIES}): ${failDetail} | stop=${stopReason}`);
 
       if (attempt === MAX_QUALITY_RETRIES) {
         parsed = result;
-        log('warn', `[${rid}] Using last attempt result despite quality issues`);
+        log('warn', `[${rid}] Using last attempt result despite: ${failDetail}`);
       }
     }
 
