@@ -1041,9 +1041,26 @@ async function processReading(reading) {
       }
     }
 
-    const durationMs = Date.now() - startTime;
+    // OG 이미지를 먼저 생성 (completed 전에 실행하여 폴링 시 바로 보이도록)
+    const allOgProfiles = [profile, secondaryProfile, ...extraProfiles].filter(Boolean);
+    let ogCost = 0;
+    try {
+      const ogResult = await generateOgImage(reading.id, reading.service_type, parsed?.summary, parsed?.chapters, profile, allOgProfiles);
+      if (ogResult) {
+        ogCost = ogResult.gemini_cost_usd || 0;
+        totalCostUsd += ogCost;
+        log('info', `[${rid}] OG cost: $${ogCost} → total session $${totalCostUsd.toFixed(4)}`);
+      }
+    } catch (ogErr) {
+      log('warn', `[${rid}] OG image failed (non-blocking): ${ogErr.message}`);
+    }
 
-    const finalApiCost = { ...apiCost, total_cost_usd: Math.round(totalApiCost * 10000) / 10000 };
+    const durationMs = Date.now() - startTime;
+    const finalApiCost = {
+      ...apiCost,
+      total_cost_usd: Math.round((totalApiCost + ogCost) * 1_000_000) / 1_000_000,
+      ...(ogCost > 0 ? { gemini_og_cost_usd: ogCost } : {}),
+    };
 
     await supabase.from('readings').update({
       result: parsed,
@@ -1053,25 +1070,6 @@ async function processReading(reading) {
       api_cost: finalApiCost,
       prompt_config_id: config.id,
     }).eq('id', reading.id);
-
-    // OG 이미지 비동기 생성 (실패해도 reading 결과에 영향 없음)
-    const allOgProfiles = [profile, secondaryProfile, ...extraProfiles].filter(Boolean);
-    generateOgImage(reading.id, reading.service_type, parsed?.summary, parsed?.chapters, profile, allOgProfiles).then(ogResult => {
-      if (ogResult) {
-        const gc = ogResult.gemini_cost_usd || 0;
-        totalCostUsd += gc; // Gemini 비용도 글로벌 합산
-        supabase.from('readings').update({
-          api_cost: {
-            ...finalApiCost,
-            gemini_og_cost_usd: gc,
-            gemini_input_tokens: ogResult.gemini_input_tokens,
-            gemini_output_tokens: ogResult.gemini_output_tokens,
-            total_cost_usd: Math.round((totalApiCost + gc) * 1_000_000) / 1_000_000,
-          },
-        }).eq('id', reading.id);
-        log('info', `[${rid}] OG cost added: $${gc} → total session $${totalCostUsd.toFixed(4)}`);
-      }
-    }).catch(() => {});
 
     totalProcessed++;
     totalCostUsd += totalApiCost;
