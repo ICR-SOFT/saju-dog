@@ -102,7 +102,7 @@ export default function GroupDetailPage() {
         setLoadingStart(new Date(processing.created_at).getTime());
         setLoadingElapsed(Date.now() - new Date(processing.created_at).getTime());
 
-        // 폴링 시작
+        // 폴링 시작 (완료 시 강제 이동 안 함, 토스트만)
         (async () => {
           for (let i = 0; i < 60; i++) {
             await new Promise(r => setTimeout(r, 3000));
@@ -110,7 +110,7 @@ export default function GroupDetailPage() {
             if (status.status === 'completed') {
               setIsRequesting(false);
               loadGroupReadings();
-              router.push(`/archive/${processing.id}`);
+              showToast('그룹 풀이가 완료되었어요!');
               return;
             }
             if (status.status === 'failed') {
@@ -170,7 +170,7 @@ export default function GroupDetailPage() {
       const readingId = reqResult.readingId;
       setCurrentReadingId(readingId);
 
-      // 폴링
+      // 폴링 (완료 시 토스트 + 기록 갱신, 강제 이동 안 함)
       for (let i = 0; i < 60; i++) {
         await new Promise(r => setTimeout(r, 3000));
         const status = await pollReadingStatus(readingId);
@@ -178,7 +178,7 @@ export default function GroupDetailPage() {
           setCompletedResult(status.result as Record<string, unknown>);
           setIsRequesting(false);
           loadGroupReadings();
-          router.push(`/archive/${readingId}`);
+          showToast('그룹 풀이가 완료되었어요!');
           return;
         }
         if (status.status === 'failed') {

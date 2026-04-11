@@ -14,6 +14,7 @@ import { useSajuStore } from '@/stores/saju';
 import { useCreditStore } from '@/stores/credit';
 import { CREDIT_COSTS } from '@/types/api';
 import { supabase } from '@/lib/supabase';
+import { showToast } from '@/components/ui/Toast';
 import { requestReading, pollReadingStatus } from '@/lib/api';
 import type { SajuApiResponse, SajuChapter } from '@/types/saju';
 
@@ -113,7 +114,7 @@ export default function CompatibilityPage() {
               if (status.status === 'completed') {
                 setIsLoading(false);
                 fetchReadings();
-                router.push(`/archive/${r.id}`);
+                showToast('궁합 분석이 완료되었어요!');
                 return;
               }
               if (status.status === 'failed') {
@@ -177,14 +178,8 @@ export default function CompatibilityPage() {
       );
       fetchCredits();
 
-      // 완료될 때까지 폴링 후 기록으로 이동
+      // 완료될 때까지 폴링 (강제 이동 없이 토스트)
       const readingId = reqResult.readingId;
-      if (reqResult.cached) {
-        setIsLoading(false);
-        fetchReadings();
-        router.push(`/archive/${readingId}`);
-        return;
-      }
 
       for (let i = 0; i < 60; i++) {
         await new Promise(r => setTimeout(r, POLL_INTERVAL));
@@ -192,7 +187,7 @@ export default function CompatibilityPage() {
         if (status.status === 'completed') {
           setIsLoading(false);
           fetchReadings();
-          router.push(`/archive/${readingId}`);
+          showToast('궁합 분석이 완료되었어요!');
           return;
         }
         if (status.status === 'failed') {
