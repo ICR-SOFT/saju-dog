@@ -964,6 +964,7 @@ async function processReading(reading) {
     generateOgImage(reading.id, reading.service_type, parsed?.summary, parsed?.chapters).then(ogResult => {
       if (ogResult) {
         const gc = ogResult.gemini_cost_usd || 0;
+        totalCostUsd += gc; // Gemini 비용도 글로벌 합산
         supabase.from('readings').update({
           api_cost: {
             ...finalApiCost,
@@ -973,6 +974,7 @@ async function processReading(reading) {
             total_cost_usd: Math.round((totalApiCost + gc) * 1_000_000) / 1_000_000,
           },
         }).eq('id', reading.id);
+        log('info', `[${rid}] OG cost added: $${gc} → total session $${totalCostUsd.toFixed(4)}`);
       }
     }).catch(() => {});
 
