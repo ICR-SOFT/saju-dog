@@ -1037,22 +1037,25 @@ async function pollLoop() {
         }
       }
 
-      // stuck 복구 (5분 초과 processing)
-      const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-      const { data: stuck } = await supabase
-        .from('readings')
-        .select('id')
-        .eq('processing_status', 'processing')
-        .lt('processing_started_at', fiveMinAgo)
-        .limit(10);
+      // stuck 복구 (10분 초과 processing, 30초마다 한번만 체크)
+      if (Date.now() - (globalThis._lastStuckCheck || 0) > 30_000) {
+        globalThis._lastStuckCheck = Date.now();
+        const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+        const { data: stuck } = await supabase
+          .from('readings')
+          .select('id')
+          .eq('processing_status', 'processing')
+          .lt('processing_started_at', tenMinAgo)
+          .limit(10);
 
-      if (stuck?.length > 0) {
-        log('warn', `Resetting ${stuck.length} stuck readings`);
-        for (const s of stuck) {
-          if (!activeJobs.has(s.id)) {
-            await supabase.from('readings')
-              .update({ processing_status: 'pending', processing_started_at: null })
-              .eq('id', s.id);
+        if (stuck?.length > 0) {
+          log('warn', `Resetting ${stuck.length} stuck readings (>10min)`);
+          for (const s of stuck) {
+            if (!activeJobs.has(s.id)) {
+              await supabase.from('readings')
+                .update({ processing_status: 'pending', processing_started_at: null })
+                .eq('id', s.id);
+            }
           }
         }
       }
