@@ -12,21 +12,7 @@ import { calculateSaju } from '@/core/calculator';
 import { supabase } from '@/lib/supabase';
 import type { Gender, CalendarType } from '@/types/saju';
 
-const HOUR_OPTIONS = [
-  { value: '', label: '모름' },
-  { value: '0', label: '자시 (23:30~01:30)' },
-  { value: '1', label: '축시 (01:30~03:30)' },
-  { value: '3', label: '인시 (03:30~05:30)' },
-  { value: '5', label: '묘시 (05:30~07:30)' },
-  { value: '7', label: '진시 (07:30~09:30)' },
-  { value: '9', label: '사시 (09:30~11:30)' },
-  { value: '11', label: '오시 (11:30~13:30)' },
-  { value: '13', label: '미시 (13:30~15:30)' },
-  { value: '15', label: '신시 (15:30~17:30)' },
-  { value: '17', label: '유시 (17:30~19:30)' },
-  { value: '19', label: '술시 (19:30~21:30)' },
-  { value: '21', label: '해시 (21:30~23:30)' },
-] as const;
+// HOUR_OPTIONS removed - using number input instead
 
 const RELATIONS = ['본인', '배우자', '자녀', '부모', '친구', '기타'] as const;
 
@@ -235,7 +221,6 @@ export default function EditProfilePage() {
                 {([
                   { value: 'solar', label: '양력' },
                   { value: 'lunar', label: '음력' },
-                  { value: 'lunar_leap', label: '윤달' },
                 ] as const).map((cal) => (
                   <button
                     key={cal.value}
@@ -289,35 +274,33 @@ export default function EditProfilePage() {
               </div>
             </div>
 
-            {/* Birth hour */}
+            {/* Birth time */}
             <div className="flex flex-col gap-1">
               <span className="font-pixel text-xs text-[var(--text-secondary)]">
-                태어난 시
+                태어난 시간
               </span>
-              <select
-                value={form.birthHour}
-                onChange={(e) => updateField('birthHour', e.target.value)}
-                className="w-full px-3 py-2.5 text-sm bg-[var(--bg-primary)] text-[var(--text-primary)] border-2 border-[var(--pixel-border)] shadow-[2px_2px_0_var(--pixel-shadow)] outline-none focus:border-[var(--accent)]"
-              >
-                {HOUR_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  value={form.birthHour}
+                  onChange={(e) => updateField('birthHour', e.target.value)}
+                  placeholder="시 (0~23)"
+                  min={0}
+                  max={23}
+                />
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  value={form.birthMinute}
+                  onChange={(e) => updateField('birthMinute', e.target.value)}
+                  placeholder="분 (0~59)"
+                  min={0}
+                  max={59}
+                />
+              </div>
+              <p className="text-[9px] text-[var(--text-muted)]">모르면 비워두세요</p>
             </div>
-
-            {/* Birth minute */}
-            <Input
-              label="태어난 분 (선택)"
-              type="number"
-              inputMode="numeric"
-              value={form.birthMinute}
-              onChange={(e) => updateField('birthMinute', e.target.value)}
-              placeholder="0~59"
-              min={0}
-              max={59}
-            />
 
             {/* Relation */}
             <div className="flex flex-col gap-1">
