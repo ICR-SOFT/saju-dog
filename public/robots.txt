@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /profile/
+Disallow: /shop/success
+Disallow: /shop/fail
+Disallow: /my
+
+Sitemap: https://saju-dog.vercel.app/sitemap.xml
