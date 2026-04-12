@@ -16,6 +16,7 @@ export interface SajuProfile {
   use_true_solar: boolean;
   birth_city: string;
   longitude: number;
+  marital_status: 'single' | 'married';
   calculated_saju: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;

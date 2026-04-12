@@ -45,6 +45,7 @@ export default function AddProfilePage() {
     birthMinute: '',
     gender: 'male' as Gender,
     calendarType: 'solar' as CalendarType,
+    maritalStatus: 'single' as 'single' | 'married',
   });
 
   const updateField = (field: string, value: string) => {
@@ -118,6 +119,7 @@ export default function AddProfilePage() {
           use_true_solar: true,
           birth_city: '서울',
           longitude: 126.978,
+          marital_status: form.maritalStatus,
           calculated_saju: JSON.parse(JSON.stringify(sajuResult)),
         });
 
@@ -169,6 +171,32 @@ export default function AddProfilePage() {
                     }`}
                   >
                     {g === 'male' ? '👦 남' : '👧 여'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Marital status */}
+            <div className="flex flex-col gap-1">
+              <span className="font-pixel text-xs text-[var(--text-secondary)]">
+                결혼 여부
+              </span>
+              <div className="flex gap-2">
+                {([
+                  { value: 'single', label: '💍 미혼' },
+                  { value: 'married', label: '💒 기혼' },
+                ] as const).map((ms) => (
+                  <button
+                    key={ms.value}
+                    type="button"
+                    onClick={() => updateField('maritalStatus', ms.value)}
+                    className={`flex-1 py-2.5 text-sm font-pixel transition-all ${
+                      form.maritalStatus === ms.value
+                        ? 'pixel-btn-accent text-white border-[var(--accent-hover)] shadow-[4px_4px_0_var(--accent-hover)]'
+                        : 'pixel-btn bg-[var(--bg-primary)] text-[var(--text-primary)]'
+                    }`}
+                  >
+                    {ms.label}
                   </button>
                 ))}
               </div>

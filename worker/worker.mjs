@@ -409,6 +409,7 @@ ${questionBlock}
 ${luckySection}
 ## 기본 정보
 - 이름: ${data.input?.name || profile.name} / 성별: ${data.input?.gender === 'male' ? '남성' : '여성'}
+- 결혼여부: ${profile.marital_status === 'married' ? '기혼' : '미혼'}
 - 띠: ${data.ddi?.fullName || '?'} / 별자리: ${data.zodiac?.name || '?'}
 
 ## 사주팔자

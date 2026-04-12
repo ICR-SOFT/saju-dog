@@ -52,6 +52,7 @@ export default function EditProfilePage() {
     birthMinute: '',
     gender: 'male' as Gender,
     calendarType: 'solar' as CalendarType,
+    maritalStatus: 'single' as 'single' | 'married',
   });
 
   // Pre-fill form when profile loads
@@ -68,6 +69,7 @@ export default function EditProfilePage() {
         birthMinute: String(bd.getMinutes()),
         gender: profile.gender,
         calendarType: profile.calendar_type,
+        maritalStatus: (profile.marital_status || 'single') as 'single' | 'married',
       });
     }
   }, [profile]);
@@ -115,6 +117,7 @@ export default function EditProfilePage() {
           birth_date: birthDate.toISOString(),
           calendar_type: form.calendarType,
           gender: form.gender,
+          marital_status: form.maritalStatus,
           calculated_saju: JSON.parse(JSON.stringify(sajuResult)),
         })
         .eq('id', profileId);
@@ -192,6 +195,32 @@ export default function EditProfilePage() {
                     }`}
                   >
                     {g === 'male' ? '👦 남' : '👧 여'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Marital status */}
+            <div className="flex flex-col gap-1">
+              <span className="font-pixel text-xs text-[var(--text-secondary)]">
+                결혼 여부
+              </span>
+              <div className="flex gap-2">
+                {([
+                  { value: 'single', label: '💍 미혼' },
+                  { value: 'married', label: '💒 기혼' },
+                ] as const).map((ms) => (
+                  <button
+                    key={ms.value}
+                    type="button"
+                    onClick={() => updateField('maritalStatus', ms.value)}
+                    className={`flex-1 py-2.5 text-sm font-pixel transition-all ${
+                      form.maritalStatus === ms.value
+                        ? 'pixel-btn-accent text-white border-[var(--accent-hover)] shadow-[4px_4px_0_var(--accent-hover)]'
+                        : 'pixel-btn bg-[var(--bg-primary)] text-[var(--text-primary)]'
+                    }`}
+                  >
+                    {ms.label}
                   </button>
                 ))}
               </div>

@@ -159,18 +159,27 @@ export default function HomePage() {
           ) : (
           <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none items-center">
             {profiles.map((profile, idx) => (
-              <button
-                key={profile.id}
-                type="button"
-                onClick={() => selectProfile(idx)}
-                className={`flex-shrink-0 px-2.5 py-1 font-pixel text-[10px] transition-all ${
-                  selectedProfileIdx === idx
-                    ? 'pixel-border-accent bg-[var(--accent-light)] text-[var(--accent)]'
-                    : 'pixel-border-sm bg-[var(--bg-card)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
-                }`}
-              >
-                {profile.name}
-              </button>
+              <div key={profile.id} className="flex-shrink-0 flex items-center gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => selectProfile(idx)}
+                  className={`px-2.5 py-1 font-pixel text-[10px] transition-all ${
+                    selectedProfileIdx === idx
+                      ? 'pixel-border-accent bg-[var(--accent-light)] text-[var(--accent)]'
+                      : 'pixel-border-sm bg-[var(--bg-card)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
+                  }`}
+                >
+                  {profile.name}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push(`/profile/${profile.id}/edit`)}
+                  className="px-1 py-1 text-[9px] text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors"
+                  title="수정"
+                >
+                  ✏️
+                </button>
+              </div>
             ))}
             <button
               type="button"
