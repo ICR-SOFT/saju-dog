@@ -6,6 +6,7 @@ import Image from 'next/image';
 import AppShell from '@/components/layout/AppShell';
 import CostBadge from '@/components/ui/CostBadge';
 import BannerSlider from '@/components/ui/BannerSlider';
+import { showToast } from '@/components/ui/Toast';
 import { useAuthStore } from '@/stores/auth';
 import { useSajuStore } from '@/stores/saju';
 import { useCreditStore } from '@/stores/credit';
@@ -98,43 +99,23 @@ export default function HomePage() {
     }
   }, [isAuthenticated, fetchProfiles, fetchCredits]);
 
+  const requireLogin = () => {
+    if (!isAuthenticated) {
+      showToast('로그인이 필요해요');
+      router.push('/login');
+      return true;
+    }
+    return false;
+  };
+
   const handleServiceClick = (serviceType: string) => {
+    if (requireLogin()) return;
     const selectedProfile = profiles[selectedProfileIdx];
     if (serviceType === 'daily') { router.push('/daily'); return; }
     if (serviceType === 'compatibility' || serviceType === 'business') { router.push('/compatibility'); return; }
     if (!selectedProfile) { router.push('/profile/add'); return; }
     router.push(`/reading/${selectedProfile.id}?service=${serviceType}`);
   };
-
-  // Not logged in: hero screen
-  if (!authLoading && !isAuthenticated) {
-    return (
-      <div className="min-h-dvh flex flex-col items-center justify-center px-6 bg-[var(--bg-primary)]">
-        <div className="text-center animate-fade-in">
-          <Image
-            src="/images/mascot-new.png"
-            alt="사주독"
-            width={96}
-            height={96}
-            className="mx-auto mb-4 rounded-full pixel-border"
-          />
-          <h1 className="font-pixel text-3xl text-[var(--text-primary)] mb-2">
-            사주독
-          </h1>
-          <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-8">
-            멍도령과 함께하는<br />사주 풀이 서비스
-          </p>
-          <button
-            type="button"
-            onClick={() => router.push('/login')}
-            className="pixel-btn pixel-btn-accent text-white font-pixel px-8 py-3 text-sm w-full"
-          >
-            시작하기
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   // Loading
   if (authLoading) {
@@ -152,6 +133,7 @@ export default function HomePage() {
       <div className="px-3 py-2">
         {/* Banner Slider (최상단) */}
         <BannerSlider onNavigate={(path) => {
+          if (requireLogin()) return;
           const selectedProfile = profiles[selectedProfileIdx];
           if (path.startsWith('/reading/') && selectedProfile) {
             router.push(path.replace(':profileId', selectedProfile.id));
@@ -160,8 +142,18 @@ export default function HomePage() {
           }
         }} />
 
-        {/* Profile selector (컴팩트 칩) */}
+        {/* Profile selector or Login prompt */}
         <section className="mb-3">
+          {!isAuthenticated ? (
+            <button
+              type="button"
+              onClick={() => router.push('/login')}
+              className="w-full pixel-border-accent p-3 bg-[var(--accent-light)] flex items-center justify-between"
+            >
+              <span className="font-pixel text-[10px] text-[var(--accent)]">로그인하고 사주 풀이 시작하기</span>
+              <span className="font-pixel text-[10px] text-[var(--accent)]">→</span>
+            </button>
+          ) : (
           <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none items-center">
             {profiles.map((profile, idx) => (
               <button
@@ -185,6 +177,7 @@ export default function HomePage() {
               + 추가
             </button>
           </div>
+          )}
         </section>
 
         {/* Main services - 2 column image cards */}
