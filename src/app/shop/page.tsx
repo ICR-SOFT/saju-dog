@@ -17,6 +17,8 @@ const PRICING_PLANS: PricingPlan[] = [
   { bones: 15, price: 4900, boneIcons: 2, badge: '인기!' },
   { bones: 35, price: 9900, boneIcons: 3, badge: '추천!' },
   { bones: 70, price: 16900, boneIcons: 4, badge: '최고가성비!' },
+  { bones: 150, price: 29900, boneIcons: 5, badge: '대량!' },
+  { bones: 300, price: 49900, boneIcons: 6, badge: 'VIP' },
 ];
 
 function formatPrice(price: number) {
@@ -135,7 +137,7 @@ export default function ShopPage() {
           {/* Info */}
           <p className="text-center text-[10px] text-[var(--text-muted)] leading-relaxed">
             뼈다귀는 사주 풀이에 사용되는 재화예요.<br />
-            오늘의 운세는 무료, 일반 풀이는 2~3개가 필요해요.
+            오늘의 운세 1개, 일반 풀이 4개, 종합/궁합 5개, 채팅 1개
           </p>
         </div>
       </AppShell>

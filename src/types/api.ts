@@ -45,7 +45,7 @@ export const CREDIT_COSTS: Record<ServiceType, { bones: number }> = {
   compatibility: { bones: 5 },
   daeun: { bones: 4 },
   yearly: { bones: 4 },
-  daily: { bones: 0 },
+  daily: { bones: 1 },
   chat: { bones: 1 },
   business: { bones: 5 },
   luckyday: { bones: 4 },

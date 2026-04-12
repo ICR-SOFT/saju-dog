@@ -272,7 +272,7 @@ export default function DailyPage() {
             <div className="flex flex-col items-center gap-5 py-10">
               <Image src="/images/pixel/daily.png" alt="오늘의 운세" width={120} height={120} className="rounded pixel-border" />
               <p className="font-pixel text-sm text-[var(--text-primary)]">오늘의 운세를 확인해보세요</p>
-              <p className="text-[10px] text-[var(--text-muted)]">무료</p>
+              <p className="text-[10px] text-[var(--text-muted)]">🦴 1개</p>
               <Button variant="primary" size="lg" loading={isLoading}
                 onClick={() => handleGetDaily(false)} disabled={!selectedProfile}>
                 오늘의 운세 보기

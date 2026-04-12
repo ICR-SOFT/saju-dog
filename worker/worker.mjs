@@ -29,7 +29,7 @@ const anthropic = new Anthropic({ apiKey: ANTHROPIC_KEY, timeout: 10 * 60 * 1000
 
 const CREDIT_COSTS = {
   comprehensive: 5, compatibility: 5, daeun: 4, yearly: 4,
-  daily: 0, chat: 1, business: 5, luckyday: 4,
+  daily: 1, chat: 1, business: 5, luckyday: 4,
   love: 4, wealth: 4, health: 4, career: 4, pastlife: 4, moving: 4,
   mbti: 4, pet: 4, travel: 4, food: 4, color: 4,
   study: 4, ancestor: 4, child: 4, secret: 4, timing: 4,

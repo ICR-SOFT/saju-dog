@@ -25,7 +25,7 @@ const MAIN_SERVICES: ServiceItem[] = [
   { type: 'daeun', title: '대운 분석', subtitle: '언제 물 들어오는지 알려드려요', cost: 4, image: '/images/pixel/daeun.png' },
   { type: 'luckyday', title: '길일 택일', subtitle: 'Top 3 길일을 골라드려요', cost: 4, image: '/images/pixel/luckyday.png' },
   { type: 'yearly', title: '올해 운세', subtitle: '내후년 운세는 어떨까?', cost: 4, image: '/images/pixel/yearly.png' },
-  { type: 'daily', title: '오늘의 운세', subtitle: '오늘 하루 운세와 행운 키워드', cost: 0, image: '/images/pixel/daily.png' },
+  { type: 'daily', title: '오늘의 운세', subtitle: '오늘 하루 운세와 행운 키워드', cost: 1, image: '/images/pixel/daily.png' },
 ];
 
 const MORE_SERVICES: ServiceItem[] = [
