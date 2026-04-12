@@ -4,22 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import AppShell from '@/components/layout/AppShell';
 import AuthRequired from '@/components/layout/AuthRequired';
 import { useCreditStore } from '@/stores/credit';
-
-interface PricingPlan {
-  bones: number;
-  price: number;
-  boneIcons: number;
-  badge?: string;
-}
-
-const PRICING_PLANS: PricingPlan[] = [
-  { bones: 5, price: 1990, boneIcons: 1 },
-  { bones: 15, price: 4900, boneIcons: 2, badge: '인기!' },
-  { bones: 35, price: 9900, boneIcons: 3, badge: '추천!' },
-  { bones: 70, price: 16900, boneIcons: 4, badge: '최고가성비!' },
-  { bones: 150, price: 29900, boneIcons: 5, badge: '대량!' },
-  { bones: 300, price: 49900, boneIcons: 6, badge: 'VIP' },
-];
+import { getPricingPlans, type PricingPlan } from '@/lib/pricing';
 
 function formatPrice(price: number) {
   return `₩${price.toLocaleString('ko-KR')}`;
@@ -28,9 +13,11 @@ function formatPrice(price: number) {
 export default function ShopPage() {
   const { credits, fetchCredits } = useCreditStore();
   const [loadingPlan, setLoadingPlan] = useState<number | null>(null);
+  const [plans, setPlans] = useState<PricingPlan[]>([]);
 
   useEffect(() => {
     fetchCredits();
+    getPricingPlans().then(setPlans);
   }, [fetchCredits]);
 
   const handlePurchase = useCallback(async (plan: PricingPlan) => {
@@ -86,7 +73,7 @@ export default function ShopPage() {
 
           {/* Pricing Cards */}
           <div className="flex flex-col gap-3">
-            {PRICING_PLANS.map((plan) => {
+            {plans.map((plan, idx) => {
               const perUnit = Math.round(plan.price / plan.bones);
               const isLoading = loadingPlan === plan.bones;
 
@@ -108,7 +95,7 @@ export default function ShopPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <span className="text-xl">
-                        {'🦴'.repeat(plan.boneIcons)}
+                        {'🦴'.repeat(Math.min(idx + 1, 6))}
                       </span>
                       <div>
                         <p className="font-pixel text-sm text-[var(--text-primary)]">

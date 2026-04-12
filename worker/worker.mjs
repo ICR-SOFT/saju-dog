@@ -27,13 +27,28 @@ const RETRY_MAX_DELAY = 60_000; // 최대 60초 대기
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 const anthropic = new Anthropic({ apiKey: ANTHROPIC_KEY, timeout: 10 * 60 * 1000 }); // 10분 타임아웃
 
-const CREDIT_COSTS = {
+// DB에서 서비스 비용 로드 (폴백용 하드코딩)
+let CREDIT_COSTS = {
   comprehensive: 5, compatibility: 5, daeun: 4, yearly: 4,
   daily: 1, chat: 1, business: 5, luckyday: 4,
   love: 4, wealth: 4, health: 4, career: 4, pastlife: 4, moving: 4,
   mbti: 4, pet: 4, travel: 4, food: 4, color: 4,
   study: 4, ancestor: 4, child: 4, secret: 4, timing: 4,
 };
+
+async function loadServiceCosts() {
+  try {
+    const { data } = await supabase.from('service_costs').select('service_type, bones').eq('is_active', true);
+    if (data) {
+      const costs = {};
+      for (const row of data) costs[row.service_type] = row.bones;
+      CREDIT_COSTS = { ...CREDIT_COSTS, ...costs };
+      log('info', `Service costs loaded from DB: ${Object.keys(costs).length} types`);
+    }
+  } catch (err) {
+    log('warn', `Failed to load service costs from DB, using defaults: ${err.message}`);
+  }
+}
 
 // 현재 처리 중인 reading ID 추적
 const activeJobs = new Set();
@@ -1235,4 +1250,6 @@ async function warmUpEdgeFunctions() {
 warmUpEdgeFunctions(); // 시작 시 즉시 실행
 setInterval(warmUpEdgeFunctions, 5 * 60_000); // 5분마다
 
-resetStuckOnStartup().then(() => pollLoop());
+resetStuckOnStartup().then(() => loadServiceCosts()).then(() => pollLoop());
+// 10분마다 비용 갱신
+setInterval(loadServiceCosts, 10 * 60_000);

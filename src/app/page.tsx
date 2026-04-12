@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import AppShell from '@/components/layout/AppShell';
@@ -9,6 +9,7 @@ import BannerSlider from '@/components/ui/BannerSlider';
 import { showToast } from '@/components/ui/Toast';
 import { useAuthStore } from '@/stores/auth';
 import { useSajuStore } from '@/stores/saju';
+import { getServiceCosts } from '@/lib/pricing';
 import { useCreditStore } from '@/stores/credit';
 
 interface ServiceItem {
@@ -51,7 +52,7 @@ const NEW_SERVICES: ServiceItem[] = [
   { type: 'timing', title: '황금 타이밍', subtitle: '인생 전환점 종합 분석', cost: 4, image: '/images/pixel/timing.png' },
 ];
 
-function ServiceCard({ service, onClick }: { service: ServiceItem; onClick: () => void }) {
+function ServiceCard({ service, onClick, costOverride }: { service: ServiceItem; onClick: () => void; costOverride?: number }) {
   return (
     <button
       type="button"
@@ -75,7 +76,7 @@ function ServiceCard({ service, onClick }: { service: ServiceItem; onClick: () =
           {service.subtitle}
         </p>
         <div className="mt-1">
-          <CostBadge cost={service.cost} className="text-[8px]" />
+          <CostBadge cost={costOverride ?? service.cost} className="text-[8px]" />
         </div>
       </div>
     </button>
@@ -87,9 +88,11 @@ export default function HomePage() {
   const { isAuthenticated, isLoading: authLoading, initialize } = useAuthStore();
   const { profiles, selectedProfileIdx, selectProfile, fetchProfiles } = useSajuStore();
   const { credits, fetchCredits } = useCreditStore();
+  const [serviceCosts, setServiceCosts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     initialize();
+    getServiceCosts().then(setServiceCosts);
   }, [initialize]);
 
   useEffect(() => {
@@ -189,6 +192,7 @@ export default function HomePage() {
                 key={service.type}
                 service={service}
                 onClick={() => handleServiceClick(service.type)}
+                costOverride={serviceCosts[service.type]}
               />
             ))}
           </div>
@@ -226,6 +230,7 @@ export default function HomePage() {
                 key={service.type}
                 service={service}
                 onClick={() => handleServiceClick(service.type)}
+                costOverride={serviceCosts[service.type]}
               />
             ))}
           </div>
@@ -240,6 +245,7 @@ export default function HomePage() {
                 key={service.type}
                 service={service}
                 onClick={() => handleServiceClick(service.type)}
+                costOverride={serviceCosts[service.type]}
               />
             ))}
           </div>
