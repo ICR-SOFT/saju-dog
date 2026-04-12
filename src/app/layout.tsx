@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   creator: '사주독',
   metadataBase: new URL('https://saju-dog.vercel.app'),
   icons: {
-    icon: '/favicon.ico.png',
+    icon: '/favicon.ico',
     apple: '/apple-touch-icon.png',
   },
   openGraph: {

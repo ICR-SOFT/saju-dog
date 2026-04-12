@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import Image from 'next/image';
 import { useAuthStore } from '@/stores/auth';
 import { useSajuStore } from '@/stores/saju';
 import { useCreditStore } from '@/stores/credit';
@@ -99,7 +100,10 @@ export default function Header({ title, showBack = false, rightAction }: HeaderP
         </div>
 
         {/* Center */}
-        <h1 className="font-pixel text-sm text-[var(--text-primary)] truncate text-center">
+        <h1 className="font-pixel text-sm text-[var(--text-primary)] truncate text-center flex items-center gap-1.5 justify-center">
+          {title === '사주독' && (
+            <Image src="/images/app-icon.png" alt="" width={20} height={20} className="rounded-full shrink-0" />
+          )}
           {title}
         </h1>
 
