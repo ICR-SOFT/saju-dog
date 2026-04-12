@@ -52,11 +52,8 @@ export default function CompatibilityPage() {
   const [isCustomRelation, setIsCustomRelation] = useState(false);
   const [isRoleInput, setIsRoleInput] = useState(false);
   const [roles, setRoles] = useState<Record<string, string>>({});
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [loadingStart, setLoadingStart] = useState(0);
-  const [loadingElapsed, setLoadingElapsed] = useState(0);
   const [avgDuration, setAvgDuration] = useState(80000);
 
   const cost = CREDIT_COSTS.compatibility.bones;
@@ -85,59 +82,18 @@ export default function CompatibilityPage() {
     fetchProfiles();
     fetchCredits();
     fetchReadings();
-    // 평균 처리 시간 조회
-    supabase.from('readings').select('processing_duration_ms')
-      .eq('service_type', 'compatibility').eq('processing_status', 'completed')
-      .not('processing_duration_ms', 'is', null).order('created_at', { ascending: false }).limit(10)
-      .then(({ data }) => {
-        if (data && data.length > 0) {
-          const durations = data.map(d => d.processing_duration_ms).filter(Boolean);
-          if (durations.length) setAvgDuration(Math.round(durations.reduce((a: number, b: number) => a + b, 0) / durations.length));
-        }
-      });
-    // 처리 중인 궁합이 있으면 자동 폴링 시작
-    supabase.from('readings').select('id, created_at')
-      .eq('service_type', 'compatibility')
-      .in('processing_status', ['processing', 'pending'])
-      .order('created_at', { ascending: false }).limit(1)
-      .then(({ data }) => {
-        if (data && data.length > 0) {
-          const r = data[0];
-          setIsLoading(true);
-          setLoadingStart(new Date(r.created_at).getTime());
-          setLoadingElapsed(Date.now() - new Date(r.created_at).getTime());
-          // 폴링
-          (async () => {
-            for (let i = 0; i < 60; i++) {
-              await new Promise(resolve => setTimeout(resolve, 3000));
-              const status = await pollReadingStatus(r.id);
-              if (status.status === 'completed') {
-                setIsLoading(false);
-                fetchReadings();
-                showToast('궁합 분석이 완료되었어요!');
-                return;
-              }
-              if (status.status === 'failed') {
-                setError(status.failure_reason || '분석에 실패했어요');
-                setIsLoading(false);
-                fetchCredits();
-                return;
-              }
-            }
-            setIsLoading(false);
-          })();
-        }
-      });
-  }, [fetchProfiles, fetchCredits, fetchReadings, router]);
+  }, [fetchProfiles, fetchCredits, fetchReadings]);
 
-  // 로딩 타이머
+  // 처리 중인 reading 있으면 5초마다 자동 갱신
   useEffect(() => {
-    if (!isLoading) return;
-    const interval = setInterval(() => {
-      setLoadingElapsed(Date.now() - loadingStart);
-    }, 500);
+    const hasProcessing = readings.some(r =>
+      (r.service_type === 'compatibility' || r.service_type === 'business') &&
+      (r.processing_status === 'processing' || r.processing_status === 'pending')
+    );
+    if (!hasProcessing) return;
+    const interval = setInterval(() => fetchReadings(), 5000);
     return () => clearInterval(interval);
-  }, [isLoading, loadingStart]);
+  }, [readings, fetchReadings]);
 
   useEffect(() => {
     if (initialized || profiles.length < 2) return;
@@ -147,14 +103,14 @@ export default function CompatibilityPage() {
 
   const availableProfiles = profiles.filter(p => !selectedIds.includes(p.id));
   const canAddMore = selectedIds.length < MAX_PEOPLE && availableProfiles.length > 0;
-  const compatReadings = readings.filter(r => r.service_type === 'compatibility' && r.processing_status === 'completed');
+  const compatReadings = readings.filter(r =>
+    (r.service_type === 'compatibility' || r.service_type === 'business') &&
+    ['completed', 'processing', 'pending'].includes(r.processing_status)
+  );
 
   const handleAnalyze = useCallback(async (question?: string) => {
     if (selectedIds.length < 2) return;
     setShowConfirm(false);
-    setIsLoading(true);
-    setLoadingStart(Date.now());
-    setLoadingElapsed(0);
     setError(null);
 
     try {
@@ -172,38 +128,17 @@ export default function CompatibilityPage() {
       }
       if (selectedIds.length > 2) meta.allProfileIds = JSON.stringify(selectedIds);
 
-      const reqResult = await requestReading(
+      await requestReading(
         selectedIds[0], 'compatibility', selectedIds[1], true,
         Object.keys(meta).length > 0 ? meta : undefined,
       );
       fetchCredits();
-
-      // 완료될 때까지 폴링 (강제 이동 없이 토스트)
-      const readingId = reqResult.readingId;
-
-      for (let i = 0; i < 60; i++) {
-        await new Promise(r => setTimeout(r, POLL_INTERVAL));
-        const status = await pollReadingStatus(readingId);
-        if (status.status === 'completed') {
-          setIsLoading(false);
-          fetchReadings();
-          showToast('궁합 분석이 완료되었어요!');
-          return;
-        }
-        if (status.status === 'failed') {
-          setError(status.failure_reason || '분석에 실패했어요');
-          setIsLoading(false);
-          fetchCredits();
-          return;
-        }
-      }
-      setError('시간이 초과되었어요. 보관함에서 확인해주세요.');
-      setIsLoading(false);
+      fetchReadings(); // 목록 갱신 → processing 상태로 보임
+      showToast('궁합 분석을 요청했어요!');
     } catch (err) {
       setError(err instanceof Error ? err.message : '요청에 실패했어요');
-      setIsLoading(false);
     }
-  }, [selectedIds, relationType, isRoleInput, roles, fetchCredits, fetchReadings, router]);
+  }, [selectedIds, relationType, isRoleInput, roles, fetchCredits, fetchReadings]);
 
   if (profiles.length < 2) {
     return (
@@ -328,52 +263,48 @@ export default function CompatibilityPage() {
           )}
 
           <Button variant="primary" size="lg" className="w-full"
-            onClick={() => setShowConfirm(true)} disabled={selectedIds.length < 2 || isLoading}
-            loading={isLoading}>
+            onClick={() => setShowConfirm(true)} disabled={selectedIds.length < 2}>
             궁합 보기 <CostBadge cost={cost} className="ml-2" />
           </Button>
 
-          {/* 로딩 게이지 - 버튼 아래 */}
-          {isLoading && (() => {
-            const est = avgDuration * 1.2;
-            const progress = Math.min((loadingElapsed / est) * 100, 95);
-            const remainSec = Math.max(0, Math.round((est - loadingElapsed) / 1000));
-            return (
-              <div className="pixel-border-accent p-3 bg-[var(--accent-light)] flex flex-col gap-2">
-                <p className="font-pixel text-[10px] text-[var(--accent)] text-center">궁합 분석 중... 완료되면 자동 이동</p>
-                <div className="w-full h-3 border-2 border-[var(--accent)] bg-white">
-                  <div className="h-full bg-[var(--accent)] transition-all duration-500" style={{ width: `${progress}%` }} />
-                </div>
-                <div className="flex justify-between text-[9px] text-[var(--text-muted)]">
-                  <span>{Math.round(loadingElapsed / 1000)}초 경과</span>
-                  <span>약 {remainSec}초 남음</span>
-                </div>
-              </div>
-            );
-          })()}
-
-          {credits && !isLoading && (
+          {credits && (
             <p className="text-center text-xs text-[var(--text-muted)]">보유: {credits.bones}개</p>
           )}
 
-          {/* 궁합 내역 */}
+          {/* 궁합 내역 (처리중 + 완료) */}
           {compatReadings.length > 0 && (
             <div className="flex flex-col gap-2">
               <h3 className="font-pixel text-xs text-[var(--text-secondary)]">궁합 내역</h3>
-              {compatReadings.slice(0, 5).map(r => (
-                <button key={r.id} type="button"
-                  className="pixel-card p-3 w-full text-left flex items-center gap-3"
-                  onClick={() => router.push(`/archive/${r.id}`)}>
-                  <span className="text-lg shrink-0">💕</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-pixel text-[10px] truncate">{getCompatNames(r)}</p>
-                    <p className="text-[9px] text-[var(--text-muted)]">
-                      {new Date(r.created_at).toLocaleDateString('ko-KR')}
-                      {r.result && ` · ${(r.result as Record<string, unknown>).overallScore || '?'}점`}
-                    </p>
-                  </div>
-                </button>
-              ))}
+              {compatReadings.slice(0, 10).map(r => {
+                const isProcessing = r.processing_status === 'processing' || r.processing_status === 'pending';
+                const elapsed = Date.now() - new Date(r.created_at).getTime();
+                const progress = Math.min((elapsed / (90000 * 1.2)) * 100, 95);
+                return (
+                  <button key={r.id} type="button"
+                    className={`pixel-card p-3 w-full text-left flex flex-wrap items-center gap-3 ${isProcessing ? 'opacity-80' : ''}`}
+                    onClick={() => !isProcessing && router.push(`/archive/${r.id}`)}
+                    disabled={isProcessing}>
+                    <span className="text-lg shrink-0">💕</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-pixel text-[10px] truncate">{getCompatNames(r)}</p>
+                      <p className="text-[9px] text-[var(--text-muted)]">
+                        {new Date(r.created_at).toLocaleDateString('ko-KR')}
+                        {!isProcessing && r.result && ` · ${(r.result as Record<string, unknown>).overallScore || '?'}점`}
+                      </p>
+                    </div>
+                    {isProcessing ? (
+                      <span className="font-pixel text-[9px] text-[var(--warning)]">분석중</span>
+                    ) : (
+                      <span className="font-pixel text-[9px] text-[var(--success)]">완료</span>
+                    )}
+                    {isProcessing && (
+                      <div className="w-full h-2 border border-[var(--warning)] bg-[var(--bg-secondary)]">
+                        <div className="h-full bg-[var(--warning)] transition-all" style={{ width: `${progress}%` }} />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
 

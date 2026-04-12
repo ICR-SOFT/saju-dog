@@ -94,35 +94,9 @@ export default function GroupDetailPage() {
       });
       setGroupReadings(filtered as GroupReading[]);
 
-      // 처리 중인 reading이 있으면 자동으로 폴링 시작
-      const processing = filtered.find(r => r.processing_status === 'processing' || r.processing_status === 'pending');
-      if (processing && !isRequesting) {
-        setCurrentReadingId(processing.id);
-        setIsRequesting(true);
-        setLoadingStart(new Date(processing.created_at).getTime());
-        setLoadingElapsed(Date.now() - new Date(processing.created_at).getTime());
-
-        // 폴링 시작 (완료 시 강제 이동 안 함, 토스트만)
-        (async () => {
-          for (let i = 0; i < 60; i++) {
-            await new Promise(r => setTimeout(r, 3000));
-            const status = await pollReadingStatus(processing.id);
-            if (status.status === 'completed') {
-              setIsRequesting(false);
-              loadGroupReadings();
-              showToast('그룹 풀이가 완료되었어요!');
-              return;
-            }
-            if (status.status === 'failed') {
-              showToast(status.failure_reason || '풀이에 실패했어요');
-              setIsRequesting(false);
-              loadGroupReadings();
-              return;
-            }
-          }
-          setIsRequesting(false);
-        })();
-      }
+      // 처리 중인 reading 없으면 isRequesting 해제
+      const hasProcessing = filtered.some(r => r.processing_status === 'processing' || r.processing_status === 'pending');
+      if (!hasProcessing && isRequesting) setIsRequesting(false);
     }
   }, [groupId, isRequesting, router]);
 
@@ -132,14 +106,13 @@ export default function GroupDetailPage() {
     loadGroupReadings();
   }, [fetchProfiles, loadGroup, loadGroupReadings]);
 
-  // 로딩 타이머
+  // 처리 중인 reading 있으면 5초마다 자동 갱신
   useEffect(() => {
-    if (!isRequesting) return;
-    const interval = setInterval(() => {
-      setLoadingElapsed(Date.now() - loadingStart);
-    }, 500);
+    const hasProcessing = groupReadings.some(r => r.processing_status === 'processing' || r.processing_status === 'pending');
+    if (!hasProcessing) return;
+    const interval = setInterval(() => loadGroupReadings(), 5000);
     return () => clearInterval(interval);
-  }, [isRequesting, loadingStart]);
+  }, [groupReadings, loadGroupReadings]);
 
   const handleGroupReading = async (question?: string) => {
     if (!group || group.profile_group_members.length < 2) {
@@ -148,10 +121,6 @@ export default function GroupDetailPage() {
     }
 
     setShowConfirm(false);
-    setIsRequesting(true);
-    setLoadingStart(Date.now());
-    setLoadingElapsed(0);
-    setCompletedResult(null);
 
     try {
       const memberIds = group.profile_group_members.map((m) => m.profile_id).filter(Boolean);
@@ -166,32 +135,11 @@ export default function GroupDetailPage() {
       };
       if (question) metadata.userQuestion = question;
 
-      const reqResult = await requestReading(primaryId, 'compatibility', secondaryId, true, metadata);
-      const readingId = reqResult.readingId;
-      setCurrentReadingId(readingId);
-
-      // 폴링 (완료 시 토스트 + 기록 갱신, 강제 이동 안 함)
-      for (let i = 0; i < 60; i++) {
-        await new Promise(r => setTimeout(r, 3000));
-        const status = await pollReadingStatus(readingId);
-        if (status.status === 'completed' && status.result) {
-          setCompletedResult(status.result as Record<string, unknown>);
-          setIsRequesting(false);
-          loadGroupReadings();
-          showToast('그룹 풀이가 완료되었어요!');
-          return;
-        }
-        if (status.status === 'failed') {
-          showToast(status.failure_reason || '풀이에 실패했어요');
-          setIsRequesting(false);
-          return;
-        }
-      }
-      showToast('시간이 초과되었어요. 기록에서 확인해주세요.');
-      setIsRequesting(false);
+      await requestReading(primaryId, 'compatibility', secondaryId, true, metadata);
+      loadGroupReadings(); // 목록 갱신 → processing 상태로 보임
+      showToast('그룹 풀이를 요청했어요!');
     } catch (err) {
       showToast(err instanceof Error ? err.message : '풀이 요청에 실패했어요');
-      setIsRequesting(false);
     }
   };
 
@@ -394,34 +342,34 @@ export default function GroupDetailPage() {
                   </div>
                 ) : (
                   groupReadings.map((reading) => {
-                    const serviceType = reading.service_type as ServiceType;
-                    const name = SERVICE_NAMES[serviceType] || reading.service_type;
-                    const date = new Date(reading.created_at).toLocaleDateString('ko-KR', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                    });
+                    const isProcessing = reading.processing_status === 'processing' || reading.processing_status === 'pending';
+                    const date = new Date(reading.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
                     const overallScore = reading.result?.overallScore as number | undefined;
+                    const elapsed = Date.now() - new Date(reading.created_at).getTime();
+                    const progress = Math.min((elapsed / (90000 * 1.2)) * 100, 95);
 
                     return (
                       <button
                         key={reading.id}
                         type="button"
-                        className="pixel-card p-3 w-full text-left flex items-center gap-3"
-                        onClick={() => router.push(`/archive/${reading.id}`)}
+                        className={`pixel-card p-3 w-full text-left flex flex-wrap items-center gap-3 ${isProcessing ? 'opacity-80' : ''}`}
+                        onClick={() => !isProcessing && router.push(`/archive/${reading.id}`)}
+                        disabled={isProcessing}
                       >
                         <div className="flex-1 min-w-0">
-                          <p className="font-pixel text-xs text-[var(--text-primary)] truncate">
-                            {name}
-                          </p>
-                          <p className="text-[10px] text-[var(--text-muted)] mt-0.5">
-                            {date}
-                          </p>
+                          <p className="font-pixel text-[10px] text-[var(--text-primary)]">{date}</p>
                         </div>
-                        {overallScore != null && (
-                          <span className="font-pixel text-xs text-[var(--accent)] shrink-0">
-                            {overallScore}점
-                          </span>
+                        {isProcessing ? (
+                          <span className="font-pixel text-[9px] text-[var(--warning)]">분석중</span>
+                        ) : overallScore != null ? (
+                          <span className="font-pixel text-xs text-[var(--accent)] shrink-0">{overallScore}점</span>
+                        ) : (
+                          <span className="font-pixel text-[9px] text-[var(--success)]">완료</span>
+                        )}
+                        {isProcessing && (
+                          <div className="w-full h-2 border border-[var(--warning)] bg-[var(--bg-secondary)]">
+                            <div className="h-full bg-[var(--warning)] transition-all" style={{ width: `${progress}%` }} />
+                          </div>
                         )}
                       </button>
                     );
@@ -435,33 +383,13 @@ export default function GroupDetailPage() {
                 size="lg"
                 className="w-full"
                 onClick={() => setShowConfirm(true)}
-                loading={isRequesting}
-                disabled={isRequesting || group.profile_group_members.length < 2}
+                disabled={group.profile_group_members.length < 2}
               >
                 그룹 풀이 시작 <CostBadge cost={CREDIT_COSTS.compatibility.bones} className="ml-2" />
               </Button>
 
-              {/* 로딩 게이지 */}
-              {isRequesting && (() => {
-                const est = 90000 * 1.2;
-                const progress = Math.min((loadingElapsed / est) * 100, 95);
-                const remainSec = Math.max(0, Math.round((est - loadingElapsed) / 1000));
-                return (
-                  <div className="pixel-border-accent p-3 bg-[var(--accent-light)] flex flex-col gap-2">
-                    <p className="font-pixel text-[10px] text-[var(--accent)] text-center">그룹 풀이 분석 중...</p>
-                    <div className="w-full h-3 border-2 border-[var(--accent)] bg-white">
-                      <div className="h-full bg-[var(--accent)] transition-all duration-500" style={{ width: `${progress}%` }} />
-                    </div>
-                    <div className="flex justify-between text-[9px] text-[var(--text-muted)]">
-                      <span>{Math.round(loadingElapsed / 1000)}초 경과</span>
-                      <span>약 {remainSec}초 남음</span>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* 완료 후 채팅 이어가기 */}
-              {currentReadingId && !isRequesting && (
+              {/* 채팅 이어가기 */}
+              {currentReadingId && (
                 <Button variant="secondary" className="w-full" onClick={handleChatAboutGroup}>
                   이 풀이에 대해 질문하기
                 </Button>
