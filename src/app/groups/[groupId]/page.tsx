@@ -132,6 +132,11 @@ export default function GroupDetailPage() {
         relationType: group.description || group.name,
         groupId: group.id,
         groupName: group.name,
+        participantRoles: JSON.stringify(group.profile_group_members.map((member) => ({
+          profileId: member.profile_id,
+          name: member.saju_profiles?.name || '',
+          role: member.role || '',
+        }))),
       };
       if (question) metadata.userQuestion = question;
 

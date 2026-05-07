@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import DOMPurify from 'dompurify';
 import AppShell from '@/components/layout/AppShell';
@@ -47,7 +47,6 @@ export default function CompatibilityPage() {
   const { credits, fetchCredits } = useCreditStore();
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [initialized, setInitialized] = useState(false);
   const [relationType, setRelationType] = useState('');
   const [isCustomRelation, setIsCustomRelation] = useState(false);
   const [isRoleInput, setIsRoleInput] = useState(false);
@@ -55,9 +54,20 @@ export default function CompatibilityPage() {
   const [error, setError] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [avgDuration, setAvgDuration] = useState(80000);
+  const [now, setNow] = useState(0);
 
   const cost = CREDIT_COSTS.compatibility.bones;
-  const getProfileName = (id: string) => profiles.find(p => p.id === id)?.name || '?';
+  const profileIds = useMemo(() => profiles.map(p => p.id), [profiles]);
+  const selectedProfileIds = useMemo(() => {
+    if (selectedIds.length > 0) {
+      return selectedIds.filter(id => profileIds.includes(id));
+    }
+    return profileIds.slice(0, 2);
+  }, [selectedIds, profileIds]);
+  const getProfileName = useCallback(
+    (id: string) => profiles.find(p => p.id === id)?.name || '?',
+    [profiles],
+  );
 
   // 궁합 내역에서 모든 참여자 이름 가져오기
   const getCompatNames = (r: typeof readings[0]) => {
@@ -95,29 +105,42 @@ export default function CompatibilityPage() {
     return () => clearInterval(interval);
   }, [readings, fetchReadings]);
 
-  useEffect(() => {
-    if (initialized || profiles.length < 2) return;
-    setSelectedIds([profiles[0].id, profiles[1].id]);
-    setInitialized(true);
-  }, [profiles, initialized]);
-
-  const availableProfiles = profiles.filter(p => !selectedIds.includes(p.id));
-  const canAddMore = selectedIds.length < MAX_PEOPLE && availableProfiles.length > 0;
+  const availableProfiles = profiles.filter(p => !selectedProfileIds.includes(p.id));
+  const canAddMore = selectedProfileIds.length < MAX_PEOPLE && availableProfiles.length > 0;
   const compatReadings = readings.filter(r =>
     (r.service_type === 'compatibility' || r.service_type === 'business') &&
     ['completed', 'processing', 'pending'].includes(r.processing_status)
   );
+  const hasProcessingCompatReadings = compatReadings.some(
+    r => r.processing_status === 'processing' || r.processing_status === 'pending',
+  );
+
+  useEffect(() => {
+    if (!hasProcessingCompatReadings) return;
+    const updateNow = () => setNow(Date.now());
+    updateNow();
+    const interval = setInterval(updateNow, 1000);
+    return () => clearInterval(interval);
+  }, [hasProcessingCompatReadings]);
 
   const handleAnalyze = useCallback(async (question?: string) => {
-    if (selectedIds.length < 2) return;
+    if (selectedProfileIds.length < 2) return;
     setShowConfirm(false);
     setError(null);
 
     try {
       const meta: Record<string, string> = {};
       if (question) meta.userQuestion = question;
+      const participantRoles = selectedProfileIds.map(id => ({
+        profileId: id,
+        name: getProfileName(id),
+        role: isRoleInput ? (roles[id] || '').trim() : '',
+      }));
+      if (participantRoles.some(p => p.role)) {
+        meta.participantRoles = JSON.stringify(participantRoles);
+      }
       if (isRoleInput) {
-        const roleParts = selectedIds.map(id => {
+        const roleParts = selectedProfileIds.map(id => {
           const name = getProfileName(id);
           const role = roles[id];
           return role ? `${name}(${role})` : name;
@@ -126,10 +149,10 @@ export default function CompatibilityPage() {
       } else if (relationType) {
         meta.relationType = relationType;
       }
-      if (selectedIds.length > 2) meta.allProfileIds = JSON.stringify(selectedIds);
+      if (selectedProfileIds.length > 2) meta.allProfileIds = JSON.stringify(selectedProfileIds);
 
       await requestReading(
-        selectedIds[0], 'compatibility', selectedIds[1], true,
+        selectedProfileIds[0], 'compatibility', selectedProfileIds[1], true,
         Object.keys(meta).length > 0 ? meta : undefined,
       );
       fetchCredits();
@@ -138,7 +161,7 @@ export default function CompatibilityPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : '요청에 실패했어요');
     }
-  }, [selectedIds, relationType, isRoleInput, roles, fetchCredits, fetchReadings]);
+  }, [selectedProfileIds, relationType, isRoleInput, roles, getProfileName, fetchCredits, fetchReadings]);
 
   if (profiles.length < 2) {
     return (
@@ -165,8 +188,8 @@ export default function CompatibilityPage() {
                 프로필 선택 (2~{MAX_PEOPLE}명)
               </label>
 
-              {selectedIds.map((id, index) => {
-                const otherSelected = selectedIds.filter((_, i) => i !== index);
+              {selectedProfileIds.map((id, index) => {
+                const otherSelected = selectedProfileIds.filter((_, i) => i !== index);
                 const options = profiles.filter(p => !otherSelected.includes(p.id));
                 return (
                   <div key={index} className="flex items-center gap-2">
@@ -176,7 +199,11 @@ export default function CompatibilityPage() {
                     <select
                       className="flex-1 border-2 border-[var(--pixel-border)] bg-[var(--bg-card)] px-2 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
                       value={id}
-                      onChange={e => setSelectedIds(prev => { const n = [...prev]; n[index] = e.target.value; return n; })}
+                      onChange={e => {
+                        const next = [...selectedProfileIds];
+                        next[index] = e.target.value;
+                        setSelectedIds(next);
+                      }}
                     >
                       {options.map(p => (
                         <option key={p.id} value={p.id}>
@@ -190,8 +217,8 @@ export default function CompatibilityPage() {
                         placeholder="역할"
                         className="w-16 border-2 border-[var(--pixel-border)] bg-[var(--bg-card)] px-2 py-2 text-xs outline-none focus:border-[var(--accent)] shrink-0" />
                     )}
-                    {selectedIds.length > 2 && (
-                      <button type="button" onClick={() => setSelectedIds(prev => prev.filter((_, i) => i !== index))}
+                    {selectedProfileIds.length > 2 && (
+                      <button type="button" onClick={() => setSelectedIds(selectedProfileIds.filter((_, i) => i !== index))}
                         className="w-7 h-7 pixel-border flex items-center justify-center text-[var(--error)] text-sm shrink-0">x</button>
                     )}
                   </div>
@@ -200,9 +227,9 @@ export default function CompatibilityPage() {
 
               {canAddMore && (
                 <button type="button"
-                  onClick={() => { const next = availableProfiles[0]; if (next) setSelectedIds(prev => [...prev, next.id]); }}
+                  onClick={() => { const next = availableProfiles[0]; if (next) setSelectedIds([...selectedProfileIds, next.id]); }}
                   className="w-full border-2 border-dashed border-[var(--pixel-shadow)] py-2 text-sm text-[var(--text-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]">
-                  + 프로필 추가 ({selectedIds.length}/{MAX_PEOPLE})
+                  + 프로필 추가 ({selectedProfileIds.length}/{MAX_PEOPLE})
                 </button>
               )}
             </div>
@@ -263,7 +290,7 @@ export default function CompatibilityPage() {
           )}
 
           <Button variant="primary" size="lg" className="w-full"
-            onClick={() => setShowConfirm(true)} disabled={selectedIds.length < 2}>
+            onClick={() => setShowConfirm(true)} disabled={selectedProfileIds.length < 2}>
             궁합 보기 <CostBadge cost={cost} className="ml-2" />
           </Button>
 
@@ -277,7 +304,7 @@ export default function CompatibilityPage() {
               <h3 className="font-pixel text-xs text-[var(--text-secondary)]">궁합 내역</h3>
               {compatReadings.slice(0, 10).map(r => {
                 const isProcessing = r.processing_status === 'processing' || r.processing_status === 'pending';
-                const elapsed = Date.now() - new Date(r.created_at).getTime();
+                const elapsed = Math.max(0, (now || new Date(r.created_at).getTime()) - new Date(r.created_at).getTime());
                 const progress = Math.min((elapsed / (90000 * 1.2)) * 100, 95);
                 return (
                   <button key={r.id} type="button"
@@ -313,7 +340,7 @@ export default function CompatibilityPage() {
             onClose={() => setShowConfirm(false)}
             onConfirm={handleAnalyze}
             title="궁합 분석"
-            message={`${selectedIds.map(id => getProfileName(id)).join(' & ')}의 궁합을 분석할까요?`}
+            message={`${selectedProfileIds.map(id => getProfileName(id)).join(' & ')}의 궁합을 분석할까요?`}
             confirmText={`${cost} 시작`}
             showQuestion
             disabled={credits ? credits.bones < cost : false}

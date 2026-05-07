@@ -1,7 +1,7 @@
 /**
  * saju-dog 워커 — EC2 상시 실행
  *
- * - pending reading을 감시하고 Claude API로 동시 처리
+ * - pending reading을 감시하고 OpenAI/Claude API로 동시 처리
  * - 레이트리밋/서버 장애 시 무한 재시도 (지수 백오프)
  * - 실패 시 자동 환불
  * - 동시 처리 수 제한 (MAX_CONCURRENT)
@@ -11,7 +11,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
-import { z } from 'zod';
+import { z, toJSONSchema } from 'zod';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 
 // ===== 설정 =====
@@ -19,13 +19,25 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
+const OPENAI_KEY = process.env.OPENAI_API_KEY || process.env.OPENAI;
+const OPENAI_ORG = process.env.OPENAI_ORG;
+const OPENAI_PROJECT = process.env.OPENAI_PROJECT;
+const AI_PROVIDER = (process.env.AI_PROVIDER || (OPENAI_KEY ? 'openai' : 'anthropic')).toLowerCase();
+const OPENAI_RESPONSES_MODEL = process.env.OPENAI_RESPONSES_MODEL || 'gpt-5.5';
+const OPENAI_IMAGE_PROMPT_MODEL = process.env.OPENAI_IMAGE_PROMPT_MODEL || 'gpt-5.5';
+const OPENAI_IMAGE_GENERATION_MODEL = process.env.OPENAI_IMAGE_GENERATION_MODEL || 'gpt-image-2';
+const OPENAI_REASONING_EFFORT = process.env.OPENAI_REASONING_EFFORT || 'medium';
+const OPENAI_WEB_SEARCH = process.env.OPENAI_WEB_SEARCH !== 'false';
+const OPENAI_WEB_SEARCH_CONTEXT_SIZE = process.env.OPENAI_WEB_SEARCH_CONTEXT_SIZE || 'low';
+const OPENAI_MAX_TOOL_CALLS = parseInt(process.env.OPENAI_MAX_TOOL_CALLS || '2');
+const OPENAI_SERVICE_TIER = process.env.OPENAI_SERVICE_TIER;
 const POLL_INTERVAL = parseInt(process.env.POLL_INTERVAL_MS || '3000');
 const MAX_CONCURRENT = parseInt(process.env.MAX_CONCURRENT || '500');
 const RETRY_BASE_DELAY = parseInt(process.env.RETRY_BASE_DELAY_MS || '5000');
 const RETRY_MAX_DELAY = 60_000; // 최대 60초 대기
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-const anthropic = new Anthropic({ apiKey: ANTHROPIC_KEY, timeout: 10 * 60 * 1000 }); // 10분 타임아웃
+const anthropic = ANTHROPIC_KEY ? new Anthropic({ apiKey: ANTHROPIC_KEY, timeout: 10 * 60 * 1000 }) : null; // 10분 타임아웃
 
 // DB에서 서비스 비용 로드 (폴백용 하드코딩)
 let CREDIT_COSTS = {
@@ -65,6 +77,7 @@ function log(level, msg, data) {
 
 // ===== Claude API 호출 (SDK, 무한 재시도) =====
 async function callClaudeParsed(params, zodSchema, requestOptions = {}) {
+  if (!anthropic) throw new Error('ANTHROPIC_API_KEY가 설정되지 않았습니다');
   let attempt = 0;
 
   while (true) {
@@ -100,6 +113,7 @@ async function callClaudeParsed(params, zodSchema, requestOptions = {}) {
 
 // 채팅용 (Zod 없이 일반 호출)
 async function callClaude(params) {
+  if (!anthropic) throw new Error('ANTHROPIC_API_KEY가 설정되지 않았습니다');
   let attempt = 0;
   while (true) {
     attempt++;
@@ -116,6 +130,200 @@ async function callClaude(params) {
       throw err;
     }
   }
+}
+
+function isOpenAIModel(model = '') {
+  return /^(gpt-|o\d|chatgpt-|computer-use)/.test(model);
+}
+
+function shouldUseOpenAIForText(config = {}) {
+  if (AI_PROVIDER === 'openai') return true;
+  if (AI_PROVIDER === 'anthropic' || AI_PROVIDER === 'claude') return false;
+  return isOpenAIModel(config.model);
+}
+
+function getOpenAIModel() {
+  return OPENAI_RESPONSES_MODEL;
+}
+
+function getOpenAIMaxOutputTokens(serviceType, configuredMaxTokens) {
+  const configured = Number(configuredMaxTokens) || 0;
+  const envOverride = Number(process.env.OPENAI_MAX_OUTPUT_TOKENS || 0);
+  if (envOverride > 0) return envOverride;
+  if (serviceType === 'chat') return Math.max(configured, 2048);
+  if (serviceType === 'daily') return Math.max(configured, 4096);
+  return Math.max(configured, 24000);
+}
+
+function buildWebSearchTools() {
+  if (!OPENAI_WEB_SEARCH) return [];
+  return [{
+    type: 'web_search',
+    search_context_size: OPENAI_WEB_SEARCH_CONTEXT_SIZE,
+    user_location: {
+      type: 'approximate',
+      country: 'KR',
+      timezone: 'Asia/Seoul',
+    },
+  }];
+}
+
+function openAIHeaders() {
+  const headers = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${OPENAI_KEY}`,
+  };
+  if (OPENAI_ORG) headers['OpenAI-Organization'] = OPENAI_ORG;
+  if (OPENAI_PROJECT) headers['OpenAI-Project'] = OPENAI_PROJECT;
+  return headers;
+}
+
+function sanitizeJsonSchema(schema) {
+  if (!schema || typeof schema !== 'object') return schema;
+  const rest = { ...schema };
+  delete rest.$schema;
+  return rest;
+}
+
+function getResponseText(response) {
+  if (typeof response?.output_text === 'string') return response.output_text;
+  const chunks = [];
+  for (const item of response?.output || []) {
+    if (item.type !== 'message') continue;
+    for (const content of item.content || []) {
+      if (content.type === 'output_text' && typeof content.text === 'string') {
+        chunks.push(content.text);
+      }
+    }
+  }
+  return chunks.join('\n').trim();
+}
+
+function getOpenAIToolStats(response) {
+  const output = response?.output || [];
+  const webSearchCalls = output.filter(item => item.type === 'web_search_call').length;
+  const imageGenerationCalls = output.filter(item => item.type === 'image_generation_call').length;
+  return {
+    web_search_calls: webSearchCalls,
+    image_generation_calls: imageGenerationCalls,
+  };
+}
+
+function getOpenAIStopReason(response) {
+  if (response?.status === 'incomplete') {
+    return response?.incomplete_details?.reason || 'incomplete';
+  }
+  if (response?.status === 'failed') return response?.error?.message || 'failed';
+  return response?.status || 'completed';
+}
+
+async function callOpenAIResponse(body) {
+  if (!OPENAI_KEY) throw new Error('OPENAI_API_KEY가 설정되지 않았습니다');
+  let attempt = 0;
+
+  while (true) {
+    attempt++;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10 * 60 * 1000);
+
+    try {
+      const response = await fetch('https://api.openai.com/v1/responses', {
+        method: 'POST',
+        headers: openAIHeaders(),
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+
+      const text = await response.text();
+      let data;
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = { raw: text };
+      }
+
+      if (!response.ok) {
+        const err = new Error(data?.error?.message || `OpenAI API ${response.status}`);
+        err.status = response.status;
+        err.data = data;
+        throw err;
+      }
+
+      return data;
+    } catch (err) {
+      const status = err?.status;
+      if (status === 429 || (status && status >= 500) || err.name === 'AbortError' || err.message?.includes('fetch')) {
+        const delay = Math.min(RETRY_BASE_DELAY * Math.pow(2, attempt - 1), RETRY_MAX_DELAY);
+        log('warn', `OpenAI API ${status || err.name || 'network'}, attempt ${attempt}, retry in ${(delay / 1000).toFixed(0)}s`);
+        await sleep(delay);
+        continue;
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+}
+
+async function callOpenAIParsed(params, zodSchema, schemaName) {
+  const jsonSchema = sanitizeJsonSchema(toJSONSchema(zodSchema));
+  const response = await callOpenAIResponse({
+    ...params,
+    text: {
+      verbosity: params.text?.verbosity || 'high',
+      format: {
+        type: 'json_schema',
+        name: schemaName,
+        strict: true,
+        schema: jsonSchema,
+      },
+    },
+  });
+
+  const rawText = getResponseText(response);
+  let parsedOutput = null;
+  if (rawText) {
+    parsedOutput = zodSchema.parse(JSON.parse(rawText));
+  }
+
+  return {
+    ...response,
+    parsed_output: parsedOutput,
+    stop_reason: getOpenAIStopReason(response),
+    tool_stats: getOpenAIToolStats(response),
+  };
+}
+
+async function callOpenAIText(params) {
+  const response = await callOpenAIResponse(params);
+  return {
+    ...response,
+    output_text: getResponseText(response),
+    stop_reason: getOpenAIStopReason(response),
+    tool_stats: getOpenAIToolStats(response),
+  };
+}
+
+function buildOpenAIBaseParams({ model, instructions, input, maxOutputTokens, metadata = {}, text }) {
+  const tools = buildWebSearchTools();
+  const body = {
+    model,
+    instructions,
+    input,
+    max_output_tokens: maxOutputTokens,
+    reasoning: { effort: OPENAI_REASONING_EFFORT },
+    store: false,
+    parallel_tool_calls: true,
+    metadata,
+  };
+  if (tools.length > 0) {
+    body.tools = tools;
+    body.tool_choice = 'auto';
+    body.max_tool_calls = OPENAI_MAX_TOOL_CALLS;
+  }
+  if (text) body.text = text;
+  if (OPENAI_SERVICE_TIER) body.service_tier = OPENAI_SERVICE_TIER;
+  return body;
 }
 
 // ===== 프롬프트 설정 로드 =====
@@ -140,7 +348,7 @@ async function getPromptConfig(serviceType) {
 }
 
 // ===== 고도화된 용신 분석 + 개인화 추천 =====
-function buildLuckySection(data, p, serviceType) {
+function buildLuckySection(data, p) {
   const ohaeng = data.ohaengCount || {};
   const STEM_ELEM = { '갑':'목','을':'목','병':'화','정':'화','무':'토','기':'토','경':'금','신':'금','임':'수','계':'수' };
   const dayStem = p.day.stem;
@@ -275,6 +483,129 @@ ${sinsalNotes.length > 0 ? `- 신살: ${sinsalNotes.join(', ')}` : ''}
 `;
 }
 
+function parseJsonMeta(value, fallback) {
+  if (!value) return fallback;
+  try {
+    return typeof value === 'string' ? JSON.parse(value) : value;
+  } catch {
+    return fallback;
+  }
+}
+
+function cleanLabel(value) {
+  return String(value || '').replace(/[(){}[\]"']/g, '').replace(/\s+/g, ' ').trim();
+}
+
+function getSummaryStyleGuide(serviceType) {
+  if (serviceType === 'compatibility' || serviceType === 'business' || serviceType === 'chat') return '';
+
+  return `## ★ summary 대표설명 규칙
+- summary는 카드/상단에 보이는 대표 설명입니다. 억지로 짧은 표어처럼 만들지 말고, 사용자가 바로 읽고 "내 이야기네"라고 느낄 자연스러운 소개문으로 쓰세요.
+- 한 문장 또는 짧은 두 절 정도로 충분합니다. 길이를 30자 안에 억지로 맞추지 마세요.
+- 성향 또는 현재 흐름 + 부드러운 방향성을 담으세요. 예: "단단한 추진력이 방향을 잡으면 크게 움직이는 흐름", "큰 책임감이 쌓인 만큼 유연한 선택이 중요해지는 시기".
+- 금지: "목/화/토/금/수", "용신/희신/기신", "신강/신약", "일간", "대운", "오행", "칼/물/불/나무/흙" 같은 기술어/보정재료를 summary에 쓰지 마세요.
+- 금지: "~이 필요", "~가 부족", "~을 보완"처럼 처방 메모 같은 문장으로 끝내지 마세요.
+- 오행 보정 이야기는 챕터 본문에서 쉽게 풀고, summary에는 사람의 성향과 방향만 남기세요.`;
+}
+
+function stripTags(value) {
+  return String(value || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+}
+
+function getSummaryQualityIssue(summary, serviceType) {
+  if (serviceType === 'compatibility' || serviceType === 'business' || serviceType === 'chat') return '';
+  const text = stripTags(summary);
+  if (!text) return 'summary가 비어 있음';
+  if (text.length < 8) return 'summary가 너무 짧음';
+  if (text.length > 120) return 'summary가 너무 김';
+  if (/용신|희신|기신|신강|신약|일간|대운|세운|오행/.test(text)) return 'summary에 명리 기술어가 노출됨';
+  if (/[목화토금수]\s*(이|가|을|를|에|으로|와|과)?\s*(필요|부족|과다|보완)/.test(text)) return 'summary가 오행 보정 메모처럼 보임';
+  if (/(칼|물|불|나무|흙).*(필요|부족|보완|더해야|써야)/.test(text)) return 'summary가 재료 처방처럼 보임';
+  if (/(필요|부족|보완)$/.test(text) || /필요/.test(text)) return 'summary가 처방문처럼 끝남';
+  return '';
+}
+
+function fallbackSummaryFor(serviceType) {
+  if (serviceType === 'daily') return '오늘은 흐름을 살피며 방향을 차분히 다듬기 좋은 날';
+  return '단단한 추진력이 방향을 잡으면 크게 움직이는 흐름';
+}
+
+function inferProfileRole(profile) {
+  const relation = cleanLabel(profile?.relation);
+  if (!relation || relation === '본인' || relation === '기타') return '';
+  if (relation === '부모') {
+    if (profile.gender === 'male') return '아버지';
+    if (profile.gender === 'female') return '어머니';
+    return '부모';
+  }
+  if (relation === '자녀') {
+    if (profile.gender === 'male') return '아들';
+    if (profile.gender === 'female') return '딸';
+    return '자녀';
+  }
+  return relation;
+}
+
+function inferRelationRole(relationType) {
+  const relation = cleanLabel(relationType);
+  if (!relation) return '';
+  if (/부부|배우자/.test(relation)) return '배우자';
+  if (/연인|커플/.test(relation)) return '연인';
+  if (/친구/.test(relation)) return '친구';
+  if (/동료/.test(relation)) return '동료';
+  if (/선후배/.test(relation)) return '선후배 관계의 상대';
+  if (/룸메이트/.test(relation)) return '룸메이트';
+  if (/동업|사업/.test(relation)) return '동업자';
+  if (/프로젝트|팀/.test(relation)) return '팀원';
+  if (/가족/.test(relation)) return '가족';
+  if (/상사|부하|직장/.test(relation)) return '직장 관계자';
+  return '';
+}
+
+function buildCompatibilityDescriptors(participants, meta, relationType) {
+  const roleRows = parseJsonMeta(meta.participantRoles, []);
+  const roleByProfileId = new Map(
+    (Array.isArray(roleRows) ? roleRows : [])
+      .filter(row => row?.profileId)
+      .map(row => [row.profileId, cleanLabel(row.role)]),
+  );
+  const fallbackRole = inferRelationRole(relationType);
+
+  return participants.map((participant, index) => {
+    const data = participant.calculated_saju || {};
+    const name = cleanLabel(data.input?.name || participant.name || `참여자${index + 1}`);
+    const explicitRole = roleByProfileId.get(participant.id) || '';
+    const role = explicitRole || inferProfileRole(participant) || fallbackRole;
+    const reference = `${name}님`;
+    return { index: index + 1, name, role, reference };
+  });
+}
+
+function buildCompatibilityVoiceGuide(descriptors, relationType) {
+  const hasRoles = descriptors.some(d => d.role);
+  const relation = cleanLabel(relationType) || '관계 미지정';
+  const rows = descriptors
+    .map(d => `- ${d.index}번 ${d.name}: ${d.role ? `관계상 역할 ${d.role}` : '명시된 역할 없음'}`)
+    .join('\n');
+
+  return `## ★ 관계 맥락표
+관계 유형: ${relation}
+${rows}
+
+## ★ 관계 중심 풀이 규칙
+- 위 정보는 호칭 강제가 아니라 해석의 맥락입니다. 본문 호칭은 기본적으로 "민수님", "준호님"처럼 자연스럽게 쓰세요.
+- "배우자인 민수님은 배우자인 지현님은"처럼 모든 이름 앞에 역할을 반복하지 마세요.
+- 역할이 부여된 경우 그 관계로 실제 궁합을 해석하세요. 예: 30세 아빠와 5세 아들이면 연애궁합이 아니라 부자지간의 정서, 양육, 독립, 애착, 대화 리듬을 보세요.
+- 역할이 없다면 관계 유형에 맞춰 주제와 관점을 조절하세요.
+- 가족/부모자녀 관계라면 연애·결혼 챕터를 만들지 말고, 정서적 거리, 대화 방식, 보호와 독립, 서로 서운해지는 지점을 중심으로 쓰세요.
+- 동업/사업 관계라면 역할분담, 의사결정, 돈 얘기, 갈등 시 책임소재, 오래 가는 운영법을 중심으로 쓰세요.
+- 친구/동료 관계라면 신뢰, 생활 리듬, 말투 차이, 서운함 회복법, 같이 성장하는 방식을 중심으로 쓰세요.
+- 연인/부부 관계라면 끌림, 애정표현, 갈등 패턴, 생활궁합, 장기 안정성을 중심으로 쓰세요.
+- 각 챕터는 사주 요소 나열보다 "두 사람이 실제 관계에서 어떻게 부딪히고 어떻게 풀면 좋은지"를 먼저 보여주세요.
+- 최소 2개 챕터는 서로에게 바로 해볼 수 있는 말/행동 예시를 넣어주세요.
+${hasRoles ? '- 역할명은 문맥상 필요할 때만 자연스럽게 쓰고, 매 문장마다 반복하지 마세요.' : ''}`;
+}
+
 // ===== 유저 메시지 빌드 =====
 function buildUserMessage(reading, profile, secondaryProfile, extraProfiles = []) {
   const data = profile.calculated_saju;
@@ -295,17 +626,21 @@ function buildUserMessage(reading, profile, secondaryProfile, extraProfiles = []
     // metadata에서 관계 유형 읽기
     const meta = reading.metadata || {};
     const relationType = meta.relationType || '';
+    const participantDescriptors = buildCompatibilityDescriptors(allParticipants, meta, relationType);
+    const relationshipGuide = buildCompatibilityVoiceGuide(participantDescriptors, relationType);
 
     const relationContext = relationType
-      ? `\n## 관계 유형: ${relationType}\n이 관계에 맞게 궁합을 풀어주세요. 연인이면 연애/결혼 중심, 친구면 우정/신뢰 중심, 동업이면 사업/역할분담 중심, 가족이면 소통/갈등해결 중심으로.\n`
-      : '';
+      ? `\n## 관계 유형: ${relationType}\n이 관계에 맞게 궁합을 풀어주세요. 역할이 있으면 그 역할 관계로 해석하고, 역할이 없으면 관계 유형에 맞춰 주제와 관점을 조절하세요.\n`
+      : '\n## 관계 유형: 미지정\n관계가 명확하지 않으므로 연애/결혼으로 단정하지 말고, 서로의 상호작용과 대화 방식 중심으로 풀어주세요.\n';
 
     const participantBlocks = allParticipants.map((pp, i) => {
       const pd = pp.calculated_saju;
       const ppillars = pd.pillars;
       const ps = pd.sinsal || {};
-      const pLucky = buildLuckySection(pd, ppillars, reading.service_type);
-      return `## ${i + 1}번째 참여자 (${pd.input?.name || pp.name})
+      const pLucky = buildLuckySection(pd, ppillars);
+      const descriptor = participantDescriptors[i];
+      return `## ${i + 1}번째 참여자 (${descriptor?.reference || pd.input?.name || pp.name})
+관계상 역할: ${descriptor?.role || '미지정'}
 사주: ${ppillars.year.stem}${ppillars.year.branch} ${ppillars.month.stem}${ppillars.month.branch} ${ppillars.day.stem}${ppillars.day.branch} ${ppillars.hour.stem}${ppillars.hour.branch}
 십신: ${ppillars.year.stemSipsin}/${ppillars.month.stemSipsin}/일주/${ppillars.hour.stemSipsin}
 오행: 목${pd.ohaengCount?.['목']} 화${pd.ohaengCount?.['화']} 토${pd.ohaengCount?.['토']} 금${pd.ohaengCount?.['금']} 수${pd.ohaengCount?.['수']}
@@ -329,15 +664,18 @@ ${pLucky}`;
 ` : '';
 
     return `${relationContext}
+${relationshipGuide}
+
 ${participantBlocks}
 
 [중요] 이 궁합에는 총 ${totalCount}명이 참여합니다. 반드시 ${totalCount}명 전원의 관계를 분석하세요.
-각 챕터에서 모든 참여자의 이름을 언급하고, 서로 간의 관계를 비교 분석해야 합니다.
+각 챕터에서는 참여자의 관계 맥락을 반영해 서로 간의 상호작용을 비교 분석해야 합니다.
 2명만 분석하고 나머지를 빠뜨리면 실패 처리됩니다.
 
 [서식 규칙]
 - 각 챕터의 "emoji" 필드에 반드시 이모지 1개를 넣으세요. "title"에는 이모지를 넣지 마세요.
 - **절대 마크다운 문법을 사용하지 마세요** (**, ##, *, _ 등 금지). 강조는 반드시 <strong>태그만 사용하세요.
+- 말투는 친근한 존댓말로, 살짝 재밌되 품위 있게 쓰세요. 비속어, 조롱, 과한 유행어는 금지입니다.
 ${questionBlock}
 궁합을 JSON으로 작성해주세요.`;
   }
@@ -367,9 +705,10 @@ ${questionBlock}
     timing: '대운/세운에서 결혼/이직/창업/부동산 등 인생 주요 결정의 황금 타이밍을 종합 분석해주세요. 용신 시기=황금기, 기신 시기=보류기.',
   };
   const serviceInstruction = SERVICE_INSTRUCTIONS[reading.service_type] || SERVICE_INSTRUCTIONS.comprehensive;
+  const summaryStyleGuide = getSummaryStyleGuide(reading.service_type);
 
   // ===== 고도화된 용신 분석 + 개인화 추천 (결정적) =====
-  const luckySection = buildLuckySection(data, p, reading.service_type);
+  const luckySection = buildLuckySection(data, p);
 
   const today = new Date();
   const todayStr = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
@@ -460,6 +799,7 @@ ${(() => {
 `;
 })()}
 [중요 지시] ${serviceInstruction}
+${summaryStyleGuide ? `\n${summaryStyleGuide}` : ''}
 
 [서식 규칙]
 - 각 챕터의 "emoji" 필드에 반드시 이모지 1개를 넣으세요. "title"에는 이모지를 넣지 마세요.
@@ -479,7 +819,7 @@ const ChapterSchema = z.object({
 });
 
 const ReadingSchema = z.object({
-  summary: z.string(),
+  summary: z.string().describe('상단 카드용 대표 설명. 기술어/오행 보정 메모가 아니라 성향과 방향을 담은 자연스러운 한국어 소개문. 예: 단단한 추진력이 방향을 잡으면 크게 움직이는 흐름'),
   chapters: z.array(ChapterSchema),
   advice: z.array(z.string()),
   luckyItems: z.object({
@@ -503,7 +843,7 @@ const CompatibilitySchema = z.object({
 });
 
 const DailySchema = z.object({
-  summary: z.string(),
+  summary: z.string().describe('오늘 흐름을 자연스럽게 소개하는 상단 카드용 대표 설명'),
   overallLuck: z.number(),
   categories: z.object({
     love: CategorySchema,
@@ -527,23 +867,43 @@ function getZodSchema(serviceType) {
 
 // ===== 비용 계산 =====
 function getModelRates(m) {
+  if (m.includes('gpt-5.5-pro') || m.includes('gpt-5.4-pro')) return { i: 30.0, c: 0, o: 180.0 };
+  if (m.includes('gpt-5.5')) return { i: 5.0, c: 0.5, o: 30.0 };
+  if (m.includes('gpt-5.4-mini')) return { i: 0.75, c: 0.075, o: 4.5 };
+  if (m.includes('gpt-5.4-nano')) return { i: 0.2, c: 0.02, o: 1.25 };
+  if (m.includes('gpt-5.4')) return { i: 2.5, c: 0.25, o: 15.0 };
+  if (m.includes('gpt-5.2')) return { i: 1.75, c: 0.175, o: 14.0 };
+  if (m.includes('gpt-5-mini')) return { i: 0.25, c: 0.025, o: 2.0 };
+  if (m.includes('gpt-5-nano')) return { i: 0.05, c: 0.005, o: 0.4 };
+  if (m.includes('gpt-5')) return { i: 1.25, c: 0.125, o: 10.0 };
   if (m.includes('opus')) return { i: 15.0, o: 75.0 };
   if (m.includes('haiku')) return { i: 0.25, o: 1.25 };
   return { i: 3.0, o: 15.0 }; // sonnet
 }
 
-function calculateCost(model, usage) {
+function calculateCost(model, usage, extras = {}) {
   const inp = usage.input_tokens || 0;
   const out = usage.output_tokens || 0;
-  const cacheR = usage.cache_read_input_tokens || 0;
+  const openAICache = usage.input_tokens_details?.cached_tokens || 0;
+  const cacheR = usage.cache_read_input_tokens || openAICache;
   const cacheC = usage.cache_creation_input_tokens || 0;
+  const reasoningTokens = usage.output_tokens_details?.reasoning_tokens || 0;
 
   const { i: iRate, o: oRate } = getModelRates(model);
-  let cost = ((inp - cacheR) * iRate + cacheR * iRate * 0.1 + cacheC * iRate * 1.25 + out * oRate) / 1e6;
+  const cachedRate = getModelRates(model).c;
+  const isOpenAI = isOpenAIModel(model);
+  let cost;
+
+  if (isOpenAI) {
+    cost = ((inp - cacheR) * iRate + cacheR * (cachedRate ?? iRate * 0.1) + out * oRate) / 1e6;
+    cost += (extras.web_search_calls || 0) * 0.01; // $10 / 1k calls
+  } else {
+    cost = ((inp - cacheR) * iRate + cacheR * iRate * 0.1 + cacheC * iRate * 1.25 + out * oRate) / 1e6;
+  }
 
   // Advisor iterations 비용 추가
   let advisorInput = 0, advisorOutput = 0;
-  if (usage.iterations) {
+  if (!isOpenAI && usage.iterations) {
     for (const iter of usage.iterations) {
       if (iter.type === 'advisor_message') {
         const aInp = iter.input_tokens || 0;
@@ -558,7 +918,18 @@ function calculateCost(model, usage) {
     }
   }
 
-  const result = { model, input_tokens: inp, output_tokens: out, cache_read_tokens: cacheR, cache_creation_tokens: cacheC, cost_usd: Math.round(cost * 10000) / 10000 };
+  const result = {
+    provider: isOpenAI ? 'openai' : 'anthropic',
+    model,
+    input_tokens: inp,
+    output_tokens: out,
+    cache_read_tokens: cacheR,
+    cache_creation_tokens: cacheC,
+    reasoning_tokens: reasoningTokens,
+    web_search_calls: extras.web_search_calls || 0,
+    image_generation_calls: extras.image_generation_calls || 0,
+    cost_usd: Math.round(cost * 1000000) / 1000000,
+  };
   if (advisorInput > 0) {
     result.advisor_input_tokens = advisorInput;
     result.advisor_output_tokens = advisorOutput;
@@ -566,12 +937,94 @@ function calculateCost(model, usage) {
   return result;
 }
 
-// ===== OG 이미지 생성 (Gemini) =====
+function getImageModelRates(m) {
+  if (m.includes('gpt-image-1-mini')) return { i: 2.0, c: 0.2, o: 8.0 };
+  if (m.includes('gpt-image-2')) return { i: 5.0, c: 1.25, o: 30.0 };
+  return { i: 5.0, c: 1.25, o: 32.0 }; // gpt-image-1.5 fallback
+}
+
+function calculateImageGenerationCost(promptModel, imageModel, usage, extras = {}) {
+  const inp = usage.input_tokens || 0;
+  const out = usage.output_tokens || 0;
+  const cacheR = usage.input_tokens_details?.cached_tokens || 0;
+  const reasoningTokens = usage.output_tokens_details?.reasoning_tokens || 0;
+  const rates = getImageModelRates(imageModel);
+  let cost = ((inp - cacheR) * rates.i + cacheR * rates.c + out * rates.o) / 1e6;
+  cost += (extras.web_search_calls || 0) * 0.01;
+
+  return {
+    provider: 'openai',
+    model: promptModel,
+    image_model: imageModel,
+    input_tokens: inp,
+    output_tokens: out,
+    cache_read_tokens: cacheR,
+    reasoning_tokens: reasoningTokens,
+    web_search_calls: extras.web_search_calls || 0,
+    image_generation_calls: extras.image_generation_calls || 0,
+    cost_usd: Math.round(cost * 1000000) / 1000000,
+  };
+}
+
+function withOpenAIGenerationRules(systemPrompt, serviceType) {
+  const summaryStyleGuide = getSummaryStyleGuide(serviceType);
+  return `${systemPrompt}
+
+## OpenAI Responses API 생성 규칙
+- 제공된 만세력/신살/오행/대운 데이터가 최우선입니다. 사주 계산을 새로 하지 마세요.
+- web_search는 사용자의 질문이 최신 공개 정보, 현재 연도 정책/가격/장소/뉴스처럼 외부 사실을 요구할 때만 사용하세요. 사주 데이터 해석만으로 충분하면 검색하지 마세요.
+- web_search를 사용했다면 관련 본문에 출처 제목 또는 URL을 짧게 포함하세요. 출처가 없으면 최신 외부 사실이라고 단정하지 마세요.
+- 오늘/올해/내년 같은 상대 날짜는 입력에 제공된 날짜와 연도를 기준으로 절대 날짜/연도로 일관되게 해석하세요.
+- 응답은 반드시 요청된 JSON 스키마와 일치해야 합니다. JSON 밖 설명, 코드블록, 마크다운을 출력하지 마세요.
+- 모든 사용자-facing 문장은 한국어 존댓말로 쓰고, 불안감을 키우는 단정 대신 실행 가능한 조언으로 마무리하세요.
+- 말투는 "따뜻한 상담사 + 재치 있는 멍도령" 느낌입니다. 너무 보고서처럼 딱딱하게 쓰지 말고, 자연스러운 구어체와 비유를 섞으세요.
+- 한 챕터에 한두 번 정도만 가벼운 농담이나 생활 비유를 넣으세요. 비속어, 조롱, 저렴한 표현, 과한 밈 말투는 금지입니다.
+- 제목은 짧고 생동감 있게 쓰되 자극적인 반말이나 공격적인 표현은 피하세요.
+- 조언은 "해야 합니다"만 반복하지 말고 "~해보세요", "~가 훨씬 편해져요", "~로 바꿔보면 좋아요"처럼 부드럽게 권하세요.
+${summaryStyleGuide ? `\n${summaryStyleGuide}` : ''}
+
+[분석 유형] ${serviceType}`;
+}
+
+function buildChatInput(history, latestMessage) {
+  const transcript = (history || [])
+    .slice(-20)
+    .map(h => `${h.role === 'assistant' ? '멍도령' : '사용자'}: ${String(h.content || '').replace(/\s+/g, ' ').trim()}`)
+    .join('\n');
+
+  return `${transcript ? `이전 대화:\n${transcript}\n\n` : ''}사용자 최신 메시지:
+${latestMessage}`;
+}
+
+// ===== OG 이미지 생성 (OpenAI 우선, Gemini 레거시 폴백) =====
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${GEMINI_KEY}`;
 
+async function uploadOgImage(readingId, imageBuffer) {
+  const filePath = `${readingId}.png`;
+  const { error: uploadError } = await supabase.storage
+    .from('og-images')
+    .upload(filePath, imageBuffer, {
+      contentType: 'image/png',
+      upsert: true,
+    });
+
+  if (uploadError) {
+    log('warn', `[${readingId.slice(0, 8)}] OG upload failed: ${uploadError.message}`);
+    return null;
+  }
+
+  const { data: urlData } = supabase.storage.from('og-images').getPublicUrl(filePath);
+  const ogUrl = urlData.publicUrl;
+  await supabase.from('readings').update({ og_image_url: ogUrl }).eq('id', readingId);
+  return ogUrl;
+}
+
 async function generateOgImage(readingId, serviceType, summary, chapters, profileData, allProfiles = []) {
-  if (!GEMINI_KEY) {
-    log('warn', `[${readingId.slice(0, 8)}] OG image skipped: no GEMINI_API_KEY`);
+  const canUseOpenAIImage = AI_PROVIDER !== 'anthropic' && AI_PROVIDER !== 'claude' && !!OPENAI_KEY;
+  const canUseGeminiFallback = AI_PROVIDER !== 'openai' && !!GEMINI_KEY;
+
+  if (!canUseOpenAIImage && !canUseGeminiFallback) {
+    log('warn', `[${readingId.slice(0, 8)}] OG image skipped: no image API key`);
     return null;
   }
 
@@ -585,13 +1038,14 @@ async function generateOgImage(readingId, serviceType, summary, chapters, profil
 
     // 띠/별자리 정보 추출 (궁합: 모든 참여자)
     const profileList = allProfiles.length > 0 ? allProfiles : [profileData].filter(Boolean);
-    const extraInfo = profileList.map(p => {
+    const profileSignals = profileList.map(p => {
       const saju = p?.calculated_saju;
-      const name = p?.name || '';
-      const ddi = saju?.ddi?.fullName || '';
+      const name = p?.name || saju?.input?.name || '';
+      const ddi = saju?.ddi?.fullName || saju?.ddi?.animal || '';
       const zodiac = saju?.zodiac?.name || '';
       return [name, ddi, zodiac].filter(Boolean).join(' ');
     }).filter(Boolean).join(' / ');
+    const visualContext = readingContext || `Service: ${serviceType}. Profile symbols: ${profileSignals}`;
 
     // 궁합 여부에 따라 다른 프롬프트
     const isCompat = ['compatibility', 'business'].includes(serviceType);
@@ -601,12 +1055,63 @@ async function generateOgImage(readingId, serviceType, summary, chapters, profil
     if (isCompat && personCount >= 2) {
       // 궁합: 띠 동물들이 상호작용하는 장면
       const animals = profileList.map(p => p?.calculated_saju?.ddi?.animal || '강아지').join(' and ');
-      prompt = `Create a wide 16-bit pixel art illustration (1200x630). ${personCount} cute pixel art animals (${animals}) interacting together in a scene that reflects their relationship energy. Based on this reading: "${readingContext.slice(0, 200)}". The animals should have distinct personalities visible through their poses and expressions. Cozy detailed background setting. Warm color palette, thick black outlines, visible pixel grid. Absolutely no text, no letters, no words, no numbers anywhere in the image.`;
+      prompt = `Draw a wide 16-bit pixel art share-card illustration. ${personCount} cute pixel art animals (${animals}) interact in a scene that reflects their relationship energy. Use this context only as mood guidance: "${visualContext.slice(0, 240)}". Make every animal distinct through pose, expression, accessories, and spacing. Cozy detailed background, warm balanced palette, thick black outlines, visible pixel grid. No text, no letters, no words, no numbers, no signs, no speech bubbles.`;
     } else {
       // 개인 풀이: 띠 동물이 이 사람의 성격/분위기를 표현
       const animal = profileData?.calculated_saju?.ddi?.animal || '강아지';
       const zodiacSign = profileData?.calculated_saju?.zodiac?.name || '';
-      prompt = `Create a wide 16-bit pixel art illustration (1200x630). A cute pixel art ${animal} character that embodies this person's personality and energy. Based on this reading: "${readingContext.slice(0, 250)}". The ${animal} should have a distinct personality shown through its pose, expression, accessories, and surroundings that reflect the person's traits and current life energy.${zodiacSign ? ` Subtly incorporate ${zodiacSign} constellation motifs.` : ''} Rich detailed pixel art environment matching the mood. Warm color palette, thick black outlines, visible pixel grid. Absolutely no text, no letters, no words, no numbers anywhere in the image.`;
+      prompt = `Draw a wide 16-bit pixel art share-card illustration. A cute pixel art ${animal} character embodies this person's personality and current life energy. Use this context only as mood guidance: "${visualContext.slice(0, 280)}". Show the ${animal}'s personality through pose, expression, accessories, and surrounding objects.${zodiacSign ? ` Subtly incorporate ${zodiacSign} constellation motifs as tiny stars, not text.` : ''} Rich detailed pixel art environment, warm balanced palette, thick black outlines, visible pixel grid. No text, no letters, no words, no numbers, no signs, no speech bubbles.`;
+    }
+
+    if (canUseOpenAIImage) {
+      const response = await callOpenAIResponse({
+        model: OPENAI_IMAGE_PROMPT_MODEL,
+        instructions: 'Generate exactly one production-ready OG/share image. Follow the prompt literally, especially the no-text requirement. Do not answer with prose.',
+        input: prompt,
+        reasoning: { effort: OPENAI_REASONING_EFFORT },
+        tools: [{
+          type: 'image_generation',
+          model: OPENAI_IMAGE_GENERATION_MODEL,
+          action: 'generate',
+          size: '1536x1024',
+          quality: process.env.OPENAI_IMAGE_QUALITY || 'medium',
+          output_format: 'png',
+          background: 'opaque',
+        }],
+        tool_choice: { type: 'image_generation' },
+        max_tool_calls: 1,
+        max_output_tokens: 2048,
+        store: false,
+        metadata: { reading_id: readingId, service_type: serviceType, purpose: 'og_image' },
+      });
+
+      const imageCall = (response.output || []).find(item => item.type === 'image_generation_call' && item.result);
+      if (!imageCall) {
+        const errMsg = response?.error?.message || response?.status || 'no image_generation_call result';
+        log('warn', `[${readingId.slice(0, 8)}] OpenAI image no result: ${errMsg}`);
+        return null;
+      }
+
+      const imageBuffer = Buffer.from(imageCall.result, 'base64');
+      const ogUrl = await uploadOgImage(readingId, imageBuffer);
+      if (!ogUrl) return null;
+
+      const toolStats = getOpenAIToolStats(response);
+      const cost = calculateImageGenerationCost(OPENAI_IMAGE_PROMPT_MODEL, OPENAI_IMAGE_GENERATION_MODEL, response.usage || {}, toolStats);
+      log('info', `[${readingId.slice(0, 8)}] OG image(OpenAI): ${(imageBuffer.length / 1024).toFixed(0)}KB | ${cost.input_tokens}→${cost.output_tokens} tok | $${cost.cost_usd}`);
+
+      return {
+        provider: 'openai',
+        url: ogUrl,
+        size_bytes: imageBuffer.length,
+        openai_og_cost_usd: cost.cost_usd,
+        openai_input_tokens: cost.input_tokens,
+        openai_output_tokens: cost.output_tokens,
+        openai_reasoning_tokens: cost.reasoning_tokens,
+        image_prompt_model: OPENAI_IMAGE_PROMPT_MODEL,
+        image_generation_model: OPENAI_IMAGE_GENERATION_MODEL,
+        revised_prompt: imageCall.revised_prompt || null,
+      };
     }
 
     const response = await fetch(GEMINI_ENDPOINT, {
@@ -642,28 +1147,12 @@ async function generateOgImage(readingId, serviceType, summary, chapters, profil
 
     // Supabase Storage에 업로드
     const imageBuffer = Buffer.from(imagePart.inlineData.data, 'base64');
-    const filePath = `${readingId}.png`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('og-images')
-      .upload(filePath, imageBuffer, {
-        contentType: 'image/png',
-        upsert: true,
-      });
-
-    if (uploadError) {
-      log('warn', `[${readingId.slice(0, 8)}] OG upload failed: ${uploadError.message}`);
-      return null;
-    }
-
-    const { data: urlData } = supabase.storage.from('og-images').getPublicUrl(filePath);
-    const ogUrl = urlData.publicUrl;
-
-    // readings 테이블에 URL 저장
-    await supabase.from('readings').update({ og_image_url: ogUrl }).eq('id', readingId);
+    const ogUrl = await uploadOgImage(readingId, imageBuffer);
+    if (!ogUrl) return null;
 
     log('info', `[${readingId.slice(0, 8)}] OG image: ${(imageBuffer.length / 1024).toFixed(0)}KB | tokens ${inputTokens}→${outputTokens} | $${geminiCost}`);
     return {
+      provider: 'gemini',
       url: ogUrl,
       size_bytes: imageBuffer.length,
       gemini_cost_usd: geminiCost,
@@ -761,22 +1250,45 @@ ${sajuContext}
 - 답변은 300자 이내로 간결하게 하세요
 - <strong>태그로 핵심 키워드를 강조하세요
 - 절대 마크다운(**, ##, *, _)을 사용하지 마세요
-- 절대 JSON, 코드블록(\`\`\`), 데이터 구조를 출력하지 마세요. 자연스러운 대화체로만 답변하세요`;
+- 절대 JSON, 코드블록(\`\`\`), 데이터 구조를 출력하지 마세요. 자연스러운 대화체로만 답변하세요
+- 최신 공개 정보가 필요한 질문(현재 가격, 장소, 뉴스, 정책 등)에만 web_search를 사용하세요
+- web_search를 사용했다면 답변 끝에 출처 제목 또는 URL을 아주 짧게 붙이세요`;
 
     const messages = [
       ...(history || []).map(h => ({ role: h.role, content: h.content })),
       { role: 'user', content: msg.content },
     ];
 
-    const apiResponse = await callClaude({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1024,
-      system: systemPrompt,
-      messages,
-    });
+    let reply;
+    let cost;
 
-    const reply = apiResponse.content.filter(b => b.type === 'text').map(b => b.text).join('');
-    const cost = calculateCost('sonnet', apiResponse.usage || {});
+    if (shouldUseOpenAIForText({ model: OPENAI_RESPONSES_MODEL })) {
+      const model = getOpenAIModel();
+      const apiResponse = await callOpenAIText(buildOpenAIBaseParams({
+        serviceType: 'chat',
+        model,
+        instructions: systemPrompt,
+        input: buildChatInput(history, msg.content),
+        maxOutputTokens: getOpenAIMaxOutputTokens('chat', 1500),
+        metadata: { chat_message_id: msg.id, session_id: msg.session_id, service_type: 'chat' },
+        text: { verbosity: 'low' },
+      }));
+
+      reply = (apiResponse.output_text || '').trim();
+      cost = calculateCost(model, apiResponse.usage || {}, apiResponse.tool_stats || {});
+    } else {
+      const apiResponse = await callClaude({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages,
+      });
+
+      reply = apiResponse.content.filter(b => b.type === 'text').map(b => b.text).join('');
+      cost = calculateCost('sonnet', apiResponse.usage || {});
+    }
+
+    if (!reply) throw new Error('AI 응답이 비어 있습니다');
 
     // 응답 메시지 저장 (API 비용 포함)
     await supabase.from('chat_messages').insert({
@@ -856,34 +1368,60 @@ async function processReading(reading) {
 
     // SDK + Zod 기반 Structured Outputs
     const zodSchema = getZodSchema(reading.service_type);
+    const provider = shouldUseOpenAIForText(config) ? 'openai' : 'anthropic';
+    const actualModel = provider === 'openai' ? getOpenAIModel() : config.model;
 
-    const baseParams = {
-      model: config.model,
-      max_tokens: config.max_tokens,
-      messages: [{ role: 'user', content: userMessage }],
-      system: config.use_prompt_caching
-        ? [{ type: 'text', text: config.system_prompt, cache_control: { type: 'ephemeral' } }]
-        : config.system_prompt,
-    };
-    if (config.temperature !== null) baseParams.temperature = config.temperature;
+    let baseParams;
+    let requestOptions = {};
 
-    // Advisor Tool 설정
-    const requestOptions = {};
-    if (config.use_advisor && config.advisor_model) {
-      baseParams.tools = [
-        { type: 'advisor_20260301', name: 'advisor', model: config.advisor_model }
-      ];
-      requestOptions.headers = { 'anthropic-beta': 'advisor-tool-2026-03-01' };
-      log('info', `[${rid}] Advisor enabled: ${config.model} + ${config.advisor_model}`);
+    if (provider === 'openai') {
+      baseParams = buildOpenAIBaseParams({
+        serviceType: reading.service_type,
+        model: actualModel,
+        instructions: withOpenAIGenerationRules(config.system_prompt, reading.service_type),
+        input: userMessage,
+        maxOutputTokens: getOpenAIMaxOutputTokens(reading.service_type, config.max_tokens),
+        metadata: { reading_id: reading.id, service_type: reading.service_type, prompt_config_id: config.id },
+      });
+      log('info', `[${rid}] OpenAI Responses enabled: ${actualModel} (${OPENAI_REASONING_EFFORT})`);
+    } else {
+      baseParams = {
+        model: actualModel,
+        max_tokens: config.max_tokens,
+        messages: [{ role: 'user', content: userMessage }],
+        system: config.use_prompt_caching
+          ? [{ type: 'text', text: config.system_prompt, cache_control: { type: 'ephemeral' } }]
+          : config.system_prompt,
+      };
+      if (config.temperature !== null) baseParams.temperature = config.temperature;
+
+      // Advisor Tool 설정
+      if (config.use_advisor && config.advisor_model) {
+        baseParams.tools = [
+          { type: 'advisor_20260301', name: 'advisor', model: config.advisor_model }
+        ];
+        requestOptions.headers = { 'anthropic-beta': 'advisor-tool-2026-03-01' };
+        log('info', `[${rid}] Advisor enabled: ${actualModel} + ${config.advisor_model}`);
+      }
     }
 
-    // 품질 검증 포함 재시도 루프
-    const MAX_QUALITY_RETRIES = 5;
+    // OG 이미지는 프로필/띠 정보를 기반으로 텍스트 풀이와 병렬 생성한다.
+    // 결과 해설 뒤에 순차 생성하던 시간을 줄이되, completed 전에는 완료를 기다린다.
+    const allOgProfiles = [profile, secondaryProfile, ...extraProfiles].filter(Boolean);
+    const ogPromise = generateOgImage(reading.id, reading.service_type, null, null, profile, allOgProfiles)
+      .catch((ogErr) => {
+        log('warn', `[${rid}] OG image failed (non-blocking): ${ogErr.message}`);
+        return null;
+      });
+
+    // 품질 검증 포함 재시도 루프: 최초 1회 + 재시도 1회까지만 허용한다.
+    const MAX_QUALITY_RETRIES = 2;
     let parsed = null;
     let apiCost = null;
     let totalApiCost = 0;
     let lastChapterCount = 0;
     let lastTruncatedCount = 0;
+    let lastSummaryIssue = '';
 
     for (let attempt = 1; attempt <= MAX_QUALITY_RETRIES; attempt++) {
       const params = { ...baseParams };
@@ -895,6 +1433,7 @@ async function processReading(reading) {
         const prevFailReasons = [];
         if (lastChapterCount < minChapters) prevFailReasons.push(`챕터가 ${lastChapterCount}개밖에 없었음 (최소 ${minChapters}개 필요)`);
         if (lastTruncatedCount > 0) prevFailReasons.push(`${lastTruncatedCount}개 챕터가 50자 미만으로 내용이 잘렸음`);
+        if (lastSummaryIssue) prevFailReasons.push(`summary 문제: ${lastSummaryIssue}`);
         const failFeedback = prevFailReasons.length > 0 ? `\n이전 시도(${attempt - 1}차)의 문제: ${prevFailReasons.join('. ')}` : '';
 
         const retryMsg = `\n\n[중요 - ${attempt}차 재시도] 이전 시도에서 품질 문제가 있었습니다.${failFeedback}
@@ -902,15 +1441,22 @@ async function processReading(reading) {
 - 최소 ${minChapters}개 이상의 완전한 챕터 (이전에 ${lastChapterCount}개였음)
 - 각 챕터의 content는 최소 300자 이상 (구체적 사례와 비유 포함)
 - 각 챕터의 "emoji" 필드에 반드시 이모지 1개
-- 모든 챕터 title은 서로 달라야 함`;
-        params.messages = [{ role: 'user', content: userMessage + retryMsg }];
+- 모든 챕터 title은 서로 달라야 함
+- summary는 기술어/오행 보정 메모가 아니라 상단 카드에 어울리는 자연스러운 대표 설명이어야 함`;
+        if (provider === 'openai') {
+          params.input = userMessage + retryMsg;
+        } else {
+          params.messages = [{ role: 'user', content: userMessage + retryMsg }];
+        }
       }
 
-      const apiResponse = await callClaudeParsed(params, zodSchema, requestOptions);
+      const apiResponse = provider === 'openai'
+        ? await callOpenAIParsed(params, zodSchema, `${reading.service_type}_reading`)
+        : await callClaudeParsed(params, zodSchema, requestOptions);
 
       // stop_reason 체크
       const stopReason = apiResponse.stop_reason;
-      if (stopReason === 'max_tokens') {
+      if (stopReason === 'max_tokens' || stopReason === 'max_output_tokens') {
         log('warn', `[${rid}] Hit max_tokens (attempt ${attempt}), output truncated`);
       }
 
@@ -922,12 +1468,12 @@ async function processReading(reading) {
         continue;
       }
 
-      apiCost = calculateCost(config.model, apiResponse.usage || {});
+      apiCost = calculateCost(actualModel, apiResponse.usage || {}, apiResponse.tool_stats || {});
       totalApiCost += apiCost.cost_usd;
 
       // luckyItems.direction 강제 덮어쓰기 (Claude가 무시할 수 있으므로)
       if (result.luckyItems && reading.service_type !== 'compatibility') {
-        const luckyData = buildLuckySection(profile.calculated_saju, profile.calculated_saju.pillars, reading.service_type);
+        const luckyData = buildLuckySection(profile.calculated_saju, profile.calculated_saju.pillars);
         // direction은 서버 계산값으로 무조건 덮어쓰기
         const dirMatch = luckyData.match(/행운 방위: (.+?) \(용신\)/);
         if (dirMatch) {
@@ -961,6 +1507,12 @@ async function processReading(reading) {
         result.advice = result.advice.map(a => cleanMarkdown(a));
       } else if (typeof result.advice === 'string') {
         result.advice = cleanMarkdown(result.advice);
+      }
+
+      let summaryIssue = getSummaryQualityIssue(result.summary, reading.service_type);
+      if (summaryIssue && attempt === MAX_QUALITY_RETRIES) {
+        result.summary = fallbackSummaryFor(reading.service_type);
+        summaryIssue = '';
       }
 
       // 이모지 후처리
@@ -1024,6 +1576,7 @@ async function processReading(reading) {
       // 챕터 내용 잘림 체크 (50자 미만이 과반수면 fail)
       const truncatedChapters = Array.isArray(chapters) ? chapters.filter(ch => ch.content && ch.content.length < 50) : [];
       const hasTruncated = truncatedChapters.length > Math.ceil(chapterCount / 2);
+      const hasReadableSummary = !summaryIssue;
 
       // 이모지 누락은 후처리로 기본값 채움 (fail 사유에서 제외)
       if (Array.isArray(chapters)) {
@@ -1035,7 +1588,7 @@ async function processReading(reading) {
         }
       }
 
-      if (hasEnoughChapters && !hasTruncated) {
+      if (hasEnoughChapters && !hasTruncated && hasReadableSummary) {
         parsed = result;
         log('info', `[${rid}] Quality OK (attempt ${attempt}): ${chapterCount} chapters, stop=${stopReason}`);
         break;
@@ -1044,9 +1597,11 @@ async function processReading(reading) {
       // 실패 사유 기록 + 다음 재시도에 전달할 정보 갱신
       lastChapterCount = chapterCount;
       lastTruncatedCount = truncatedChapters.length;
+      lastSummaryIssue = summaryIssue;
       const failReasons = [];
       if (!hasEnoughChapters) failReasons.push(`챕터 수 부족(${chapterCount}/${minChapters}개)`);
       if (hasTruncated) failReasons.push(`잘린 챕터 ${truncatedChapters.length}개(50자 미만)`);
+      if (summaryIssue) failReasons.push(`summary 품질 문제(${summaryIssue})`);
       const failDetail = failReasons.join(', ');
 
       log('warn', `[${rid}] Quality FAIL (attempt ${attempt}/${MAX_QUALITY_RETRIES}): ${failDetail} | stop=${stopReason}`);
@@ -1057,25 +1612,23 @@ async function processReading(reading) {
       }
     }
 
-    // OG 이미지를 먼저 생성 (completed 전에 실행하여 폴링 시 바로 보이도록)
-    const allOgProfiles = [profile, secondaryProfile, ...extraProfiles].filter(Boolean);
+    // 위에서 시작한 OG 이미지 생성을 기다린다. 텍스트 생성과 겹쳐서 전체 대기 시간을 줄인다.
     let ogCost = 0;
-    try {
-      const ogResult = await generateOgImage(reading.id, reading.service_type, parsed?.summary, parsed?.chapters, profile, allOgProfiles);
-      if (ogResult) {
-        ogCost = ogResult.gemini_cost_usd || 0;
-        totalCostUsd += ogCost;
-        log('info', `[${rid}] OG cost: $${ogCost} → total session $${totalCostUsd.toFixed(4)}`);
-      }
-    } catch (ogErr) {
-      log('warn', `[${rid}] OG image failed (non-blocking): ${ogErr.message}`);
+    let ogResult = null;
+    ogResult = await ogPromise;
+    if (ogResult) {
+      ogCost = ogResult.openai_og_cost_usd || ogResult.gemini_cost_usd || 0;
+      totalCostUsd += ogCost;
+      log('info', `[${rid}] OG cost: $${ogCost} → total session $${totalCostUsd.toFixed(4)}`);
     }
 
     const durationMs = Date.now() - startTime;
     const finalApiCost = {
       ...apiCost,
       total_cost_usd: Math.round((totalApiCost + ogCost) * 1_000_000) / 1_000_000,
-      ...(ogCost > 0 ? { gemini_og_cost_usd: ogCost } : {}),
+      ...(ogCost > 0 ? { og_image_cost_usd: ogCost } : {}),
+      ...(ogResult?.provider ? { og_image_provider: ogResult.provider } : {}),
+      ...(ogResult?.image_generation_model ? { og_image_model: ogResult.image_generation_model } : {}),
     };
 
     await supabase.from('readings').update({
@@ -1099,7 +1652,7 @@ async function processReading(reading) {
     const prevReason = reading.failure_reason || '';
     const retryMatch = prevReason.match(/\[retry:(\d+)\]/);
     const retryCount = retryMatch ? parseInt(retryMatch[1]) + 1 : 1;
-    const MAX_READING_RETRIES = 5;
+    const MAX_READING_RETRIES = 2;
 
     if (retryCount < MAX_READING_RETRIES) {
       // pending으로 되돌려서 자동 재시도

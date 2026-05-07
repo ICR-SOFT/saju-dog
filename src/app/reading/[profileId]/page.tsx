@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useEffect, useCallback } from 'react';
+import { Suspense, useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import DOMPurify from 'dompurify';
@@ -21,6 +21,7 @@ import { showToast } from '@/components/ui/Toast';
 import { useSajuStore } from '@/stores/saju';
 import { useCreditStore } from '@/stores/credit';
 import { createChatSession, sendChatMessage } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 import { CREDIT_COSTS } from '@/types/api';
 import { SERVICE_NAMES } from '@/lib/services';
 import type { ServiceType, SajuPillars, SajuApiResponse } from '@/types/saju';
@@ -72,6 +73,8 @@ function ReadingContent() {
   const [loadingElapsed, setLoadingElapsed] = useState(0);
   const [loadingStartTime, setLoadingStartTime] = useState<number | null>(null);
   const [ogImageUrl, setOgImageUrl] = useState<string | null>(null);
+  const reloadOnCompleteRef = useRef(false);
+  const didReloadOnCompleteRef = useRef(false);
 
   const profile = profiles.find((p) => p.id === profileId);
   const cost = CREDIT_COSTS[serviceType]?.bones ?? 0;
@@ -84,6 +87,8 @@ function ReadingContent() {
     fetchProfiles();
     fetchCredits();
     clearCurrentReading();
+    setReadingId(null);
+    setOgImageUrl(null);
 
     // Check readingCache in store
     const cacheKey = `${profileId}:${serviceType}`;
@@ -91,12 +96,11 @@ function ReadingContent() {
     if (cached) {
       // Use cached result directly
       useSajuStore.setState({ currentReading: cached, processingStatus: 'completed' });
-      return;
     }
 
     // 평균 처리 시간 조회
     async function fetchAvgDuration() {
-      const { data } = await (await import('@/lib/supabase')).supabase
+      const { data } = await supabase
         .from('readings')
         .select('processing_duration_ms')
         .eq('service_type', serviceType)
@@ -115,9 +119,9 @@ function ReadingContent() {
 
     // Check DB for existing reading (completed OR processing)
     async function checkExistingReading() {
-      const { data } = await (await import('@/lib/supabase')).supabase
+      const { data } = await supabase
         .from('readings')
-        .select('id, result, processing_status, created_at, processing_started_at')
+        .select('id, result, processing_status, created_at, processing_started_at, og_image_url')
         .eq('profile_id', profileId)
         .eq('service_type', serviceType)
         .in('processing_status', ['completed', 'processing', 'pending'])
@@ -131,7 +135,9 @@ function ReadingContent() {
             currentReading: data[0].result as SajuApiResponse,
             processingStatus: 'completed',
           });
+          setOgImageUrl(data[0].og_image_url || null);
         } else if (data[0].processing_status === 'processing' || data[0].processing_status === 'pending') {
+          setOgImageUrl(null);
           // 처리 중인 reading → DB의 시작 시간 기준으로 경과 시간 계산
           const startedAt = data[0].processing_started_at || data[0].created_at;
           const dbStartTime = new Date(startedAt).getTime();
@@ -149,25 +155,57 @@ function ReadingContent() {
     checkExistingReading();
   }, [fetchProfiles, fetchCredits, clearCurrentReading, profileId, serviceType, readingCache]);
 
-  // Track processing status transitions
+  // Track processing status transitions + refresh delayed OG image
   useEffect(() => {
     if (processingStatus === 'processing') {
+      reloadOnCompleteRef.current = true;
       setPhase('loading');
+      setOgImageUrl(null);
     } else if (processingStatus === 'completed' && currentReading) {
-      setPhase('result');
-      // OG 이미지 URL 가져오기
-      const rid = readingId || useSajuStore.getState().pendingReadingId;
-      if (rid) {
-        (async () => {
-          const { supabase } = await import('@/lib/supabase');
-          const { data } = await supabase.from('readings').select('og_image_url').eq('id', rid).single();
-          if (data?.og_image_url) setOgImageUrl(data.og_image_url);
-        })();
+      if (reloadOnCompleteRef.current && !didReloadOnCompleteRef.current) {
+        didReloadOnCompleteRef.current = true;
+        window.location.reload();
+        return;
       }
+
+      setPhase('result');
+      let cancelled = false;
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+      let attempts = 0;
+
+      const pollOgImage = async () => {
+        attempts += 1;
+        const { data } = await supabase
+          .from('readings')
+          .select('id, og_image_url')
+          .eq('profile_id', profileId)
+          .eq('service_type', serviceType)
+          .eq('processing_status', 'completed')
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (cancelled) return;
+        const latest = data?.[0];
+        if (latest?.id) setReadingId(latest.id);
+        if (latest?.og_image_url) {
+          setOgImageUrl(latest.og_image_url);
+          return;
+        }
+
+        if (attempts < 20) {
+          timeoutId = setTimeout(pollOgImage, 3000);
+        }
+      };
+
+      pollOgImage();
+      return () => {
+        cancelled = true;
+        if (timeoutId) clearTimeout(timeoutId);
+      };
     } else if (processingStatus === 'failed') {
       setPhase('profile');
     }
-  }, [processingStatus, currentReading]);
+  }, [processingStatus, currentReading, profileId, serviceType]);
 
   // Loading phase: rotate messages + elapsed timer
   useEffect(() => {
@@ -196,6 +234,8 @@ function ReadingContent() {
   const handleConfirm = useCallback(async (question?: string) => {
     setShowConfirm(false);
     setPhase('loading');
+    setReadingId(null);
+    setOgImageUrl(null);
     setLoadingStartTime(Date.now());
     setLoadingElapsed(0);
     const meta = question ? { userQuestion: question } : undefined;
