@@ -182,7 +182,7 @@ export default function SharePage() {
 
             {/* Chapters */}
             {result.chapters?.map((ch: SajuChapter, i: number) => (
-              <ChapterAccordion key={ch.id} chapter={ch} defaultOpen={i === 0} serviceType={serviceType} index={i} />
+              <ChapterAccordion key={ch.id} chapter={ch} defaultOpen={i === 0} />
             ))}
 
             {/* Recommendations */}
