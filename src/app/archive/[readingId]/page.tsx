@@ -208,7 +208,7 @@ export default function ArchiveDetailPage() {
                 <div className="flex flex-col gap-3">
                   <h3 className="font-pixel text-xs text-[var(--text-secondary)]">상세 풀이</h3>
                   {result.chapters.map((ch, i) => (
-                    <ChapterAccordion key={ch.id} chapter={ch} defaultOpen={i === 0} />
+                    <ChapterAccordion key={ch.id} chapter={ch} defaultOpen={i === 0} serviceType={serviceType} index={i} />
                   ))}
                 </div>
               )}

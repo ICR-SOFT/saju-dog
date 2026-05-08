@@ -442,6 +442,7 @@ function buildLuckySection(data, p) {
   if (sinsal.includes('상관견관')) sinsalNotes.push('상관견관 → 윗사람과 충돌 소지, 자유업 유리');
   if (sinsal.includes('식신제살')) sinsalNotes.push('식신제살 → 위기를 기회로 바꾸는 능력');
   if (sinsal.includes('효신살')) sinsalNotes.push('효신살 → 편인 작용, 변덕/모성 부족 주의');
+  if (sinsal.includes('현침살')) sinsalNotes.push('현침살 → 말/글/손끝이 예리한 기운, 일주·십신·오행으로 증폭/완화 판단');
 
   // 8. 대운 참고
   const currentDaeun = data.daeun?.find(d => d.isCurrent);
@@ -528,6 +529,38 @@ function getSummaryQualityIssue(summary, serviceType) {
 function fallbackSummaryFor(serviceType) {
   if (serviceType === 'daily') return '오늘은 흐름을 살피며 방향을 차분히 다듬기 좋은 날';
   return '단단한 추진력이 방향을 잡으면 크게 움직이는 흐름';
+}
+
+function getChapterStructureGuide(serviceType) {
+  if (serviceType === 'daily' || serviceType === 'chat') return '';
+
+  const isCompatibility = serviceType === 'compatibility' || serviceType === 'business';
+  const labels = isCompatibility
+    ? ['관계요약', '성향차이', '소통', '갈등', '생활궁합', '현실조언', '개운법']
+    : serviceType === 'comprehensive'
+      ? ['핵심', '일주', '신살연결', '오행', '재물/직업', '관계', '흐름', '개운법']
+      : ['핵심', '사주근거', '타이밍', '주의점', '개운법'];
+  const chapterCount = isCompatibility || serviceType === 'comprehensive' ? '6~8개' : '5~6개';
+
+  return `## ★ 챕터 구조/분량 규칙
+- 이전 프롬프트에 더 많은 챕터 수가 적혀 있어도 이 규칙을 우선하세요.
+- 챕터는 ${chapterCount}만 작성하세요. 나열식으로 길게 늘리지 말고 핵심만 남기세요.
+- 각 title은 반드시 "카테고리: 제목" 형식으로 쓰세요. 사용 가능한 카테고리: ${labels.join(', ')}.
+- emoji는 장식일 뿐입니다. 사용자가 섹션 성격을 알 수 있도록 title의 카테고리를 더 중요하게 쓰세요.
+- 각 content는 120~260자 정도로 압축하세요. 한 챕터에서 근거 1~2개와 결론 1개만 선명하게 쓰세요.
+- 같은 근거를 여러 챕터에서 반복하지 마세요.`;
+}
+
+function getRelationalSajuGuide(serviceType) {
+  if (serviceType === 'compatibility' || serviceType === 'business' || serviceType === 'daily' || serviceType === 'chat') return '';
+
+  return `## ★ 사주 관계성 해석 규칙
+- 사주 요소를 단순 나열하지 마세요. "무엇이 있다"가 아니라 "무엇이 무엇과 만나 어떻게 작동한다"를 설명하세요.
+- 신살은 단독으로 풀이하지 마세요. 반드시 위치(년/월/일/시), 일주(일간+일지), 십신, 오행 균형, 대운/세운, 귀인/공망/충합형파해 중 2개 이상과 연결해 해석하세요.
+- 예: 현침살은 "있다"로 끝내지 말고 어느 기둥에 있는지, 일간/식상/관성과 만나 말·글·손기술·비판성으로 살아나는지, 귀인이나 용신이 완화하는지까지 판단하세요.
+- 일주는 최소 1개 챕터에서 반드시 다루세요. 일간의 기본 기질과 일지의 생활/관계 반응이 전체 사주를 어떻게 끌고 가는지 설명하세요.
+- 상쇄/보완 관계를 반드시 넣으세요. 강한 기운이나 신살이 대운, 용신/희신, 귀인, 충합에 의해 증폭되는지 누그러지는지 구분하세요.
+- 겁주는 표현보다 "이 기운을 이렇게 쓰면 장점이 된다"는 식으로 마무리하세요.`;
 }
 
 function inferProfileRole(profile) {
@@ -628,6 +661,7 @@ function buildUserMessage(reading, profile, secondaryProfile, extraProfiles = []
     const relationType = meta.relationType || '';
     const participantDescriptors = buildCompatibilityDescriptors(allParticipants, meta, relationType);
     const relationshipGuide = buildCompatibilityVoiceGuide(participantDescriptors, relationType);
+    const chapterStructureGuide = getChapterStructureGuide(reading.service_type);
 
     const relationContext = relationType
       ? `\n## 관계 유형: ${relationType}\n이 관계에 맞게 궁합을 풀어주세요. 역할이 있으면 그 역할 관계로 해석하고, 역할이 없으면 관계 유형에 맞춰 주제와 관점을 조절하세요.\n`
@@ -671,6 +705,7 @@ ${participantBlocks}
 [중요] 이 궁합에는 총 ${totalCount}명이 참여합니다. 반드시 ${totalCount}명 전원의 관계를 분석하세요.
 각 챕터에서는 참여자의 관계 맥락을 반영해 서로 간의 상호작용을 비교 분석해야 합니다.
 2명만 분석하고 나머지를 빠뜨리면 실패 처리됩니다.
+${chapterStructureGuide ? `\n${chapterStructureGuide}` : ''}
 
 [서식 규칙]
 - 각 챕터의 "emoji" 필드에 반드시 이모지 1개를 넣으세요. "title"에는 이모지를 넣지 마세요.
@@ -706,6 +741,8 @@ ${questionBlock}
   };
   const serviceInstruction = SERVICE_INSTRUCTIONS[reading.service_type] || SERVICE_INSTRUCTIONS.comprehensive;
   const summaryStyleGuide = getSummaryStyleGuide(reading.service_type);
+  const chapterStructureGuide = getChapterStructureGuide(reading.service_type);
+  const relationalSajuGuide = getRelationalSajuGuide(reading.service_type);
 
   // ===== 고도화된 용신 분석 + 개인화 추천 (결정적) =====
   const luckySection = buildLuckySection(data, p);
@@ -800,6 +837,8 @@ ${(() => {
 })()}
 [중요 지시] ${serviceInstruction}
 ${summaryStyleGuide ? `\n${summaryStyleGuide}` : ''}
+${chapterStructureGuide ? `\n${chapterStructureGuide}` : ''}
+${relationalSajuGuide ? `\n${relationalSajuGuide}` : ''}
 
 [서식 규칙]
 - 각 챕터의 "emoji" 필드에 반드시 이모지 1개를 넣으세요. "title"에는 이모지를 넣지 마세요.
@@ -1429,7 +1468,7 @@ async function processReading(reading) {
       // 재시도 시 이전 실패 사유를 구체적으로 알려줌
       if (attempt > 1) {
         const minChapters = reading.service_type === 'daily' ? 0
-          : ['comprehensive', 'compatibility', 'business'].includes(reading.service_type) ? 12 : 8;
+          : ['comprehensive', 'compatibility', 'business'].includes(reading.service_type) ? 8 : 5;
         const prevFailReasons = [];
         if (lastChapterCount < minChapters) prevFailReasons.push(`챕터가 ${lastChapterCount}개밖에 없었음 (최소 ${minChapters}개 필요)`);
         if (lastTruncatedCount > 0) prevFailReasons.push(`${lastTruncatedCount}개 챕터가 50자 미만으로 내용이 잘렸음`);
@@ -1439,9 +1478,10 @@ async function processReading(reading) {
         const retryMsg = `\n\n[중요 - ${attempt}차 재시도] 이전 시도에서 품질 문제가 있었습니다.${failFeedback}
 반드시 다음을 지켜주세요:
 - 최소 ${minChapters}개 이상의 완전한 챕터 (이전에 ${lastChapterCount}개였음)
-- 각 챕터의 content는 최소 300자 이상 (구체적 사례와 비유 포함)
+- 각 챕터의 content는 120~260자 정도로 압축하되, 근거와 결론이 모두 있어야 함
 - 각 챕터의 "emoji" 필드에 반드시 이모지 1개
 - 모든 챕터 title은 서로 달라야 함
+- 모든 챕터 title은 "카테고리: 제목" 형식이어야 함
 - summary는 기술어/오행 보정 메모가 아니라 상단 카드에 어울리는 자연스러운 대표 설명이어야 함`;
         if (provider === 'openai') {
           params.input = userMessage + retryMsg;
